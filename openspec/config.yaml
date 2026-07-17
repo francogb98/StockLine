@@ -1,0 +1,40 @@
+project: stock-app-store
+context: >
+  Next.js 16 + Prisma 6 + PostgreSQL inventory/POS app.
+  App Router with route groups: (landing), login, register, app.
+  Auth: session-token cookie, bcrypt passwords, onboarding flow.
+  UI: Radix UI + Tailwind CSS + shadcn/ui components.
+  Payments: Mercado Pago integration.
+  Testing: Vitest (unit) + Playwright (E2E on port 3001).
+strict_tdd: true
+testing:
+  unit:
+    runner: vitest
+    command: pnpm test
+    framework: vitest
+    config: vitest.config.ts
+  e2e:
+    runner: playwright
+    command: pnpm test:e2e
+    framework: "@playwright/test"
+    config: playwright.config.ts
+    base_url: "http://127.0.0.1:3001"
+  integration:
+    available: false
+    tool: "@testing-library/react (installed, no integration tests found)"
+  coverage:
+    available: true
+    command: "vitest run --coverage"
+    reporters: [text, lcov]
+  quality:
+    linter: "pnpm lint (eslint)"
+    type_checker: "tsc --noEmit (strict: true in tsconfig)"
+    formatter: "prettier (via tailwind)"
+phases:
+  proposal: "sdd-propose"
+  spec: "sdd-spec"
+  design: "sdd-design"
+  tasks: "sdd-tasks"
+  apply: "sdd-apply"
+  verify: "sdd-verify"
+  archive: "sdd-archive"

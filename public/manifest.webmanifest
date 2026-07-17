@@ -1,0 +1,16 @@
+{
+  "name": "StockLine",
+  "short_name": "StockLine",
+  "description": "Sistema de gestión de stock.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#2563EB",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "any",
+      "type": "image/png"
+    }
+  ]
+}

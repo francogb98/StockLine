@@ -1,0 +1,2 @@
+-- No-op migration.
+-- The passwordHash column is already created in 20260320143000_add_password_hash_to_users.
