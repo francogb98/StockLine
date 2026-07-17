@@ -228,7 +228,7 @@ export async function createSale(
       const taxConfig = getTaxConfig(store?.config as Record<string, unknown> | null);
 
       const sale = await prisma.$transaction(
-        async (tx) => {
+        async (tx: Prisma.TransactionClient) => {
           const stepStart = Date.now();
 
           const productIds = normalizedItems.map((item) => item.productId);

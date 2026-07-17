@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { requireSessionUser } from "@/lib/api-auth";
+import type { Prisma } from "@prisma/client";
 
 export async function GET(request: Request) {
   try {
@@ -75,7 +76,7 @@ export async function POST(request: Request) {
       ? openingAmount
       : 0;
 
-    const session = await prisma.$transaction(async (tx) => {
+    const session = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const existingOpen = await tx.cashSession.findFirst({
         where: { storeId: auth.user.storeId, closedAt: null },
       });

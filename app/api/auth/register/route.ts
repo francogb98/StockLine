@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hashPassword, validatePassword } from "@/lib/password-utils.server";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { SUBSCRIPTION_TRIAL_DAYS, addDays } from "@/lib/subscription-config";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
     const trialEndsAt = addDays(now, SUBSCRIPTION_TRIAL_DAYS);
 
     // Crear store, usuario admin y suscripción trial en una transacción.
-    const newUser = await prisma.$transaction(async (tx) => {
+    const newUser = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const store = await tx.store.create({
         data: {
           name: storeName,

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { requireSessionUser } from "@/lib/api-auth";
+import type { Prisma } from "@prisma/client";
 
 export async function GET() {
   try {
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const product = await prisma.$transaction(async (tx) => {
+    const product = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const created = await tx.product.create({
         data: {
           barcode,

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { requireSessionUser } from "@/lib/api-auth";
+import type { Prisma } from "@prisma/client";
 
 export async function GET(
   request: Request,
@@ -74,7 +75,7 @@ export async function PUT(
       }
     }
 
-    const updated = await prisma.$transaction(async (tx) => {
+    const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const current = await tx.product.findFirst({
         where: { id, storeId: auth.user.storeId },
         select: { stock: true },

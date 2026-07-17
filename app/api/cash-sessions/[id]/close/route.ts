@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { requireSessionUser } from "@/lib/api-auth";
+import type { Prisma } from "@prisma/client";
 
 export async function POST(
   request: Request,
@@ -17,7 +18,7 @@ export async function POST(
       return errorResponse("El monto de cierre debe ser un número válido", 400);
     }
 
-    const updated = await prisma.$transaction(async (tx) => {
+    const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const session = await tx.cashSession.findFirst({
         where: { id, storeId: auth.user.storeId },
       });
