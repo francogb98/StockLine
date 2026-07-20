@@ -20,7 +20,7 @@ export function EmailBrandHeader({ showText = true }: EmailBrandHeaderProps) {
               <tr>
                 <td style={{ verticalAlign: "middle", paddingRight: "8px" }}>
                   <img
-                    src="https://stockline.app/icon.png"
+                    src="https://stockline.app/icon.svg"
                     alt=""
                     width="28"
                     height="28"
@@ -44,7 +44,7 @@ export function EmailBrandHeader({ showText = true }: EmailBrandHeaderProps) {
             </table>
           ) : (
             <img
-              src="https://stockline.app/icon.png"
+              src="https://stockline.app/icon.svg"
               alt="StockLine"
               width="40"
               height="40"

@@ -6,6 +6,7 @@ import { useAuth, useData } from "@/lib/store-context";
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { SyncProvider } from "@/components/offline/sync-provider";
+import { PendingCashSessionWatcher } from "@/components/cash/pending-cash-session-watcher";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isSessionLoading } = useAuth();
@@ -85,5 +86,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <SyncProvider>{children}</SyncProvider>;
+  return (
+    <>
+      <PendingCashSessionWatcher />
+      <SyncProvider>{children}</SyncProvider>
+    </>
+  );
 }

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import { AuthLayout } from "./auth-layout"
 import { AuthBranding } from "./auth-branding"
 import { AuthCard } from "./auth-card"
+import { PendingCashSessionDialog } from "@/components/cash/pending-cash-session-dialog"
 import Link from "next/link"
 
 interface LoginScreenProps {
@@ -15,11 +16,12 @@ interface LoginScreenProps {
 }
 
 function LoginForm({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
-  const { login, isLoading } = useAuth()
+  const { login, isLoading, pendingCashSession, clearPendingCashSession } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showPendingSession, setShowPendingSession] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,12 +32,28 @@ function LoginForm({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
       return
     }
 
-    const success = await login(email, password)
-    if (success) {
-      onLoginSuccess?.()
+    const result = await login(email, password)
+    if (result.success) {
+      if (result.pendingCashSession) {
+        setShowPendingSession(true)
+      } else {
+        onLoginSuccess?.()
+      }
     } else {
       setError("Credenciales inválidas")
     }
+  }
+
+  const handlePendingClosed = () => {
+    setShowPendingSession(false)
+    clearPendingCashSession()
+    onLoginSuccess?.()
+  }
+
+  const handlePendingDismiss = () => {
+    setShowPendingSession(false)
+    clearPendingCashSession()
+    onLoginSuccess?.()
   }
 
   return (
@@ -153,6 +171,15 @@ function LoginForm({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
           </p>
         </div>
       </div>
+
+      {pendingCashSession && (
+        <PendingCashSessionDialog
+          open={showPendingSession}
+          session={pendingCashSession}
+          onClose={handlePendingDismiss}
+          onSessionClosed={handlePendingClosed}
+        />
+      )}
     </form>
   )
 }

@@ -18,6 +18,7 @@ import { useCashSession } from "@/components/cash/cash-session-provider";
 import { formatCurrency } from "@/lib/mock-data";
 import type { PaymentMethod, Sale } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 import { toast } from "sonner";
 
 interface PaymentPanelProps {
@@ -49,7 +50,7 @@ export function PaymentPanel({
   const { subscription } = useAuth();
   const { cashControlEnabled } = useCashControl();
   const { session, loading, openCashDialog } = useCashSession();
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>("cash");
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastSale, setLastSale] = useState<Sale | null>(null);
 
@@ -79,6 +80,7 @@ export function PaymentPanel({
     subscription?.status === "past_due" || subscription?.status === "canceled";
   const cashBlocked = cashControlEnabled && !session && !loading && cart.length > 0;
   const isDisabled = cart.length === 0 || isProcessing || isPastDue || cashBlocked;
+  const isActionDisabled = isDisabled || !selectedMethod;
 
   useEffect(() => {
     cashBlockedRef.current = cashBlocked;
@@ -90,6 +92,8 @@ export function PaymentPanel({
       openCashDialog();
       return;
     }
+
+    if (!selectedMethod) return;
 
     setIsProcessing(true);
 
@@ -205,6 +209,15 @@ export function PaymentPanel({
             <Wallet className="h-4 w-4" />
             Abrir Caja
           </button>
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              Si no usás caja, podés desactivar este control desde{' '}
+              <Link
+                href="/app/settings"
+                className="underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-200"
+              >
+                Configuración
+              </Link>
+            </p>
         </div>
       ) : (
         <>
@@ -271,9 +284,9 @@ export function PaymentPanel({
             <button
               onClick={handleCompleteSale}
               data-testid="complete-sale"
-              disabled={isDisabled}
-              className={cn(
-                "flex h-11 w-full items-center justify-center gap-2.5 rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition-all duration-150",
+              disabled={isActionDisabled}
+                className={cn(
+                  "flex h-11 w-full items-center justify-center gap-2.5 rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition-all duration-150",
                 "hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                 "active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none",
               )}
@@ -293,9 +306,9 @@ export function PaymentPanel({
             </button>
             <button
               onClick={handleSuspendSale}
-              disabled={isDisabled}
-              className={cn(
-                "flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-muted-foreground/30 bg-background text-[11px] font-medium text-muted-foreground transition-all duration-150",
+              disabled={isActionDisabled}
+                className={cn(
+                  "flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-muted-foreground/30 bg-background text-[11px] font-medium text-muted-foreground transition-all duration-150",
                 "hover:border-muted-foreground/50 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
                 "active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50",
               )}

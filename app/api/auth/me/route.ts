@@ -21,10 +21,49 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    // Retornar usuario sin passwordHash
+    const openSession = await prisma.cashSession.findFirst({
+      where: { storeId: user.storeId, closedAt: null },
+      include: {
+        user: { select: { name: true } },
+        _count: { select: { sales: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    let pendingCashSession = null;
+
+    if (openSession) {
+      const cashSales = await prisma.sale.aggregate({
+        where: {
+          cashSessionId: openSession.id,
+          paymentMethod: "cash",
+          status: "completed",
+        },
+        _sum: { total: true },
+      });
+
+      const allSales = await prisma.sale.aggregate({
+        where: { cashSessionId: openSession.id, status: "completed" },
+        _sum: { total: true },
+      });
+
+      pendingCashSession = {
+        id: openSession.id,
+        userName: openSession.user.name,
+        openingAmount: Number(openSession.openingAmount),
+        createdAt: openSession.createdAt.toISOString(),
+        salesCount: openSession._count.sales,
+        currentCashTotal: Number(cashSales._sum.total ?? 0),
+        currentTotal: Number(allSales._sum.total ?? 0),
+      };
+    }
+
     const { passwordHash, ...userWithoutPassword } = user;
 
-    return NextResponse.json({ user: userWithoutPassword }, { status: 200 });
+    return NextResponse.json(
+      { user: userWithoutPassword, pendingCashSession },
+      { status: 200 },
+    );
   } catch (error) {
     console.error("Error obteniendo usuario actual:", error);
     return NextResponse.json(

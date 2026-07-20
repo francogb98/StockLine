@@ -147,8 +147,8 @@ export function RegisterScreen({ onBack }: RegisterScreenProps) {
       setTimeout(() => {
         setSuccess(true)
 
-        login(email, password).then((loginSuccess) => {
-          if (loginSuccess) {
+        login(email, password).then((result) => {
+          if (result.success) {
             setTimeout(() => {
               router.push("/app")
             }, 800)

@@ -95,23 +95,23 @@ export function AppHeader() {
               {loading ? (
                 <span className="flex items-center gap-2">
                   <span className="h-3 w-3 rounded-full bg-muted-foreground/30" />
-                  <span>Caja —</span>
+                  <span>Cargando Caja</span>
                 </span>
-              ) : (
+              ) : session ? (
                 <>
                   <span>
-                    Caja{" "}
-                    {session ? formatCurrency(session.currentCashTotal) : "—"}
+                    Caja {formatCurrency(session.currentCashTotal)}
                   </span>
-                  {session && (
-                    <>
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                      <span className="text-emerald-500 dark:text-emerald-400">
-                        Activa
-                      </span>
-                    </>
-                  )}
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  <span className="text-emerald-500 dark:text-emerald-400">
+                    Activa
+                  </span>
                 </>
+              ) : (
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-red-500" />
+                  <span>Caja Cerrada</span>
+                </span>
               )}
             </div>
           )}

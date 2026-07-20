@@ -24,10 +24,10 @@ export const metadata: Metadata = {
   robots: 'index,follow',
   icons: {
     icon: [
-      { url: '/icon.png', type: 'image/png' },
+      { url: '/icon.svg', type: 'image/svg+xml' },
       { url: '/favicon.ico', sizes: 'any' },
     ],
-    apple: '/apple-touch-icon.png',
+    apple: '/apple-touch-icon.svg',
   },
   manifest: '/manifest.webmanifest',
   openGraph: {

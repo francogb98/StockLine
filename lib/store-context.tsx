@@ -34,11 +34,22 @@ import { cacheProducts, getCachedProducts } from "./offline/product-cache";
 import { isGraceActive, recordConnection } from "./offline/grace";
 
 // ============ Auth Context ============
+interface PendingCashSession {
+  id: string;
+  userName: string;
+  openingAmount: number;
+  createdAt: string;
+  salesCount: number;
+  currentCashTotal: number;
+  currentTotal: number;
+}
+
 interface AuthContextType {
   user: User | null;
   store: Store | null;
   subscription: SubscriptionState | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  pendingCashSession: PendingCashSession | null;
+  login: (email: string, password: string) => Promise<{ success: boolean; pendingCashSession: PendingCashSession | null }>;
   register: (
     name: string,
     email: string,
@@ -47,6 +58,7 @@ interface AuthContextType {
   ) => Promise<boolean>;
   logout: () => Promise<void>;
   refreshSubscription: () => Promise<void>;
+  clearPendingCashSession: () => void;
   isLoading: boolean;
   isSessionLoading: boolean;
 }
@@ -141,6 +153,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [subscription, setSubscription] = useState<SubscriptionState | null>(
     null,
   );
+  const [pendingCashSession, setPendingCashSession] =
+    useState<PendingCashSession | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSessionLoading, setIsSessionLoading] = useState(!useMockData);
 
@@ -171,6 +185,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setStore(null);
     setSubscription(null);
+    setPendingCashSession(null);
     setCart([]);
     setReservedStock({});
     setSuspendedSales([]);
@@ -207,6 +222,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             setStore(data.user.store);
           } else {
             setStore(null);
+          }
+          if (data.pendingCashSession) {
+            setPendingCashSession(data.pendingCashSession);
           }
         } else {
           // Session invalid — ensure clean state
@@ -454,7 +472,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Auth Methods
   const login = useCallback(
-    async (email: string, password: string): Promise<boolean> => {
+    async (email: string, password: string): Promise<{ success: boolean; pendingCashSession: PendingCashSession | null }> => {
       setIsLoading(true);
 
       try {
@@ -487,16 +505,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           } else {
             setStore(null);
           }
+
+          const pending = data.pendingCashSession ?? null;
+          setPendingCashSession(pending);
           setIsLoading(false);
-          return true;
+          return { success: true, pendingCashSession: pending };
         } else {
           setIsLoading(false);
-          return false;
+          return { success: false, pendingCashSession: null };
         }
       } catch (error) {
         console.error("Login error:", error);
         setIsLoading(false);
-        return false;
+        return { success: false, pendingCashSession: null };
       }
     },
     [],
@@ -566,6 +587,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
     [store],
   );
+
+  const clearPendingCashSession = useCallback(() => {
+    setPendingCashSession(null);
+  }, []);
 
   const logout = useCallback(async () => {
     if (!useMockData) {
@@ -1124,10 +1149,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         user,
         store,
         subscription,
+        pendingCashSession,
         login,
         register,
         logout,
         refreshSubscription,
+        clearPendingCashSession,
         isLoading,
         isSessionLoading,
       }}
