@@ -1,7 +1,14 @@
-import { prisma } from "@/lib/prisma";
 import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { requireAdminSessionUser } from "@/lib/api-auth";
 import type { ImportOptions, MappedRow } from "@/lib/import/product-import-schemas";
+import {
+  findCategories,
+  createCategory,
+  findProducts,
+  createProduct,
+  updateProduct,
+} from "@/lib/data-access";
+import type { DataContext } from "@/lib/data-access";
 
 interface ImportRequest {
   products: MappedRow[];
@@ -34,6 +41,13 @@ export async function POST(request: Request) {
       return errorResponse("Opciones de importación inválidas", 400);
     }
 
+    const ctx: DataContext = {
+      storeId: auth.user.storeId,
+      sessionId: auth.sessionId,
+      userEmail: auth.user.email,
+      userId: auth.user.id,
+    };
+
     const results = {
       created: 0,
       updated: 0,
@@ -47,10 +61,7 @@ export async function POST(request: Request) {
     // ============================================================
 
     // 1a. Load existing categories for this store
-    const existingCategories = await prisma.category.findMany({
-      where: { storeId: auth.user.storeId },
-      select: { id: true, name: true },
-    });
+    const existingCategories = await findCategories(ctx);
 
     // 1b. Build map: normalizedName → { id, name }
     const categoryMap = new Map<string, { id: string; name: string }>();
@@ -69,42 +80,22 @@ export async function POST(request: Request) {
       }
     }
 
-    // 1d. Create missing categories (using upsert for concurrent safety)
+    // 1d. Create missing categories
     for (const [norm, originalName] of uniqueCategoryNames) {
       if (!categoryMap.has(norm)) {
         try {
-          const created = await prisma.category.create({
-            data: {
-              storeId: auth.user.storeId,
-              name: originalName,
-              normalizedName: norm,
-            },
+          const created = await createCategory(ctx, {
+            name: originalName,
+            normalizedName: norm,
+            description: null,
           });
           categoryMap.set(norm, { id: created.id, name: created.name });
           results.categoriesCreated++;
         } catch (error: unknown) {
-          // Handle race condition: if category was created by concurrent request
-          if (
-            error &&
-            typeof error === "object" &&
-            "code" in error &&
-            error.code === "P2002"
-          ) {
-            // Unique constraint violated — refetch
-            const refetched = await prisma.category.findMany({
-              where: { storeId: auth.user.storeId },
-              select: { id: true, name: true },
-            });
-            categoryMap.clear();
-            for (const cat of refetched) {
-              categoryMap.set(normalizeCategoryName(cat.name), { id: cat.id, name: cat.name });
-            }
-          } else {
-            results.errors.push({
-              row: 0,
-              message: `Error creando categoría "${originalName}": ${error instanceof Error ? error.message : "Error desconocido"}`,
-            });
-          }
+          results.errors.push({
+            row: 0,
+            message: `Error creando categoría "${originalName}": ${error instanceof Error ? error.message : "Error desconocido"}`,
+          });
         }
       }
     }
@@ -116,19 +107,7 @@ export async function POST(request: Request) {
     // STEP 2: Load existing products for duplicate detection
     // ============================================================
 
-    const existingProducts = await prisma.product.findMany({
-      where: { storeId: auth.user.storeId },
-      select: {
-        id: true,
-        name: true,
-        barcode: true,
-        price: true,
-        cost: true,
-        stock: true,
-        minStock: true,
-        categoryId: true,
-      },
-    });
+    const existingProducts = await findProducts(ctx);
 
     // ============================================================
     // STEP 3: Process products
@@ -207,35 +186,7 @@ export async function POST(request: Request) {
             }
 
             if (Object.keys(updateData).length > 0) {
-              const currentProduct = await prisma.product.findUnique({
-                where: { id: existing.id },
-                select: { stock: true },
-              });
-
-              await prisma.product.update({
-                where: { id: existing.id },
-                data: updateData,
-              });
-
-              if (
-                "stock" in updateData &&
-                currentProduct &&
-                updateData.stock !== currentProduct.stock
-              ) {
-                await prisma.stockMovement.create({
-                  data: {
-                    storeId: auth.user.storeId,
-                    productId: existing.id,
-                    userId: auth.user.id,
-                    type: "IMPORT",
-                    quantity: (updateData.stock as number) - currentProduct.stock,
-                    previousStock: currentProduct.stock,
-                    newStock: updateData.stock as number,
-                    reason: "Importación masiva - actualización de stock",
-                  },
-                });
-              }
-
+              await updateProduct(ctx, existing.id, updateData);
               results.updated++;
             } else {
               results.skipped++;
@@ -269,34 +220,16 @@ export async function POST(request: Request) {
             }
 
             // Create new product
-            const product = await prisma.product.create({
-              data: {
-                storeId: auth.user.storeId,
-                name: row.name,
-                barcode: row.barcode || null,
-                description: row.description || null,
-                categoryId,
-                price: row.price ?? 0,
-                cost: row.cost ?? 0,
-                stock: row.stock ?? 0,
-                minStock: row.minStock ?? 5,
-              },
+            await createProduct(ctx, {
+              name: row.name,
+              barcode: row.barcode || null,
+              description: row.description || null,
+              categoryId,
+              price: row.price ?? 0,
+              cost: row.cost ?? 0,
+              stock: row.stock ?? 0,
+              minStock: row.minStock ?? 5,
             });
-
-            if (product.stock > 0) {
-              await prisma.stockMovement.create({
-                data: {
-                  storeId: auth.user.storeId,
-                  productId: product.id,
-                  userId: auth.user.id,
-                  type: "IMPORT",
-                  quantity: product.stock,
-                  previousStock: 0,
-                  newStock: product.stock,
-                  reason: "Importación masiva",
-                },
-              });
-            }
 
             results.created++;
           }

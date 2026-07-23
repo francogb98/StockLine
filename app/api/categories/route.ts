@@ -1,6 +1,14 @@
-import { prisma } from "@/lib/prisma";
 import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { requireAdminSessionUser, requireSessionUser } from "@/lib/api-auth";
+import {
+  findCategories,
+  findCategory,
+  findCategoryByName,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  countProductsInCategory,
+} from "@/lib/data-access";
 
 function normalizeCategoryName(name: string) {
   return name.trim().replace(/\s+/g, " ");
@@ -17,14 +25,16 @@ function computeNormalizedName(name: string): string {
 export async function GET() {
   try {
     const auth = await requireSessionUser();
-    if ("response" in auth) {
-      return auth.response;
-    }
+    if ("response" in auth) return auth.response;
 
-    const categories = await prisma.category.findMany({
-      where: { storeId: auth.user.storeId },
-      orderBy: { name: "asc" },
-    });
+    const ctx = {
+      storeId: auth.user.storeId,
+      sessionId: auth.sessionId,
+      userEmail: auth.user.email,
+      userId: auth.user.id,
+    };
+
+    const categories = await findCategories(ctx);
     return jsonResponse(categories);
   } catch (error) {
     console.error("GET /api/categories", error);
@@ -35,9 +45,14 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const auth = await requireAdminSessionUser();
-    if ("response" in auth) {
-      return auth.response;
-    }
+    if ("response" in auth) return auth.response;
+
+    const ctx = {
+      storeId: auth.user.storeId,
+      sessionId: auth.sessionId,
+      userEmail: auth.user.email,
+      userId: auth.user.id,
+    };
 
     const data = await req.json();
     const name = normalizeCategoryName(String(data?.name ?? ""));
@@ -50,28 +65,15 @@ export async function POST(req: Request) {
       return errorResponse("El nombre es requerido", 400);
     }
 
-    const duplicate = await prisma.category.findFirst({
-      where: {
-        storeId: auth.user.storeId,
-        name: {
-          equals: name,
-          mode: "insensitive",
-        },
-      },
-      select: { id: true },
-    });
-
+    const duplicate = await findCategoryByName(ctx, name);
     if (duplicate) {
       return errorResponse("Ya existe una categoría con ese nombre", 409);
     }
 
-    const category = await prisma.category.create({
-      data: {
-        storeId: auth.user.storeId,
-        name,
-        normalizedName: computeNormalizedName(name),
-        description,
-      },
+    const category = await createCategory(ctx, {
+      name,
+      normalizedName: computeNormalizedName(name),
+      description,
     });
 
     return jsonResponse(category, 201);
@@ -84,9 +86,14 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const auth = await requireAdminSessionUser();
-    if ("response" in auth) {
-      return auth.response;
-    }
+    if ("response" in auth) return auth.response;
+
+    const ctx = {
+      storeId: auth.user.storeId,
+      sessionId: auth.sessionId,
+      userEmail: auth.user.email,
+      userId: auth.user.id,
+    };
 
     const data = await req.json();
     const id = String(data?.id ?? "").trim();
@@ -96,48 +103,21 @@ export async function PUT(req: Request) {
         ? data.description.trim()
         : null;
 
-    if (!id) {
-      return errorResponse("ID es requerido", 400);
-    }
-    if (!name) {
-      return errorResponse("El nombre es requerido", 400);
-    }
+    if (!id) return errorResponse("ID es requerido", 400);
+    if (!name) return errorResponse("El nombre es requerido", 400);
 
-    const existing = await prisma.category.findFirst({
-      where: {
-        id,
-        storeId: auth.user.storeId,
-      },
-      select: { id: true },
-    });
+    const existing = await findCategory(ctx, id);
+    if (!existing) return errorResponse("La categoría no existe", 404);
 
-    if (!existing) {
-      return errorResponse("La categoría no existe", 404);
-    }
-
-    const duplicate = await prisma.category.findFirst({
-      where: {
-        storeId: auth.user.storeId,
-        id: { not: id },
-        name: {
-          equals: name,
-          mode: "insensitive",
-        },
-      },
-      select: { id: true },
-    });
-
+    const duplicate = await findCategoryByName(ctx, name, id);
     if (duplicate) {
       return errorResponse("Ya existe una categoría con ese nombre", 409);
     }
 
-    const updated = await prisma.category.update({
-      where: { id },
-      data: {
-        name,
-        normalizedName: computeNormalizedName(name),
-        description,
-      },
+    const updated = await updateCategory(ctx, id, {
+      name,
+      normalizedName: computeNormalizedName(name),
+      description,
     });
 
     return jsonResponse(updated);
@@ -150,36 +130,24 @@ export async function PUT(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const auth = await requireAdminSessionUser();
-    if ("response" in auth) {
-      return auth.response;
-    }
+    if ("response" in auth) return auth.response;
+
+    const ctx = {
+      storeId: auth.user.storeId,
+      sessionId: auth.sessionId,
+      userEmail: auth.user.email,
+      userId: auth.user.id,
+    };
 
     const { searchParams } = new URL(req.url);
     const id = String(searchParams.get("id") ?? "").trim();
 
-    if (!id) {
-      return errorResponse("ID es requerido", 400);
-    }
+    if (!id) return errorResponse("ID es requerido", 400);
 
-    const existing = await prisma.category.findFirst({
-      where: {
-        id,
-        storeId: auth.user.storeId,
-      },
-      select: { id: true },
-    });
+    const existing = await findCategory(ctx, id);
+    if (!existing) return errorResponse("La categoría no existe", 404);
 
-    if (!existing) {
-      return errorResponse("La categoría no existe", 404);
-    }
-
-    const productsCount = await prisma.product.count({
-      where: {
-        storeId: auth.user.storeId,
-        categoryId: id,
-      },
-    });
-
+    const productsCount = await countProductsInCategory(ctx, id);
     if (productsCount > 0) {
       return errorResponse(
         "No se puede eliminar la categoría porque tiene productos asociados",
@@ -187,7 +155,7 @@ export async function DELETE(req: Request) {
       );
     }
 
-    await prisma.category.delete({ where: { id } });
+    await deleteCategory(ctx, id);
     return jsonResponse({ message: "Categoría eliminada exitosamente" });
   } catch (error) {
     console.error("DELETE /api/categories", error);

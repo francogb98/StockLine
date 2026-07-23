@@ -832,7 +832,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const saved = await res.json();
       const normalizedSaved = {
         ...saved,
-        items: Array.isArray(saved?.items) ? saved.items : [],
+        items: Array.isArray(saved?.items)
+          ? saved.items.map((i: any) => ({
+              ...i,
+              quantity: Number(i.quantity),
+              unitPrice: Number(i.unitPrice),
+              total: Number(i.total),
+            }))
+          : [],
       };
       const realSale = { ...normalizedSaved, userName: sale.userName } as Sale;
 

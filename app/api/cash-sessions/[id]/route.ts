@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/prisma";
 import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { requireSessionUser } from "@/lib/api-auth";
+import { findCashSession, findSales } from "@/lib/data-access";
 
 export async function GET(
   _request: Request,
@@ -10,45 +10,52 @@ export async function GET(
     const auth = await requireSessionUser();
     if ("response" in auth) return auth.response;
 
+    const ctx = {
+      storeId: auth.user.storeId,
+      sessionId: auth.sessionId,
+      userEmail: auth.user.email,
+      userId: auth.user.id,
+    };
+
     const { id } = await params;
 
-    const session = await prisma.cashSession.findFirst({
-      where: { id, storeId: auth.user.storeId },
-      include: {
-        user: { select: { name: true } },
-        sales: {
-          where: { status: "completed" },
-          include: { items: true, user: { select: { name: true } } },
-          orderBy: { createdAt: "desc" },
-        },
-      },
-    });
-
+    const session = await findCashSession(ctx, id);
     if (!session) {
       return errorResponse("Sesión de caja no encontrada", 404);
     }
 
-    const { user: sessionUser, sales, ...sessionData } = session;
+    const allSales = await findSales(ctx);
+    const sessionSales = allSales.filter(
+      (s) => s.cashSessionId === id && s.status === "completed",
+    );
 
-    const cashTotal = sales
+    const cashTotal = sessionSales
       .filter((s) => s.paymentMethod === "cash")
       .reduce((sum, s) => sum + Number(s.total), 0);
 
-    const cardTotal = sales
+    const cardTotal = sessionSales
       .filter((s) => s.paymentMethod === "card")
       .reduce((sum, s) => sum + Number(s.total), 0);
 
-    const transferTotal = sales
+    const transferTotal = sessionSales
       .filter((s) => s.paymentMethod === "transfer")
       .reduce((sum, s) => sum + Number(s.total), 0);
 
     return jsonResponse({
-      ...sessionData,
-      userName: sessionUser.name,
-      sales: sales.map((s) => ({
+      id: session.id,
+      storeId: session.storeId,
+      userId: session.userId,
+      userName: session.userName ?? null,
+      openingAmount: session.openingAmount,
+      expectedAmount: session.expectedAmount,
+      closingAmount: session.closingAmount,
+      difference: session.difference,
+      notes: session.notes,
+      closedAt: session.closedAt,
+      createdAt: session.createdAt,
+      sales: sessionSales.map((s) => ({
         ...s,
-        userName: s.user.name,
-        user: undefined,
+        userName: auth.user.name,
       })),
       cashTotal,
       cardTotal,

@@ -23,7 +23,7 @@ afterEach(() => {
 
 describe("API /api/auth/users", () => {
   it("GET returns only users from current tenant", async () => {
-    vi.spyOn(apiAuth, "requireAdminSessionUser").mockResolvedValue({ user: tenantAdmin });
+    vi.spyOn(apiAuth, "requireAdminSessionUser").mockResolvedValue({ sessionId: "test-session", user: tenantAdmin });
     vi.spyOn(prisma.user, "findMany").mockResolvedValue([] as any);
 
     const response = await getUsers();
@@ -35,7 +35,7 @@ describe("API /api/auth/users", () => {
   });
 
   it("POST rejects client storeId from another tenant", async () => {
-    vi.spyOn(apiAuth, "requireAdminSessionUser").mockResolvedValue({ user: tenantAdmin });
+    vi.spyOn(apiAuth, "requireAdminSessionUser").mockResolvedValue({ sessionId: "test-session", user: tenantAdmin });
     vi.spyOn(prisma.user, "findUnique").mockResolvedValue(null as any);
     vi.spyOn(prisma.store, "findUnique").mockResolvedValue({ id: "store-1" } as any);
     vi.spyOn(passwordUtils, "hashPassword").mockResolvedValue("hash");
@@ -66,7 +66,7 @@ describe("API /api/auth/users", () => {
   });
 
   it("PUT blocks update for user from another tenant", async () => {
-    vi.spyOn(apiAuth, "requireAdminSessionUser").mockResolvedValue({ user: tenantAdmin });
+    vi.spyOn(apiAuth, "requireAdminSessionUser").mockResolvedValue({ sessionId: "test-session", user: tenantAdmin });
     vi.spyOn(prisma.user, "findUnique").mockResolvedValue({
       id: "user-other",
       storeId: "store-2",
@@ -87,7 +87,7 @@ describe("API /api/auth/users", () => {
   });
 
   it("DELETE blocks delete for user from another tenant", async () => {
-    vi.spyOn(apiAuth, "requireAdminSessionUser").mockResolvedValue({ user: tenantAdmin });
+    vi.spyOn(apiAuth, "requireAdminSessionUser").mockResolvedValue({ sessionId: "test-session", user: tenantAdmin });
     vi.spyOn(prisma.user, "findUnique").mockResolvedValue({
       id: "user-other",
       storeId: "store-2",

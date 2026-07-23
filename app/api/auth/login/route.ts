@@ -6,6 +6,8 @@ import {
   invalidateCurrentSession,
   setSessionCookie,
 } from "@/lib/auth-session";
+import { isTestUserEmail } from "@/lib/test-users";
+import { getOrCreateSessionStore } from "@/lib/session-store";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 const LOGIN_RATE_LIMIT = { windowMs: 15 * 60 * 1000, maxRequests: 10 };
@@ -59,6 +61,11 @@ export async function POST(req: NextRequest) {
     await invalidateCurrentSession();
     const session = await createSession(user.id);
     await setSessionCookie(session.token);
+
+    // Pre-initialize session store for test users
+    if (isTestUserEmail(user.email)) {
+      getOrCreateSessionStore(session.sessionId);
+    }
 
     const openSession = await prisma.cashSession.findFirst({
       where: { storeId: user.storeId, closedAt: null },

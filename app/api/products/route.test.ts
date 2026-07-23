@@ -41,6 +41,7 @@ describe("API /api/products", () => {
       },
     ];
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantUser,
     });
     vi.spyOn(prisma.product, "findMany").mockResolvedValue(
@@ -60,6 +61,7 @@ describe("API /api/products", () => {
 
   it("GET returns 500 when prisma fails", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantUser,
     });
     vi.spyOn(prisma.product, "findMany").mockRejectedValue(
@@ -90,6 +92,7 @@ describe("API /api/products", () => {
       updatedAt: new Date(),
     };
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantUser,
     });
     vi.spyOn(prisma.category, "findFirst").mockResolvedValue({ id: "cat-1" } as any);
@@ -128,6 +131,7 @@ describe("API /api/products", () => {
 
   it("POST returns 404 when category belongs to another store", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantUser,
     });
     vi.spyOn(prisma.category, "findFirst").mockResolvedValue(null);
@@ -145,6 +149,7 @@ describe("API /api/products", () => {
 
   it("POST returns 500 when prisma.create fails", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantUser,
     });
     vi.spyOn(prisma.category, "findFirst").mockResolvedValue({ id: "cat-1" } as any);
@@ -178,6 +183,7 @@ describe("API /api/products/[id]", () => {
       updatedAt: new Date(),
     };
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantUser,
     });
     vi.spyOn(prisma.product, "findFirst").mockResolvedValue(
@@ -196,6 +202,7 @@ describe("API /api/products/[id]", () => {
 
   it("GET returns 404 when product not found", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantUser,
     });
     vi.spyOn(prisma.product, "findFirst").mockResolvedValue(null);
@@ -227,6 +234,7 @@ describe("API /api/products/[id]", () => {
       updatedAt: new Date(),
     };
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantUser,
     });
     vi.spyOn(prisma.category, "findFirst").mockResolvedValue({ id: "cat-1" } as any);
@@ -267,6 +275,7 @@ describe("API /api/products/[id]", () => {
 
   it("PUT blocks updates for product from another store", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantUser,
     });
     vi.spyOn(prisma.product, "findFirst").mockResolvedValue(null);
@@ -289,6 +298,7 @@ describe("API /api/products/[id]", () => {
 
   it("DELETE removes product and returns 204", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantUser,
     });
     vi.spyOn(prisma.product, "findFirst").mockResolvedValue({ id: "prod-1" } as any);
@@ -303,6 +313,7 @@ describe("API /api/products/[id]", () => {
 
   it("DELETE blocks removal for product from another store", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantUser,
     });
     vi.spyOn(prisma.product, "findFirst").mockResolvedValue(null);

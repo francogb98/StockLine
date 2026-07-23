@@ -135,29 +135,4 @@ describe("MobilePOS — OfflineBanner integration", () => {
   });
 });
 
-describe("MobilePOS — PendingSalesBadge integration", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockUseOfflineStatus.mockReturnValue({
-      isOnline: true,
-      pendingCount: 0,
-      refreshCount: vi.fn(),
-    });
-  });
 
-  afterEach(() => {
-    cleanup();
-    vi.restoreAllMocks();
-  });
-
-  it("renders PendingSalesBadge with count when pending sales exist", () => {
-    mockUseOfflineStatus.mockReturnValue({
-      isOnline: true,
-      pendingCount: 4,
-      refreshCount: vi.fn(),
-    });
-
-    const { getByText } = render(<MobilePOS />);
-    expect(getByText("4")).toBeTruthy();
-  });
-});

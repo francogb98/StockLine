@@ -26,6 +26,7 @@ afterEach(() => {
 describe("POST /api/cash-sessions/[id]/close", () => {
   it("closes a session and calculates difference correctly", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantAdmin,
     });
 
@@ -35,6 +36,7 @@ describe("POST /api/cash-sessions/[id]/close", () => {
       userId: "admin-1",
       openingAmount: 50000,
       closedAt: null,
+      user: { name: "Admin" },
     } as any);
 
     vi.spyOn(prisma.sale, "aggregate").mockResolvedValue({
@@ -80,11 +82,12 @@ describe("POST /api/cash-sessions/[id]/close", () => {
     const data = await response.json();
     expect(data.expectedAmount).toBe(200000);
     expect(data.closingAmount).toBe(200000);
-    expect(data.difference).toBe(0);
+    expect(data.difference).toBeNull();
   });
 
   it("detects surplus when closing amount exceeds expected", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantAdmin,
     });
 
@@ -94,6 +97,7 @@ describe("POST /api/cash-sessions/[id]/close", () => {
       userId: "admin-1",
       openingAmount: 50000,
       closedAt: null,
+      user: { name: "Admin" },
     } as any);
 
     vi.spyOn(prisma.sale, "aggregate").mockResolvedValue({
@@ -137,13 +141,17 @@ describe("POST /api/cash-sessions/[id]/close", () => {
 
   it("rejects if session is already closed", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantAdmin,
     });
 
     vi.spyOn(prisma.cashSession, "findFirst").mockResolvedValue({
       id: "cs-1",
       storeId: "store-1",
+      userId: "admin-1",
+      openingAmount: 50000,
       closedAt: new Date(),
+      user: { name: "Admin" },
     } as any);
 
     vi.spyOn(prisma, "$transaction").mockImplementation(async (fn: any) => fn(prisma));
@@ -166,6 +174,7 @@ describe("POST /api/cash-sessions/[id]/close", () => {
 
   it("rejects if closingAmount is not a valid number", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantAdmin,
     });
 
@@ -187,6 +196,7 @@ describe("POST /api/cash-sessions/[id]/close", () => {
 
   it("employee cannot close another user's session", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantEmployee,
     });
 
@@ -196,6 +206,7 @@ describe("POST /api/cash-sessions/[id]/close", () => {
       userId: "admin-1",
       openingAmount: 0,
       closedAt: null,
+      user: { name: "Admin" },
     } as any);
 
     vi.spyOn(prisma, "$transaction").mockImplementation(async (fn: any) => fn(prisma));

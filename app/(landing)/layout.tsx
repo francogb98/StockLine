@@ -1,5 +1,6 @@
 import React from "react"
 import type { Metadata } from 'next'
+import { WhatsAppButton } from "@/components/whatsapp-button"
 
 export const metadata: Metadata = {
   title: 'StockLine - Control de Stock y Ventas para tu Negocio',
@@ -18,5 +19,10 @@ export default function LandingLayout({
 }: {
   children: React.ReactNode
 }) {
-  return <>{children}</>
+  return (
+    <>
+      {children}
+      <WhatsAppButton />
+    </>
+  )
 }

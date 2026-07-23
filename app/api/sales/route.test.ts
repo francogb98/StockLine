@@ -20,6 +20,7 @@ afterEach(() => {
 describe("API /api/sales", () => {
   it("GET returns only current tenant sales", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantAdmin,
     });
     const expectedSales = [
@@ -56,6 +57,7 @@ describe("API /api/sales", () => {
 
   it("GET by id denies cross-tenant sale detail", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantAdmin,
     });
     vi.spyOn(prisma.sale, "findFirst").mockResolvedValue(null);
@@ -73,6 +75,7 @@ describe("API /api/sales", () => {
 
   it("POST blocks sale when a product belongs to another tenant", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantAdmin,
     });
     vi.spyOn(
@@ -137,6 +140,7 @@ describe("API /api/sales", () => {
 
   it("POST returns created sale when the service succeeds", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantAdmin,
     });
     vi.spyOn(

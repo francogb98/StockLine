@@ -9,12 +9,16 @@ import { CashSessionProvider } from "@/components/cash/cash-session-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppHeader } from "@/components/app-header";
 import { SidebarNav } from "@/components/sidebar-nav";
+import { MobileLayout } from "@/components/mobile-layout";
+import { FloatingAssistant } from "@/components/mobile-assistant/floating-assistant";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function FullLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { cashControlEnabled } = useCashControl();
   const pathname = usePathname();
   const router = useRouter();
+  const isMobile = useIsMobile();
 
   const navItems = useMemo(
     () => getNavigationForRole(user?.role || "employee", cashControlEnabled),
@@ -27,9 +31,8 @@ export default function FullLayout({ children }: { children: React.ReactNode }) 
     router.push(`/app/${view}`);
   };
 
-  return (
-    <CashSessionProvider>
-      <TooltipProvider delayDuration={300}>
+  const desktop = (
+    <>
       <div className="relative flex h-screen flex-col overflow-hidden bg-background">
         <AppHeader />
 
@@ -50,6 +53,14 @@ export default function FullLayout({ children }: { children: React.ReactNode }) 
           </main>
         </div>
       </div>
+      <FloatingAssistant />
+    </>
+  );
+
+  return (
+    <CashSessionProvider>
+      <TooltipProvider delayDuration={300}>
+        {isMobile ? <MobileLayout>{children}</MobileLayout> : desktop}
       </TooltipProvider>
     </CashSessionProvider>
   );

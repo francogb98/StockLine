@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { GET } from "./route";
 import * as apiAuth from "@/lib/api-auth";
-import { prisma } from "@/lib/prisma";
+import { findStockMovements } from "@/lib/data-access";
+
+vi.mock("@/lib/data-access", () => ({ findStockMovements: vi.fn() }));
 
 const tenantUser = {
   id: "user-1",
@@ -46,17 +48,16 @@ describe("GET /api/stock-movements", () => {
         referenceId: "sale-1",
         reason: null,
         createdAt: new Date(),
-        user: { name: "Admin" },
-        product: { name: "Producto 1", barcode: "111" },
+        userName: "Admin",
+        productName: "Producto 1",
       },
     ];
 
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantUser,
     });
-    vi.spyOn(prisma.stockMovement, "findMany").mockResolvedValue(
-      mockMovements as any,
-    );
+    vi.mocked(findStockMovements).mockResolvedValue(mockMovements as any);
 
     const response = await GET(
       createRequest("http://localhost/api/stock-movements"),
@@ -71,9 +72,10 @@ describe("GET /api/stock-movements", () => {
 
   it("returns empty array when no movements exist", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantUser,
     });
-    vi.spyOn(prisma.stockMovement, "findMany").mockResolvedValue([]);
+    vi.mocked(findStockMovements).mockResolvedValue([]);
 
     const response = await GET(
       createRequest("http://localhost/api/stock-movements?productId=nonexistent"),
@@ -86,9 +88,10 @@ describe("GET /api/stock-movements", () => {
 
   it("returns 500 when prisma fails", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: tenantUser,
     });
-    vi.spyOn(prisma.stockMovement, "findMany").mockRejectedValue(
+    vi.mocked(findStockMovements).mockRejectedValue(
       new Error("DB error"),
     );
 

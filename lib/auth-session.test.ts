@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getAuthenticatedSession } from "@/lib/auth-session";
 import { cookies } from "next/headers";
+import { prisma } from "@/lib/prisma";
 
 vi.mock("next/headers", () => ({
   cookies: vi.fn(),

@@ -1,26 +1,28 @@
-import { prisma } from "@/lib/prisma";
 import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { requireSessionUser } from "@/lib/api-auth";
+import {
+  findSuspendedSales,
+  createSuspendedSale,
+} from "@/lib/data-access";
 
 export async function GET() {
   try {
     const auth = await requireSessionUser();
     if ("response" in auth) return auth.response;
 
-    const suspendedSales = await prisma.suspendedSale.findMany({
-      where: { storeId: auth.user.storeId },
-      include: {
-        items: true,
-        user: { select: { name: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const ctx = {
+      storeId: auth.user.storeId,
+      sessionId: auth.sessionId,
+      userEmail: auth.user.email,
+      userId: auth.user.id,
+    };
 
-    const result = suspendedSales.map((s) => ({
+    const sales = await findSuspendedSales(ctx);
+    const result = sales.map((s) => ({
       id: s.id,
       storeId: s.storeId,
       userId: s.userId,
-      userName: s.user?.name ?? null,
+      userName: auth.user.name,
       total: s.total,
       itemCount: s.itemCount,
       items: s.items,
@@ -39,6 +41,13 @@ export async function POST(request: Request) {
     const auth = await requireSessionUser();
     if ("response" in auth) return auth.response;
 
+    const ctx = {
+      storeId: auth.user.storeId,
+      sessionId: auth.sessionId,
+      userEmail: auth.user.email,
+      userId: auth.user.id,
+    };
+
     const data = await request.json();
 
     if (!Array.isArray(data.items) || data.items.length === 0) {
@@ -54,34 +63,24 @@ export async function POST(request: Request) {
       0,
     );
 
-    const suspendedSale = await prisma.suspendedSale.create({
-      data: {
-        storeId: auth.user.storeId,
-        userId: auth.user.id,
-        total: data.total,
-        itemCount,
-        items: {
-          create: data.items.map(
-            (item: {
-              productId: string;
-              productName: string;
-              quantity: number;
-              unitPrice: number;
-              total: number;
-            }) => ({
-              productId: item.productId,
-              productName: item.productName,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              total: item.total,
-            }),
-          ),
-        },
-      },
-      include: {
-        items: true,
-        user: { select: { name: true } },
-      },
+    const suspendedSale = await createSuspendedSale(ctx, {
+      total: data.total,
+      itemCount,
+      items: data.items.map(
+        (item: {
+          productId: string;
+          productName: string;
+          quantity: number;
+          unitPrice: number;
+          total: number;
+        }) => ({
+          productId: item.productId,
+          productName: item.productName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          total: item.total,
+        }),
+      ),
     });
 
     return jsonResponse(
@@ -89,7 +88,7 @@ export async function POST(request: Request) {
         id: suspendedSale.id,
         storeId: suspendedSale.storeId,
         userId: suspendedSale.userId,
-        userName: suspendedSale.user?.name ?? null,
+        userName: auth.user.name,
         total: suspendedSale.total,
         itemCount: suspendedSale.itemCount,
         items: suspendedSale.items,

@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { POST } from "./route";
 import * as apiAuth from "@/lib/api-auth";
-import { prisma } from "@/lib/prisma";
+import { adjustStock } from "@/lib/data-access";
+
+vi.mock("@/lib/data-access", () => ({ adjustStock: vi.fn() }));
 
 const adminUser = {
   id: "user-1",
@@ -48,6 +50,7 @@ describe("POST /api/stock-movements/adjust", () => {
 
   it("returns 403 when user is not admin", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: employeeUser,
     });
 
@@ -63,6 +66,7 @@ describe("POST /api/stock-movements/adjust", () => {
 
   it("returns 400 when productId is missing", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: adminUser,
     });
 
@@ -75,6 +79,7 @@ describe("POST /api/stock-movements/adjust", () => {
 
   it("returns 400 when quantity is zero", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: adminUser,
     });
 
@@ -87,6 +92,7 @@ describe("POST /api/stock-movements/adjust", () => {
 
   it("returns 400 when reason is empty", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: adminUser,
     });
 
@@ -99,9 +105,10 @@ describe("POST /api/stock-movements/adjust", () => {
 
   it("returns 404 for non-existent product", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: adminUser,
     });
-    vi.spyOn(prisma.product, "findFirst").mockResolvedValue(null);
+    vi.mocked(adjustStock).mockRejectedValue(new Error("NOT_FOUND"));
 
     const response = await POST(
       createRequest({ productId: "non-existent", quantity: 5, reason: "Test" }),
@@ -111,24 +118,17 @@ describe("POST /api/stock-movements/adjust", () => {
   });
 
   it("creates adjustment and updates stock", async () => {
-    const product = {
-      id: "prod-1",
-      storeId: "store-1",
-      name: "Test Product",
-      stock: 10,
-    };
-
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: adminUser,
     });
-    vi.spyOn(prisma.product, "findFirst").mockResolvedValue(product as any);
-
-    const updatedProduct = { ...product, stock: 15 };
-    vi.spyOn(prisma.product, "update").mockResolvedValue(updatedProduct as any);
-    vi.spyOn(prisma.stockMovement, "create").mockResolvedValue({ id: "sm-new" } as any);
-    vi.spyOn(prisma, "$transaction").mockImplementation(
-      async (args: any) => Promise.all(args),
-    );
+    vi.mocked(adjustStock).mockResolvedValue({
+      productId: "prod-1",
+      previousStock: 10,
+      newStock: 15,
+      quantity: 5,
+      reason: "Ajuste manual",
+    });
 
     const response = await POST(
       createRequest({ productId: "prod-1", quantity: 5, reason: "Ajuste manual" }),
@@ -139,40 +139,20 @@ describe("POST /api/stock-movements/adjust", () => {
     expect(data.previousStock).toBe(10);
     expect(data.newStock).toBe(15);
     expect(data.quantity).toBe(5);
-    expect(prisma.product.update).toHaveBeenCalledWith({
-      where: { id: "prod-1" },
-      data: { stock: 15 },
-    });
-    expect(prisma.stockMovement.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          type: "MANUAL_ADJUSTMENT",
-          quantity: 5,
-          reason: "Ajuste manual",
-        }),
-      }),
-    );
   });
 
   it("handles negative stock adjustment", async () => {
-    const product = {
-      id: "prod-1",
-      storeId: "store-1",
-      name: "Test Product",
-      stock: 10,
-    };
-
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
       user: adminUser,
     });
-    vi.spyOn(prisma.product, "findFirst").mockResolvedValue(product as any);
-
-    const updatedProduct = { ...product, stock: 7 };
-    vi.spyOn(prisma.product, "update").mockResolvedValue(updatedProduct as any);
-    vi.spyOn(prisma.stockMovement, "create").mockResolvedValue({ id: "sm-new" } as any);
-    vi.spyOn(prisma, "$transaction").mockImplementation(
-      async (args: any) => Promise.all(args),
-    );
+    vi.mocked(adjustStock).mockResolvedValue({
+      productId: "prod-1",
+      previousStock: 10,
+      newStock: 7,
+      quantity: -3,
+      reason: "Devolución por daño",
+    });
 
     const response = await POST(
       createRequest({

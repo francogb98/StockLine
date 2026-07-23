@@ -1,45 +1,47 @@
-import { prisma } from "@/lib/prisma";
 import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { requireSessionUser } from "@/lib/api-auth";
+import {
+  findOpenCashSession,
+  aggregateSales,
+  countSales,
+} from "@/lib/data-access";
 
 export async function GET() {
   try {
     const auth = await requireSessionUser();
     if ("response" in auth) return auth.response;
 
-    const session = await prisma.cashSession.findFirst({
-      where: { storeId: auth.user.storeId, closedAt: null },
-      include: {
-        user: { select: { name: true } },
-        _count: { select: { sales: { where: { status: "completed" } } } },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const ctx = {
+      storeId: auth.user.storeId,
+      sessionId: auth.sessionId,
+      userEmail: auth.user.email,
+      userId: auth.user.id,
+    };
 
-    if (!session) {
-      return jsonResponse(null);
-    }
+    const session = await findOpenCashSession(ctx);
+    if (!session) return jsonResponse(null);
 
-    const cashSales = await prisma.sale.aggregate({
-      where: {
+    const [cashSales, allSales, completedCount] = await Promise.all([
+      aggregateSales(ctx, {
         cashSessionId: session.id,
         paymentMethod: "cash",
         status: "completed",
-      },
-      _sum: { total: true },
-    });
-
-    const allSales = await prisma.sale.aggregate({
-      where: { cashSessionId: session.id, status: "completed" },
-      _sum: { total: true },
-      _count: true,
-    });
+      }),
+      aggregateSales(ctx, {
+        cashSessionId: session.id,
+        status: "completed",
+      }),
+      countSales(ctx, {
+        cashSessionId: session.id,
+        status: "completed",
+      }),
+    ]);
 
     return jsonResponse({
       id: session.id,
       storeId: session.storeId,
       userId: session.userId,
-      userName: session.user.name,
+      userName: session.userName ?? null,
       openingAmount: session.openingAmount,
       expectedAmount: session.expectedAmount,
       closingAmount: session.closingAmount,
@@ -47,9 +49,9 @@ export async function GET() {
       notes: session.notes,
       closedAt: session.closedAt,
       createdAt: session.createdAt,
-      salesCount: session._count.sales,
-      currentCashTotal: cashSales._sum.total ?? 0,
-      currentTotal: allSales._sum.total ?? 0,
+      salesCount: completedCount,
+      currentCashTotal: cashSales.total ?? 0,
+      currentTotal: allSales.total ?? 0,
     });
   } catch (error) {
     console.error("GET /api/cash-sessions/current", error);

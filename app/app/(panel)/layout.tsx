@@ -11,12 +11,16 @@ import {
 } from "@/components/ui/tooltip";
 import { AppHeader } from "@/components/app-header";
 import { SidebarNav } from "@/components/sidebar-nav";
+import { MobileLayout } from "@/components/mobile-layout";
+import { FloatingAssistant } from "@/components/mobile-assistant/floating-assistant";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function PanelLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { cashControlEnabled } = useCashControl();
   const pathname = usePathname();
   const router = useRouter();
+  const isMobile = useIsMobile();
 
   const navItems = useMemo(
     () => getNavigationForRole(user?.role || "employee", cashControlEnabled),
@@ -32,7 +36,6 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   }, [cashControlEnabled, pathname, router]);
 
   useEffect(() => {
-    const isMobile = window.innerWidth < 768;
     if (isMobile) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === "n") {
@@ -42,15 +45,14 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [isMobile]);
 
   const navigate = (view: string) => {
     router.push(`/app/${view}`);
   };
 
-  return (
-    <CashSessionProvider>
-      <TooltipProvider delayDuration={300}>
+  const desktop = (
+    <>
       <div className="relative flex h-screen flex-col overflow-hidden bg-background">
         <AppHeader />
 
@@ -73,6 +75,14 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           </main>
         </div>
       </div>
+      <FloatingAssistant />
+    </>
+  );
+
+  return (
+    <CashSessionProvider>
+      <TooltipProvider delayDuration={300}>
+        {isMobile ? <MobileLayout>{children}</MobileLayout> : desktop}
       </TooltipProvider>
     </CashSessionProvider>
   );

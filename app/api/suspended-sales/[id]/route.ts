@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/prisma";
 import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { requireSessionUser } from "@/lib/api-auth";
+import { findSuspendedSale, deleteSuspendedSale } from "@/lib/data-access";
 
 export async function DELETE(
   _request: Request,
@@ -10,18 +10,21 @@ export async function DELETE(
     const auth = await requireSessionUser();
     if ("response" in auth) return auth.response;
 
+    const ctx = {
+      storeId: auth.user.storeId,
+      sessionId: auth.sessionId,
+      userEmail: auth.user.email,
+      userId: auth.user.id,
+    };
+
     const { id } = await params;
 
-    const existing = await prisma.suspendedSale.findFirst({
-      where: { id, storeId: auth.user.storeId },
-    });
-
+    const existing = await findSuspendedSale(ctx, id);
     if (!existing) {
       return errorResponse("Venta en espera no encontrada", 404);
     }
 
-    await prisma.suspendedSale.delete({ where: { id } });
-
+    await deleteSuspendedSale(ctx, id);
     return jsonResponse({ success: true });
   } catch (error) {
     console.error("DELETE /api/suspended-sales/[id]", error);

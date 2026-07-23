@@ -24,8 +24,8 @@ export type Permission =
   | "inventory:write";
 
 export type AuthResult =
-  | { user: SessionUser; response?: never }
-  | { user?: never; response: Response };
+  | { sessionId: string; user: SessionUser; response?: never }
+  | { sessionId?: never; user?: never; response: Response };
 
 export type AuthSessionResult =
   | { auth: AuthenticatedSession; response?: never }
@@ -109,7 +109,7 @@ export async function requireSessionUser(): Promise<AuthResult> {
     return { response: auth.response };
   }
 
-  return { user: auth.auth.user };
+  return { sessionId: auth.auth.sessionId, user: auth.auth.user };
 }
 
 export async function requireAdminSessionUser(): Promise<AuthResult> {
@@ -119,5 +119,5 @@ export async function requireAdminSessionUser(): Promise<AuthResult> {
     return { response: auth.response };
   }
 
-  return { user: auth.auth.user };
+  return { sessionId: auth.auth.sessionId, user: auth.auth.user };
 }

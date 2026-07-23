@@ -1,6 +1,15 @@
 import { cookies } from "next/headers";
 import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
+import { isTestUserEmail } from "@/lib/test-users";
+import {
+  getOrCreateSessionStore,
+  destroySessionStore,
+  cleanupExpiredSessionStores,
+} from "@/lib/session-store";
+
+let lastCleanup = 0;
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 min
 
 export interface SessionUser {
   id: string;
@@ -16,7 +25,7 @@ export interface AuthenticatedSession {
 }
 
 const SESSION_COOKIE_NAME = "session-token";
-const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
+const SESSION_TTL_SECONDS = 60 * 60 * 6; // 6 hours
 
 function getTokenHash(token: string) {
   return createHash("sha256").update(token).digest("hex");
@@ -82,6 +91,11 @@ async function getSessionTokenFromCookie() {
 export async function invalidateSessionToken(token: string) {
   const tokenHash = getTokenHash(token);
 
+  const session = await prisma.session.findUnique({
+    where: { tokenHash },
+    select: { id: true },
+  });
+
   await prisma.session.updateMany({
     where: {
       tokenHash,
@@ -91,6 +105,10 @@ export async function invalidateSessionToken(token: string) {
       revokedAt: new Date(),
     },
   });
+
+  if (session) {
+    destroySessionStore(session.id);
+  }
 }
 
 export async function invalidateCurrentSession() {
@@ -105,6 +123,19 @@ export async function invalidateCurrentSession() {
 }
 
 export async function getAuthenticatedSession(): Promise<AuthenticatedSession | null> {
+  const now = Date.now();
+  if (now - lastCleanup > CLEANUP_INTERVAL_MS) {
+    lastCleanup = now;
+    const activeSessions = await prisma.session.findMany({
+      where: {
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      select: { id: true },
+    });
+    cleanupExpiredSessionStores(new Set(activeSessions.map((s) => s.id)));
+  }
+
   const token = await getSessionTokenFromCookie();
   if (!token) {
     return null;
@@ -145,6 +176,7 @@ export async function getAuthenticatedSession(): Promise<AuthenticatedSession | 
       where: { id: session.id },
       data: { revokedAt: new Date() },
     });
+    destroySessionStore(session.id);
     await clearSessionCookie();
     return null;
   }

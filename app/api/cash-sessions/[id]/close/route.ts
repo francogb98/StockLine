@@ -1,7 +1,6 @@
-import { prisma } from "@/lib/prisma";
 import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { requireSessionUser } from "@/lib/api-auth";
-import type { Prisma } from "@prisma/client";
+import { findCashSession, closeCashSession } from "@/lib/data-access";
 
 export async function POST(
   request: Request,
@@ -11,6 +10,13 @@ export async function POST(
     const auth = await requireSessionUser();
     if ("response" in auth) return auth.response;
 
+    const ctx = {
+      storeId: auth.user.storeId,
+      sessionId: auth.sessionId,
+      userEmail: auth.user.email,
+      userId: auth.user.id,
+    };
+
     const { id } = await params;
     const { closingAmount, notes } = await request.json();
 
@@ -18,57 +24,23 @@ export async function POST(
       return errorResponse("El monto de cierre debe ser un número válido", 400);
     }
 
-    const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const session = await tx.cashSession.findFirst({
-        where: { id, storeId: auth.user.storeId },
-      });
+    const session = await findCashSession(ctx, id);
+    if (!session) return errorResponse("Sesión de caja no encontrada", 404);
+    if (session.closedAt) return errorResponse("Esta sesión de caja ya está cerrada", 409);
+    if (auth.user.role !== "admin" && session.userId !== auth.user.id) {
+      return errorResponse("Solo podés cerrar tus propias sesiones de caja", 403);
+    }
 
-      if (!session) {
-        throw new Error("NOT_FOUND");
-      }
-
-      if (session.closedAt) {
-        throw new Error("ALREADY_CLOSED");
-      }
-
-      if (auth.user.role !== "admin" && session.userId !== auth.user.id) {
-        throw new Error("FORBIDDEN");
-      }
-
-      const cashSales = await tx.sale.aggregate({
-        where: {
-          cashSessionId: id,
-          paymentMethod: "cash",
-          status: "completed",
-        },
-        _sum: { total: true },
-      });
-
-      const total = cashSales._sum.total ? Number(cashSales._sum.total) : 0;
-      const expectedAmount = Number(session.openingAmount) + total;
-      const difference = closingAmount - expectedAmount;
-
-      return tx.cashSession.update({
-        where: { id },
-        data: {
-          expectedAmount,
-          closingAmount,
-          difference,
-          notes: notes ?? null,
-          closedAt: new Date(),
-        },
-        include: {
-          user: { select: { name: true } },
-          _count: { select: { sales: true } },
-        },
-      });
+    const updated = await closeCashSession(ctx, id, {
+      closingAmount,
+      notes: notes ?? null,
     });
 
     return jsonResponse({
       id: updated.id,
       storeId: updated.storeId,
       userId: updated.userId,
-      userName: updated.user.name,
+      userName: updated.userName ?? null,
       openingAmount: updated.openingAmount,
       expectedAmount: updated.expectedAmount,
       closingAmount: updated.closingAmount,
@@ -76,20 +48,9 @@ export async function POST(
       notes: updated.notes,
       closedAt: updated.closedAt,
       createdAt: updated.createdAt,
-      salesCount: updated._count.sales,
+      salesCount: 0,
     });
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === "NOT_FOUND") {
-        return errorResponse("Sesión de caja no encontrada", 404);
-      }
-      if (error.message === "ALREADY_CLOSED") {
-        return errorResponse("Esta sesión de caja ya está cerrada", 409);
-      }
-      if (error.message === "FORBIDDEN") {
-        return errorResponse("Solo podés cerrar tus propias sesiones de caja", 403);
-      }
-    }
     console.error("POST /api/cash-sessions/[id]/close", error);
     return errorResponse("Error al cerrar sesión de caja", 500);
   }
