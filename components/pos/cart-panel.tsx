@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Minus, Plus, Trash2, ShoppingCart, Tag, Percent } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { usePOS } from "@/lib/store-context";
 import { formatCurrency } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,21 @@ export function CartPanel() {
   } = usePOS();
 
   const [showDiscountInput, setShowDiscountInput] = useState(false);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const prevCartLength = useRef(cart.length);
+
+  useEffect(() => {
+    if (cart.length > prevCartLength.current) {
+      const lastId = cart[cart.length - 1]?.product.id;
+      if (lastId) {
+        setHighlightedId(lastId);
+        const timer = setTimeout(() => setHighlightedId(null), 800);
+        prevCartLength.current = cart.length;
+        return () => clearTimeout(timer);
+      }
+    }
+    prevCartLength.current = cart.length;
+  }, [cart]);
 
   const {
     focusedIndex,
@@ -45,6 +61,8 @@ export function CartPanel() {
     },
   });
 
+  const totalQty = cart.reduce((sum, item) => sum + item.quantity, 0);
+
   if (cart.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-muted-foreground">
@@ -59,113 +77,130 @@ export function CartPanel() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Cart header */}
-      <div className="flex shrink-0 items-center justify-between border-b bg-muted/30 px-3 py-1.5">
-        <h2 className="text-sm font-semibold text-foreground">
-          {cart.reduce((sum, item) => sum + item.quantity, 0)} items
-        </h2>
-      </div>
-
-      {/* Cart items */}
+      {/* Cart items — scrollable */}
       <div
         ref={cartContainerRef}
         data-keyboard-zone="cart"
         className="min-h-0 flex-1 overflow-y-auto"
         onKeyDown={handleCartKeyDown}
       >
-        {cart.map((item, index) => {
-          const isFocused = focusedIndex === index;
+        <AnimatePresence initial={false}>
+          {cart.map((item, index) => {
+            const isFocused = focusedIndex === index;
+            const isNew = highlightedId === item.product.id;
 
-          return (
-            <div
-              key={item.product.id}
-              data-cart-index={index}
-              tabIndex={isFocused ? 0 : -1}
-              className={cn(
-                "flex items-center gap-2 border-b px-3 py-1.5 transition-colors duration-150",
-                "hover:bg-muted/30",
-                isFocused && "keyboard-cart-focused",
-              )}
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground">
-                  {item.product.name}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {formatCurrency(item.product.price)} c/u
-                </p>
-              </div>
-
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() =>
-                    updateQuantity(item.product.id, item.quantity - 1)
-                  }
-                  className={cn(
-                    "flex h-6 w-6 items-center justify-center rounded border transition-colors duration-150",
-                    "hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring",
-                  )}
-                  type="button"
-                >
-                  <Minus className="h-3 w-3" />
-                </button>
-                <span className="w-7 text-center text-sm font-semibold tabular-nums">
-                  {item.quantity}
-                </span>
-                <button
-                  onClick={() =>
-                    updateQuantity(item.product.id, item.quantity + 1)
-                  }
-                  disabled={getAvailableStock(item.product.id) <= 0}
-                  className={cn(
-                    "flex h-6 w-6 items-center justify-center rounded border transition-colors duration-150",
-                    "hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring",
-                    "disabled:cursor-not-allowed disabled:opacity-50",
-                  )}
-                  type="button"
-                >
-                  <Plus className="h-3 w-3" />
-                </button>
-              </div>
-
-              <div className="w-20 text-right">
-                <p className="text-sm font-semibold tabular-nums text-foreground">
-                  {formatCurrency(item.product.price * item.quantity)}
-                </p>
-              </div>
-
-              <button
-                onClick={() => removeFromCart(item.product.id)}
+            return (
+              <motion.div
+                key={item.product.id}
+                data-cart-index={index}
+                tabIndex={isFocused ? 0 : -1}
+                initial={{ opacity: 0, x: 20, height: 0 }}
+                animate={{
+                  opacity: 1,
+                  x: 0,
+                  height: "auto",
+                  backgroundColor: isNew
+                    ? "hsl(var(--primary) / 0.08)"
+                    : "transparent",
+                }}
+                exit={{ opacity: 0, x: -20, height: 0 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
                 className={cn(
-                  "flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors duration-150",
-                  "hover:bg-destructive/10 hover:text-destructive focus:outline-none focus:ring-2 focus:ring-destructive",
+                  "flex items-center gap-2 border-b px-3 py-2",
+                  "hover:bg-muted/30",
+                  isFocused && "keyboard-cart-focused",
                 )}
-                type="button"
               >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            </div>
-          );
-        })}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {item.product.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatCurrency(item.product.price)} c/u
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() =>
+                      updateQuantity(item.product.id, item.quantity - 1)
+                    }
+                    className={cn(
+                      "flex h-7 w-7 items-center justify-center rounded-md border transition-colors duration-150",
+                      "hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring",
+                    )}
+                    type="button"
+                  >
+                    <Minus className="h-3 w-3" />
+                  </button>
+                  <span className="w-8 text-center text-sm font-semibold tabular-nums">
+                    {item.quantity}
+                  </span>
+                  <button
+                    onClick={() =>
+                      updateQuantity(item.product.id, item.quantity + 1)
+                    }
+                    disabled={getAvailableStock(item.product.id) <= 0}
+                    className={cn(
+                      "flex h-7 w-7 items-center justify-center rounded-md border transition-colors duration-150",
+                      "hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring",
+                      "disabled:cursor-not-allowed disabled:opacity-50",
+                    )}
+                    type="button"
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
+                </div>
+
+                <motion.div
+                  className="w-20 text-right"
+                  animate={{ scale: isNew ? [1, 1.05, 1] : 1 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <p className="text-sm font-semibold tabular-nums text-foreground">
+                    {formatCurrency(item.product.price * item.quantity)}
+                  </p>
+                </motion.div>
+
+                <button
+                  onClick={() => removeFromCart(item.product.id)}
+                  className={cn(
+                    "flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150",
+                    "hover:bg-destructive/10 hover:text-destructive focus:outline-none focus:ring-2 focus:ring-destructive",
+                  )}
+                  type="button"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
       </div>
 
-      {/* Compact summary */}
-      <div className="shrink-0 border-t bg-muted/30 px-3 py-1.5">
-        <div className="space-y-0.5">
+      {/* Summary + Discount — always visible */}
+      <div className="shrink-0 border-t bg-muted/20 px-4 py-2.5">
+        <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Subtotal</span>
-            <span className="text-xs tabular-nums text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
+              Subtotal ({totalQty} items)
+            </span>
+            <span className="text-sm tabular-nums text-foreground">
               {formatCurrency(subtotal)}
             </span>
           </div>
 
           {discount > 0 && (
-            <div className="flex items-center justify-between text-green-600 transition-all duration-150">
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center justify-between text-green-600"
+            >
               <span className="text-xs">Descuento</span>
               <span className="text-xs tabular-nums">
                 -{discountType === "percentage" ? `${discount}%` : formatCurrency(discount)}
               </span>
-            </div>
+            </motion.div>
           )}
 
           {taxConfig.enabled && tax > 0 && (
@@ -177,33 +212,39 @@ export function CartPanel() {
             </div>
           )}
 
-          <div className="flex items-center justify-between border-t pt-0.5">
+          <div className="flex items-center justify-between border-t pt-1.5">
             <span className="text-base font-bold">TOTAL</span>
-            <span className="text-base font-bold tabular-nums text-primary transition-all duration-200">
+            <motion.span
+              key={total}
+              initial={{ scale: 1.08, color: "hsl(var(--primary))" }}
+              animate={{ scale: 1, color: "hsl(var(--primary))" }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="text-base font-bold tabular-nums text-primary"
+            >
               {formatCurrency(total)}
-            </span>
+            </motion.span>
           </div>
         </div>
 
         <button
           onClick={() => setShowDiscountInput(!showDiscountInput)}
           className={cn(
-            "mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground transition-colors duration-150",
+            "mt-2 flex items-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors duration-150",
             "hover:text-foreground",
           )}
           type="button"
         >
-          <Tag className="h-2.5 w-2.5" />
-          {showDiscountInput ? "Cerrar" : "Descuento"}
+          <Tag className="h-3 w-3" />
+          {showDiscountInput ? "Cerrar descuento" : "Agregar descuento"}
         </button>
 
         {showDiscountInput && (
-          <div className="mt-1 flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+          <div className="mt-2 flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
             <div className="flex items-center gap-0.5">
               <button
                 onClick={() => setDiscountType("fixed")}
                 className={cn(
-                  "rounded px-1.5 py-0.5 text-[10px] transition-colors duration-150",
+                  "rounded-md px-2 py-1 text-xs font-medium transition-colors duration-150",
                   discountType === "fixed"
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground hover:bg-muted/80",
@@ -215,14 +256,14 @@ export function CartPanel() {
               <button
                 onClick={() => setDiscountType("percentage")}
                 className={cn(
-                  "rounded px-1.5 py-0.5 text-[10px] transition-colors duration-150",
+                  "rounded-md px-2 py-1 text-xs font-medium transition-colors duration-150",
                   discountType === "percentage"
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground hover:bg-muted/80",
                 )}
                 type="button"
               >
-                <Percent className="h-2.5 w-2.5" />
+                <Percent className="h-3 w-3" />
               </button>
             </div>
             <input
@@ -233,14 +274,14 @@ export function CartPanel() {
                 setDiscount(Math.max(0, val));
               }}
               placeholder="0"
-              className="h-6 w-16 rounded border bg-background px-1.5 text-[10px] focus:outline-none focus:ring-2 focus:ring-ring"
+              className="h-7 w-20 rounded-md border bg-background px-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
               min="0"
               max={discountType === "percentage" ? 100 : subtotal}
             />
             {discount > 0 && (
               <button
                 onClick={() => setDiscount(0)}
-                className="text-[10px] text-destructive hover:underline transition-colors duration-150"
+                className="text-xs text-destructive hover:underline transition-colors duration-150"
                 type="button"
               >
                 Limpiar

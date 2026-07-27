@@ -67,41 +67,73 @@ export async function POST(req: NextRequest) {
       getOrCreateSessionStore(session.sessionId);
     }
 
-    const openSession = await prisma.cashSession.findFirst({
-      where: { storeId: user.storeId, closedAt: null },
-      include: {
-        user: { select: { name: true } },
-        _count: { select: { sales: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
     let pendingCashSession = null;
 
-    if (openSession) {
-      const cashSales = await prisma.sale.aggregate({
-        where: {
+    if (isTestUserEmail(user.email)) {
+      const store = getOrCreateSessionStore(session.sessionId);
+      const openSession = store.getOpenCashSession(user.storeId);
+
+      if (openSession) {
+        const cashTotal = store.aggregateSalesTotal({
           cashSessionId: openSession.id,
           paymentMethod: "cash",
           status: "completed",
+        });
+        const allTotal = store.aggregateSalesTotal({
+          cashSessionId: openSession.id,
+          status: "completed",
+        });
+
+        pendingCashSession = {
+          id: openSession.id,
+          userName: openSession.userName ?? "Unknown",
+          openingAmount: openSession.openingAmount,
+          createdAt: openSession.createdAt instanceof Date
+            ? openSession.createdAt.toISOString()
+            : openSession.createdAt,
+          salesCount: store.countSales({
+            cashSessionId: openSession.id,
+            status: "completed",
+          }),
+          currentCashTotal: cashTotal.total ?? 0,
+          currentTotal: allTotal.total ?? 0,
+        };
+      }
+    } else {
+      const openSession = await prisma.cashSession.findFirst({
+        where: { storeId: user.storeId, closedAt: null },
+        include: {
+          user: { select: { name: true } },
+          _count: { select: { sales: true } },
         },
-        _sum: { total: true },
+        orderBy: { createdAt: "desc" },
       });
 
-      const allSales = await prisma.sale.aggregate({
-        where: { cashSessionId: openSession.id, status: "completed" },
-        _sum: { total: true },
-      });
+      if (openSession) {
+        const cashSales = await prisma.sale.aggregate({
+          where: {
+            cashSessionId: openSession.id,
+            paymentMethod: "cash",
+            status: "completed",
+          },
+          _sum: { total: true },
+        });
 
-      pendingCashSession = {
-        id: openSession.id,
-        userName: openSession.user.name,
-        openingAmount: Number(openSession.openingAmount),
-        createdAt: openSession.createdAt.toISOString(),
-        salesCount: openSession._count.sales,
-        currentCashTotal: Number(cashSales._sum.total ?? 0),
-        currentTotal: Number(allSales._sum.total ?? 0),
-      };
+        const allSales = await prisma.sale.aggregate({
+          where: { cashSessionId: openSession.id, status: "completed" },
+          _sum: { total: true },
+        });
+
+        pendingCashSession = {
+          id: openSession.id,
+          userName: openSession.user.name,
+          openingAmount: Number(openSession.openingAmount),
+          createdAt: openSession.createdAt.toISOString(),
+          salesCount: openSession._count.sales,
+          currentCashTotal: Number(cashSales._sum.total ?? 0),
+          currentTotal: Number(allSales._sum.total ?? 0),
+        };
+      }
     }
 
     const { passwordHash, ...userWithoutPassword } = user;

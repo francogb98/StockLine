@@ -85,7 +85,6 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
     containerRef: gridContainerRef,
     handleKeyDown: handleGridKeyDown,
     focusFirst,
-    focusItem,
   } = useProductGridNavigation({
     totalItems: paginatedProducts.length,
     onActivateItem: (index) => {
@@ -111,7 +110,7 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="border-b bg-muted/30 p-4">
+      <div className="border-b bg-muted/30 px-4 py-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -170,7 +169,7 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
       </div>
 
       {/* Products grid */}
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto p-3">
         {isSessionLoading ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 py-12 text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin" />
@@ -208,7 +207,7 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
           <div
             ref={gridContainerRef}
             data-keyboard-zone="products"
-            className="grid grid-cols-2 gap-2 lg:grid-cols-3"
+            className="grid grid-cols-3 gap-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
             onKeyDown={handleGridKeyDown}
             role="grid"
             aria-label="Productos"
@@ -230,11 +229,11 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
                   data-product-name={product.name}
                   data-product-index={index}
                   className={cn(
-                    "group relative flex cursor-pointer flex-col rounded-lg border p-2 text-left transition-all",
+                    "group relative flex cursor-pointer flex-col rounded-xl border p-3 text-left transition-all duration-150",
                     "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                     isOutOfStock
                       ? "cursor-not-allowed bg-muted/50 opacity-60"
-                      : "hover:border-primary hover:shadow-sm",
+                      : "hover:border-primary hover:shadow-md hover:bg-accent/30",
                     isFocused && "keyboard-product-focused",
                   )}
                   tabIndex={isFocused ? 0 : -1}
@@ -255,14 +254,14 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
                     </div>
                   )}
 
-                  <p className="line-clamp-2 text-sm font-medium leading-tight text-foreground">
+                  <p className="line-clamp-1 text-xs font-medium leading-tight text-foreground">
                     {product.name}
                   </p>
                   <p className="mt-0.5 text-[11px] text-muted-foreground">
                     {product.barcode}
                   </p>
                   <div className="mt-1 flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-primary">
+                    <span className="text-xs font-semibold text-primary">
                       {formatCurrency(product.price)}
                     </span>
                     <span

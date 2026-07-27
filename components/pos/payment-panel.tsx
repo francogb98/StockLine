@@ -171,14 +171,14 @@ export function PaymentPanel({
   }, [handleCompleteSale, handleCancel]);
 
   return (
-    <div className="space-y-1.5 p-2">
+    <div className="space-y-2 px-3 py-2.5">
       {/* Success notification */}
       {lastSale && (
-        <div className="flex items-center gap-2 rounded-lg bg-[hsl(var(--success))] p-2 text-[hsl(var(--success-foreground))] animate-in fade-in slide-in-from-top-1 duration-200">
-          <Check className="h-4 w-4" />
+        <div className="flex items-center gap-2 rounded-lg bg-[hsl(var(--success))] px-3 py-2 text-[hsl(var(--success-foreground))] animate-in fade-in slide-in-from-top-1 duration-200">
+          <Check className="h-4 w-4 shrink-0" />
           <div>
             <p className="text-sm font-semibold">Venta completada</p>
-            <p className="text-[11px] opacity-90">
+            <p className="text-xs opacity-90">
               Total: {formatCurrency(lastSale.total)}
             </p>
           </div>
@@ -187,20 +187,18 @@ export function PaymentPanel({
 
       {/* Subscription past-due warning */}
       {isPastDue ? (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
           Suscripción vencida. Activá un plan para volver a vender.
         </div>
       ) : null}
 
       {/* Cash blocked state */}
       {cashBlocked ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-center dark:border-amber-700 dark:bg-amber-950">
-          <Coins className="h-8 w-8 text-amber-500" />
-          <div>
-            <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-              Debe abrir la caja para realizar una venta
-            </p>
-          </div>
+        <div className="flex flex-col items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-center dark:border-amber-700 dark:bg-amber-950">
+          <Coins className="h-6 w-6 text-amber-500" />
+          <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+            Debe abrir la caja para realizar una venta
+          </p>
           <button
             onClick={openCashDialog}
             className="inline-flex items-center gap-2 rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -209,27 +207,27 @@ export function PaymentPanel({
             <Wallet className="h-4 w-4" />
             Abrir Caja
           </button>
-            <p className="text-xs text-amber-600 dark:text-amber-400">
-              Si no usás caja, podés desactivar este control desde{' '}
-              <Link
-                href="/app/settings"
-                className="underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-200"
-              >
-                Configuración
-              </Link>
-            </p>
+          <p className="text-xs text-amber-600 dark:text-amber-400">
+            Si no usás caja, podés desactivar este control desde{' '}
+            <Link
+              href="/app/settings"
+              className="underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-200"
+            >
+              Configuración
+            </Link>
+          </p>
         </div>
       ) : (
         <>
-          {/* Payment method buttons — horizontal row */}
-          <div className="flex flex-wrap gap-1.5">
+          {/* Payment method buttons */}
+          <div className="grid grid-cols-3 gap-1.5">
             {paymentMethods.map((method) => (
               <button
                 key={method.value}
                 onClick={() => setSelectedMethod(method.value)}
                 disabled={isDisabled}
                 className={cn(
-                  "flex flex-1 items-center justify-center gap-1.5 rounded-lg border-2 px-2 py-1.5 text-xs font-medium transition-all duration-150",
+                  "flex items-center justify-center gap-1.5 rounded-lg border-2 px-1 py-1.5 text-xs font-medium transition-all duration-150",
                   "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
                   "disabled:cursor-not-allowed disabled:opacity-50",
                   selectedMethod === method.value
@@ -246,23 +244,21 @@ export function PaymentPanel({
             ))}
           </div>
 
-          {/* Cash received input — only for cash payments */}
+          {/* Cash received input */}
           {selectedMethod === "cash" && (
             <div className="space-y-1 animate-in fade-in duration-150">
-              <div>
-                <label htmlFor="received-amount" className="text-[10px] text-muted-foreground">
-                  Dinero recibido
-                </label>
-                <input
-                  id="received-amount"
-                  type="number"
-                  value={receivedAmount || ""}
-                  onChange={(e) => setReceivedAmount(parseFloat(e.target.value) || 0)}
-                  placeholder="0"
-                  className="mt-0.5 h-8 w-full rounded-md border bg-background px-2.5 text-sm font-semibold tabular-nums focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-150"
-                  min="0"
-                />
-              </div>
+              <label htmlFor="received-amount" className="text-[10px] text-muted-foreground">
+                Dinero recibido
+              </label>
+              <input
+                id="received-amount"
+                type="number"
+                value={receivedAmount || ""}
+                onChange={(e) => setReceivedAmount(parseFloat(e.target.value) || 0)}
+                placeholder="0"
+                className="h-8 w-full rounded-md border bg-background px-2.5 text-sm font-semibold tabular-nums focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-150"
+                min="0"
+              />
               {receivedAmount > 0 && (
                 <div className="flex items-center justify-between rounded-md bg-green-50 px-2.5 py-1 dark:bg-green-950 animate-in fade-in slide-in-from-top-1 duration-150">
                   <span className="text-xs text-green-700 dark:text-green-300">Vuelto</span>
@@ -280,14 +276,14 @@ export function PaymentPanel({
           )}
 
           {/* Action buttons */}
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <button
               onClick={handleCompleteSale}
               data-testid="complete-sale"
               disabled={isActionDisabled}
-                className={cn(
-                  "flex h-11 w-full items-center justify-center gap-2.5 rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition-all duration-150",
-                "hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+              className={cn(
+                "flex h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all duration-150",
+                "hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                 "active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none",
               )}
               type="button"
@@ -300,31 +296,29 @@ export function PaymentPanel({
               ) : (
                 <>
                   <CreditCard className="h-5 w-5" />
-                  Cobrar
+                  Cobrar — {formatCurrency(total)}
                 </>
               )}
             </button>
             <button
               onClick={handleSuspendSale}
               disabled={isActionDisabled}
-                className={cn(
-                  "flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-muted-foreground/30 bg-background text-[11px] font-medium text-muted-foreground transition-all duration-150",
+              className={cn(
+                "flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-muted-foreground/30 bg-background text-xs font-medium text-muted-foreground transition-all duration-150",
                 "hover:border-muted-foreground/50 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
                 "active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50",
               )}
               type="button"
             >
-              <PauseCircle className="h-3.5 w-3.5" />
+              <PauseCircle className="h-4 w-4" />
               Enviar a Espera
             </button>
           </div>
 
           {/* Keyboard shortcut hint */}
           <p className="text-center text-[10px] text-muted-foreground">
-            Presiona{" "}
-            <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[10px]">
-              C
-            </kbd>{" "}
+            Presiona{' '}
+            <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[10px]">C</kbd>{' '}
             para cobrar rápido
           </p>
         </>

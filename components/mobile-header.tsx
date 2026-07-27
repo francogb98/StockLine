@@ -1,13 +1,11 @@
 "use client";
 
-import { Settings } from "lucide-react";
+import { Bell } from "lucide-react";
 import { useAuth } from "@/lib/store-context";
-import { useRouter } from "next/navigation";
 import { MobileCashIndicator } from "@/components/cash/mobile-cash-indicator";
 
 export function MobileHeader() {
   const { store } = useAuth();
-  const router = useRouter();
 
   return (
     <header className="fixed top-0 z-40 grid h-[52px] w-full grid-cols-3 items-center bg-primary px-4 shadow-sm">
@@ -27,11 +25,10 @@ export function MobileHeader() {
       <div className="flex items-center justify-self-end">
         <button
           type="button"
-          onClick={() => router.push("/app/settings")}
           className="flex h-8 w-8 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
-          aria-label="Configuración"
+          aria-label="Notificaciones"
         >
-          <Settings className="h-4 w-4" />
+          <Bell className="h-4 w-4" />
         </button>
       </div>
     </header>

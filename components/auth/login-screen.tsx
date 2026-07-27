@@ -73,7 +73,7 @@ function LoginForm({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
             "placeholder:text-muted-foreground/50",
             "focus:border-primary focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/15",
             "hover:border-border/80",
-            "transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)]",
+            "transition-all duration-300 ease-[cubic-bezier(0.25\,0.1\,0.25\,1)]",
           )}
           placeholder="admin@techmart.com"
           autoComplete="email"
@@ -96,7 +96,7 @@ function LoginForm({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
               "placeholder:text-muted-foreground/50",
               "focus:border-primary focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/15",
               "hover:border-border/80",
-              "transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)]",
+              "transition-all duration-300 ease-[cubic-bezier(0.25\,0.1\,0.25\,1)]",
             )}
             placeholder="••••••••"
             autoComplete="current-password"
@@ -136,7 +136,7 @@ function LoginForm({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
           "hover:bg-primary/90 hover:shadow-[0_4px_16px_-4px_rgba(0,0,0,0.18)] hover:-translate-y-px",
           "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
           "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.12)]",
-          "transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)]",
+          "transition-all duration-300 ease-[cubic-bezier(0.25\,0.1\,0.25\,1)]",
         )}
       >
         {isLoading ? (

@@ -51,7 +51,7 @@ export function getLowStockProducts(products: Product[]): AssistantAnswer {
 
   return {
     text: `Hay ${low.length} producto${low.length !== 1 ? 's' : ''} con stock bajo:\n\n${list}`,
-    action: { label: 'Ver Productos', view: 'add-product' },
+    action: { label: 'Agregar Producto', view: 'add-product' },
   }
 }
 
@@ -147,11 +147,6 @@ export function getUsersSummary(userCount: number): AssistantAnswer {
   }
 }
 
-type IntentHandler = (
-  text: string,
-  data: AssistantContextData,
-) => AssistantAnswer | null
-
 interface AssistantContextData {
   sales: Sale[]
   products: Product[]
@@ -160,41 +155,6 @@ interface AssistantContextData {
   cashSession: { currentTotal: number; salesCount: number; openingAmount: number } | null
   userCount: number
 }
-
-const INTENT_HANDLERS: IntentHandler[] = [
-  (t) =>
-    /vend[ií] hoy|ventas hoy|venta.*hoy|cuanto.*vend|total.*hoy/i.test(t)
-      ? { text: '', action: undefined }
-      : null,
-  (t) =>
-    /stock bajo|productos.*stock|sin stock|repone|faltante/i.test(t)
-      ? { text: '', action: undefined }
-      : null,
-  (t) =>
-    /producto|cantos producto|cu.*ntos producto|listar producto/i.test(t)
-      ? { text: '', action: undefined }
-      : null,
-  (t) =>
-    /caja|efectivo|cuanto.*caja|saldo.*caja/i.test(t)
-      ? { text: '', action: undefined }
-      : null,
-  (t) =>
-    /negocio|tienda|local|informaci.n/i.test(t)
-      ? { text: '', action: undefined }
-      : null,
-  (t) =>
-    /categor|cu.*ntas categor/i.test(t)
-      ? { text: '', action: undefined }
-      : null,
-  (t) =>
-    /m.s vendido|top|popular|qu.*.*vend|ranking/i.test(t)
-      ? { text: '', action: undefined }
-      : null,
-  (t) =>
-    /usuario|empleado|cuanta.*gente|vendedor/i.test(t)
-      ? { text: '', action: undefined }
-      : null,
-]
 
 const ANSWER_BUILDERS: Record<string, (data: AssistantContextData) => AssistantAnswer> = {
   'sales-today': (d) => getTodaySales(d.sales),

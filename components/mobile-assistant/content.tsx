@@ -4,46 +4,52 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { viewVariants } from './animation-variants'
 import { useAssistant } from './context'
 import { AssistantHome } from './home'
-import { CashView } from './views/cash-view'
-import { ReportsView } from './views/reports-view'
-import { SettingsView } from './views/settings-view'
-import { CreateSaleView } from './views/create-sale-view'
-import { AddProductView } from './views/add-product-view'
-import { CategoriesView } from './views/categories-view'
-import { UsersView } from './views/users-view'
-import { BusinessView } from './views/business-view'
-import { ConversationView } from './views/conversation-view'
+import { CashStatusView } from './views/cash-status-view'
+import { TodaySalesView } from './views/today-sales-view'
+import { AddStockView } from './views/add-stock-view'
+import { ChangePriceView } from './views/change-price-view'
+import { LowStockProductsView } from './views/low-stock-products-view'
+import { MakeReturnView } from './views/make-return-view'
 import type { AssistantView } from './types'
 
 export const VIEW_LABELS: Record<AssistantView, string> = {
   home: 'Inicio',
-  cash: 'Caja',
-  reports: 'Reportes',
-  settings: 'Configuración',
-  'create-sale': 'Crear venta',
-  'add-product': 'Agregar producto',
-  categories: 'Categorías',
-  users: 'Usuarios',
-  business: 'Mi negocio',
-  conversation: 'Asistente',
+  'add-stock': 'Agregar stock',
+  'change-price': 'Cambiar precio',
+  'today-sales': 'Ventas de hoy',
+  'low-stock-products': 'Productos con poco stock',
+  'cash-status': 'Estado de caja',
+  'make-return': 'Hacer devolución',
+  'suggestion-form': 'Sugerencia',
 }
 
-const VIEW_COMPONENTS: Record<AssistantView, React.ComponentType> = {
+const VIEW_COMPONENTS: Record<string, React.ComponentType> = {
   home: AssistantHome,
-  cash: CashView,
-  reports: ReportsView,
-  settings: SettingsView,
-  'create-sale': CreateSaleView,
-  'add-product': AddProductView,
-  categories: CategoriesView,
-  users: UsersView,
-  business: BusinessView,
-  conversation: ConversationView,
+  'cash-status': CashStatusView,
+  'today-sales': TodaySalesView,
+  'add-stock': AddStockView,
+  'change-price': ChangePriceView,
+  'low-stock-products': LowStockProductsView,
+  'make-return': MakeReturnView,
 }
 
 export function AssistantContent() {
   const { state } = useAssistant()
+
   const ViewComponent = VIEW_COMPONENTS[state.currentView]
+
+  if (!ViewComponent) {
+    return (
+      <div className="flex flex-col items-center justify-center px-5 py-16 text-center">
+        <p className="text-sm text-muted-foreground">
+          Esta sección no está disponible desde el asistente.
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Usá el menú principal de la aplicación.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="relative flex-1 overflow-y-auto">

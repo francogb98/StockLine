@@ -11,7 +11,7 @@ export function AssistantNavigation() {
   const { goBack, canGoBack, state } = useAssistant()
 
   const title = useMemo(
-    () => VIEW_LABELS[state.currentView] ?? 'Asistente',
+    () => VIEW_LABELS[state.currentView] ?? 'Acciones rápidas',
     [state.currentView],
   )
 

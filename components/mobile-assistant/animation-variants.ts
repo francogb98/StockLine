@@ -14,6 +14,12 @@ export const cardVariants: Variants = {
     scale: 1,
     transition: { delay: i * 0.04, duration: 0.3, ease: [0.32, 0.72, 0, 1] },
   }),
+  highlighted: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { delay: i * 0.04, duration: 0.3, ease: [0.32, 0.72, 0, 1] },
+  }),
   hover: { y: -4, scale: 1.02, transition: { duration: 0.2, ease: 'easeOut' } },
   tap: { scale: 0.97, transition: { duration: 0.1 } },
 }

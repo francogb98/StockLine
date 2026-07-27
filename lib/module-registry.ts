@@ -3,6 +3,7 @@ import {
   BarChart3,
   Wallet,
   ShoppingCart,
+  ReceiptText,
   type LucideIcon,
 } from "lucide-react";
 
@@ -17,6 +18,7 @@ export interface NavigationItem {
 export const NAVIGATION_ITEMS: NavigationItem[] = [
   { viewId: "pos", label: "Punto de Venta", icon: ShoppingCart, adminOnly: false, sortOrder: 0 },
   { viewId: "stock", label: "Stock", icon: Package, adminOnly: false, sortOrder: 1 },
+  { viewId: "daily-summary", label: "Resumen del día", icon: ReceiptText, adminOnly: false, sortOrder: 2 },
   { viewId: "dashboard", label: "Reportes", icon: BarChart3, adminOnly: true, sortOrder: 3 },
   { viewId: "cash-sessions", label: "Caja", icon: Wallet, adminOnly: true, sortOrder: 4 },
 ];

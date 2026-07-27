@@ -1,11 +1,11 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
-import { MessageCircle } from 'lucide-react'
+import Image from 'next/image'
 import { useAssistant } from './context'
 
 export function AssistantTrigger() {
-  const { state, open } = useAssistant()
+  const { state, open, badgeVisible } = useAssistant()
 
   return (
     <AnimatePresence>
@@ -18,9 +18,18 @@ export function AssistantTrigger() {
           onClick={open}
           className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-shadow hover:shadow-xl active:scale-95 max-md:bottom-20 max-md:right-4"
           type="button"
-          aria-label="Abrir asistente"
+          aria-label="Abrir acciones rápidas"
         >
-          <MessageCircle className="h-6 w-6" />
+          <Image
+            src="/robot.jpg"
+            alt="Asistente"
+            width={56}
+            height={56}
+            className="h-full w-full rounded-full object-cover"
+          />
+          {badgeVisible && (
+            <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold leading-none text-white ring-2 ring-background" />
+          )}
         </motion.button>
       )}
     </AnimatePresence>

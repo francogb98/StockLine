@@ -1,26 +1,40 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Package, CircleDollarSign, BarChart3 } from "lucide-react";
+import {
+  Package,
+  CircleDollarSign,
+  BarChart3,
+  Sparkles,
+  Settings,
+} from "lucide-react";
+import { useAssistant } from "@/components/mobile-assistant/context";
 
 const navItems = [
   { icon: Package, label: "Productos", href: "/app/stock" },
-  { icon: CircleDollarSign, label: "Vender", href: "/app/pos", isPrimary: true },
   { icon: BarChart3, label: "Reportes", href: "/app/dashboard" },
-];
+  {
+    icon: CircleDollarSign,
+    label: "Vender",
+    href: "/app/pos",
+    isPrimary: true,
+  },
+  { icon: Sparkles, label: "Asistente", href: null, isAssistant: true },
+  { icon: Settings, label: "Ajustes", href: "/app/settings" },
+] as const;
 
 export function MobileBottomNavigation() {
   const pathname = usePathname();
   const router = useRouter();
+  const assistant = useAssistant();
 
   return (
     <nav className="fixed bottom-0 z-40 w-full">
-      <div className="rounded-t-2xl border-t bg-white px-6 pb-1 pt-2 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] dark:bg-card">
+      <div className="rounded-t-2xl border-t bg-white px-4 pb-1 pt-2 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] dark:bg-card">
         <div className="flex items-start justify-around">
           {navItems.map((item) => {
-            const isActive = item.href === pathname;
-
-            if (item.isPrimary) {
+            if ("isPrimary" in item) {
+              const isActive = item.href === pathname;
               return (
                 <div
                   key={item.label}
@@ -50,11 +64,31 @@ export function MobileBottomNavigation() {
               );
             }
 
+            if ("isAssistant" in item) {
+              return (
+                <button
+                  key={item.label}
+                  onClick={assistant.open}
+                  className="relative flex flex-col items-center px-3 py-1"
+                  type="button"
+                  aria-label={item.label}
+                >
+                  <div className="relative flex flex-col items-center gap-0.5">
+                    <item.icon className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-[10px] font-medium text-muted-foreground">
+                      {item.label}
+                    </span>
+                  </div>
+                </button>
+              );
+            }
+
+            const isActive = item.href === pathname;
             return (
               <button
                 key={item.label}
                 onClick={() => router.push(item.href)}
-                className="relative flex flex-col items-center px-6 py-1"
+                className="relative flex flex-col items-center px-3 py-1"
                 type="button"
                 aria-label={item.label}
               >
