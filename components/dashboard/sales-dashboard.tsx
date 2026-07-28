@@ -31,6 +31,7 @@ import {
 import { useData } from "@/lib/store-context";
 import { formatCurrency } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import { PageContainer } from "@/components/ui/page-container";
 import { SkeletonDashboard } from "@/components/ui/skeletons";
 import { ErrorState } from "@/components/ui/error-state";
 import { SaleDetailDialog } from "@/components/dashboard/sale-detail-dialog";
@@ -244,8 +245,7 @@ export function SalesDashboard() {
   }
 
   return (
-    <div className="h-full overflow-auto bg-background p-6">
-      <div className="mx-auto max-w-7xl">
+    <PageContainer>
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -318,7 +318,7 @@ export function SalesDashboard() {
         {/* Charts row 1 */}
         <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Sales by day */}
-          <div className="col-span-2 rounded-lg border bg-card p-4">
+          <div className="lg:col-span-2 rounded-lg border bg-card p-4">
             <h3 className="mb-4 font-semibold text-foreground">
               Ventas por Día
             </h3>
@@ -396,7 +396,7 @@ export function SalesDashboard() {
         {/* Charts row 2 */}
         <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Sales by hour */}
-          <div className="col-span-2 rounded-lg border bg-card p-4">
+          <div className="lg:col-span-2 rounded-lg border bg-card p-4">
             <h3 className="mb-4 font-semibold text-foreground">
               <Clock className="mr-2 inline h-4 w-4" />
               Ventas por Horario
@@ -484,11 +484,11 @@ export function SalesDashboard() {
             <table className="w-full">
               <thead>
                 <tr className="border-b text-left text-sm text-muted-foreground">
-                  <th className="pb-3 font-medium">Fecha</th>
-                  <th className="pb-3 font-medium">Hora</th>
-                  <th className="pb-3 font-medium">Productos</th>
-                  <th className="pb-3 font-medium">Método</th>
-                  <th className="pb-3 text-right font-medium">Total</th>
+                  <th className="px-3 pb-3 font-medium">Fecha</th>
+                  <th className="px-3 pb-3 font-medium">Hora</th>
+                  <th className="px-3 pb-3 font-medium">Productos</th>
+                  <th className="px-3 pb-3 font-medium">Método</th>
+                  <th className="px-3 pb-3 text-right font-medium">Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -498,19 +498,19 @@ export function SalesDashboard() {
                     onClick={() => setSelectedSale(sale)}
                     className="cursor-pointer border-b last:border-0 hover:bg-muted/50 transition-colors"
                   >
-                    <td className="py-3 text-sm text-foreground">
+                    <td className="px-3 py-3 text-sm text-foreground">
                       {new Date(sale.createdAt).toLocaleDateString("es-AR")}
                     </td>
-                    <td className="py-3 text-sm text-muted-foreground">
+                    <td className="px-3 py-3 text-sm text-muted-foreground">
                       {new Date(sale.createdAt).toLocaleTimeString("es-AR", {
                         hour: "2-digit",
                         minute: "2-digit",
                       })}
                     </td>
-                    <td className="py-3 text-sm text-muted-foreground">
+                    <td className="px-3 py-3 text-sm text-muted-foreground">
                       {sale.items.length} item(s)
                     </td>
-                    <td className="py-3">
+                    <td className="px-3 py-3">
                       <span
                         className={cn(
                           "rounded-full px-2 py-1 text-xs font-medium",
@@ -529,7 +529,7 @@ export function SalesDashboard() {
                             : "Transferencia"}
                       </span>
                     </td>
-                    <td className="py-3 text-right font-semibold tabular-nums text-foreground">
+                    <td className="px-3 py-3 text-right font-semibold tabular-nums text-foreground">
                       {formatCurrency(sale.total)}
                     </td>
                   </tr>
@@ -538,7 +538,6 @@ export function SalesDashboard() {
             </table>
           </div>
         </div>
-      </div>
 
       <SaleDetailDialog
         sale={selectedSale}
@@ -547,7 +546,7 @@ export function SalesDashboard() {
           if (!open) setSelectedSale(null);
         }}
       />
-    </div>
+  </PageContainer>
   );
 }
 

@@ -199,10 +199,10 @@ export function StockManagement() {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col bg-background">
       {/* Header */}
-      <div className="shrink-0 border-b bg-card p-4">
-        <div className="flex items-center justify-between">
+      <div className="shrink-0 border-b bg-card">
+        <div className="flex items-center justify-between px-6 py-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">
               Gestión de Stock
@@ -255,7 +255,7 @@ export function StockManagement() {
         </div>
 
         {/* Filters */}
-        <div className="mt-4 flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4 px-6 pb-4">
           {/* Search */}
           <div className="relative flex-1 min-w-[250px]">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -351,7 +351,7 @@ export function StockManagement() {
 
       {/* Showing X of Y indicator */}
       {filteredProducts.length > 0 && (
-        <div className="shrink-0 border-b bg-muted/30 px-4 py-2">
+        <div className="shrink-0 border-b bg-muted/30 px-6 py-2">
           <p className="text-sm text-muted-foreground">
             Mostrando{" "}
             {(currentPage - 1) * ITEMS_PER_PAGE + 1}-
@@ -362,8 +362,9 @@ export function StockManagement() {
       )}
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
-        <table className="w-full">
+        <div className="flex-1 overflow-auto">
+          <div className="p-6">
+          <table className="w-full">
           <thead className="sticky top-0 bg-muted/80 backdrop-blur">
             <tr className="border-b">
               <th className="p-3 text-left">
@@ -541,12 +542,13 @@ export function StockManagement() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="shrink-0 border-t bg-card p-4">
-          <div className="flex items-center justify-between">
+        <div className="shrink-0 border-t bg-card">
+          <div className="flex items-center justify-between px-6 py-4">
             <p className="text-sm text-muted-foreground">
               Mostrando{" "}
               {(currentPage - 1) * ITEMS_PER_PAGE + 1}-

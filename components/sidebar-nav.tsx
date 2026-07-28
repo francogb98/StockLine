@@ -1,90 +1,65 @@
 "use client";
 
-import { useState } from "react";
-import { Settings } from "lucide-react";
+import { ChevronDown, LogOut } from "lucide-react";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Separator } from "@/components/ui/separator";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/lib/store-context";
 import { cn } from "@/lib/utils";
+import type { NavigationItem } from "@/lib/module-registry";
 
 export function SidebarNav({
   items,
   currentPath,
   onNavigate,
 }: {
-  items: { viewId: string; label: string; icon: React.ElementType }[];
+  items: NavigationItem[];
   currentPath: string;
   onNavigate: (view: string) => void;
 }) {
-  const [expanded] = useState(false);
+  const { user, logout } = useAuth();
 
-  const navItems = [
-    ...items,
-    {
-      viewId: "settings",
-      label: "Configuración",
-      icon: Settings,
-    },
-  ];
+  const isActive = (viewId: string) => currentPath === `/${viewId}`;
 
   return (
-    <nav
-      className={cn(
-        "flex h-full flex-col transition-all duration-300 ease-out md:gap-1",
-        expanded ? "w-52 px-3" : "w-14 items-center px-2.5",
-      )}
-    >
-      <Separator className={cn(expanded ? "mb-2" : "mb-3 w-8 self-center")} />
-
-      <div
-        className={cn("flex flex-col gap-1", expanded ? "" : "items-center")}
-      >
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = currentPath === `/${item.viewId}`;
-
-          return (
-            <Tooltip key={item.viewId}>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => onNavigate(item.viewId)}
-                  data-testid={`nav-${item.viewId}`}
-                  aria-label={item.label}
-                  type="button"
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg transition-all duration-200",
-                    expanded ? "px-3 py-2" : "h-11 w-11 justify-center",
-                    isActive
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                >
-                  <Icon className="h-5 w-5 shrink-0" />
-
-                  {expanded && (
-                    <span className="truncate text-sm font-medium">
-                      {item.label}
-                    </span>
-                  )}
-                </button>
-              </TooltipTrigger>
-
-              {!expanded && (
-                <TooltipContent
-                  side="right"
-                  sideOffset={8}
-                  className="rounded-lg border-0 bg-gray-900 px-3 py-2 text-sm text-white shadow-md dark:bg-gray-100 dark:text-gray-900"
-                >
-                  {item.label}
-                </TooltipContent>
-              )}
-            </Tooltip>
-          );
-        })}
+    <aside className="hidden w-[260px] shrink-0 flex-col bg-gradient-to-b from-[#0F172A] via-[#111827] to-[#0B1220] md:flex">
+      <div className="flex shrink-0 flex-col items-center px-6 pt-10 pb-10">
+        <img
+          src="/logo-horizontal-dark.svg"
+          alt="StockLine"
+          className="h-7 object-contain"
+        />
       </div>
-    </nav>
+
+      <nav className="flex-1 overflow-y-auto min-h-0 px-4">
+        <div className="flex flex-col gap-[6px]">
+          {items.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.viewId);
+
+            return (
+              <button
+                key={item.viewId}
+                onClick={() => onNavigate(item.viewId)}
+                data-testid={`nav-${item.viewId}`}
+                type="button"
+                className={cn(
+                  "flex h-[50px] items-center gap-3.5 rounded-xl px-3 text-sm font-medium transition-all duration-200",
+                  active
+                    ? "bg-primary text-white shadow-md shadow-primary/30"
+                    : "text-blue-200/70 hover:bg-white/[0.08] hover:text-white",
+                )}
+              >
+                <Icon className="h-5 w-5 shrink-0" />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+    </aside>
   );
 }

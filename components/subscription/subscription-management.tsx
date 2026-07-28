@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { useAuth } from "@/lib/store-context";
 import { Skeleton } from "@/components/ui/skeleton";
+import { isTestUserEmail } from "@/lib/test-users";
 import {
   SUBSCRIPTION_PLANS,
   type SubscriptionPlan,
@@ -47,7 +48,8 @@ export function SubscriptionManagement() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const canSubscribe = user?.role === "admin";
+  const isTestUser = user ? isTestUserEmail(user.email) : false;
+  const canSubscribe = user?.role === "admin" && !isTestUser;
 
   const cards = useMemo(
     () => [
@@ -196,6 +198,15 @@ export function SubscriptionManagement() {
           </button>
         ))}
       </div>
+
+      {isTestUser ? (
+        <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>
+            No podés suscribirte con credenciales de prueba. Usá una cuenta real para gestionar tu suscripción.
+          </span>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
         <button

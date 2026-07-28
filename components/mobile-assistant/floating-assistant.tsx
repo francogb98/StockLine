@@ -3,9 +3,8 @@
 import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
-import { AssistantProvider, useAssistant } from './context'
+import { useAssistant } from './context'
 import { AssistantTrigger } from './trigger'
-import { AssistantPanel } from './panel'
 import { DesktopAssistantPanel } from './desktop-panel'
 import { useIsMobile } from '@/hooks/use-mobile'
 
@@ -75,11 +74,13 @@ function StockAlertNotification() {
 export function FloatingAssistant() {
   const isMobile = useIsMobile()
 
+  if (isMobile) return null
+
   return (
-    <AssistantProvider>
+    <>
       <StockAlertNotification />
       <AssistantTrigger />
-      {isMobile ? <AssistantPanel /> : <DesktopAssistantPanel />}
-    </AssistantProvider>
+      <DesktopAssistantPanel />
+    </>
   )
 }

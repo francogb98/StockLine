@@ -7,7 +7,7 @@ import { useCashControl } from "@/lib/cash-control-context";
 import { getNavigationForRole } from "@/lib/module-registry";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/mock-data";
-import { LogOut, Menu, X, Settings } from "lucide-react";
+import { LogOut, Menu, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,25 +51,21 @@ export function AppHeader() {
 
   return (
     <>
-      <header className="flex h-14 shrink-0 items-center justify-between border-b bg-card px-3 md:px-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setMobileMenuOpen((v) => !v)}
-            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
-            aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
-            type="button"
-          >
-            {mobileMenuOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
-          </button>
+      <header className="flex h-12 shrink-0 items-center border-b bg-card px-4">
+        <button
+          onClick={() => setMobileMenuOpen((v) => !v)}
+          className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
+          aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
+          type="button"
+        >
+          {mobileMenuOpen ? (
+            <X className="h-5 w-5" />
+          ) : (
+            <Menu className="h-5 w-5" />
+          )}
+        </button>
 
-          <BrandLogo className="hidden h-20 md:block" />
-        </div>
-
-        <div className="flex items-center gap-2">
+        <div className="flex flex-1 items-center justify-end gap-3">
           {cashControlEnabled && (
             <div
               className={cn(
@@ -115,9 +111,7 @@ export function AppHeader() {
               )}
             </div>
           )}
-        </div>
 
-        <div className="flex items-center gap-2">
           <div className="hidden items-center gap-2 md:flex">
             <SubscriptionStatusBadge
               variant="desktop"
@@ -194,19 +188,7 @@ export function AppHeader() {
                 </button>
               );
             })}
-            <button
-              onClick={() => navigate("settings")}
-              className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-                currentPath === "/settings"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-              type="button"
-            >
-              <Settings className="h-5 w-5" />
-              <span>Configuración</span>
-            </button>
+
           </nav>
         </div>
       </div>
