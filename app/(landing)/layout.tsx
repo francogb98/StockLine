@@ -1,6 +1,7 @@
 import React from "react"
 import type { Metadata } from 'next'
 import { WhatsAppButton } from "@/components/whatsapp-button"
+import { ForceLightMode } from "@/components/force-light-mode"
 
 export const metadata: Metadata = {
   title: 'StockLine - Control de Stock y Ventas para tu Negocio',
@@ -20,9 +21,10 @@ export default function LandingLayout({
   children: React.ReactNode
 }) {
   return (
-    <>
+    <div style={{ colorScheme: "light" }} className="bg-white text-slate-900">
+      <ForceLightMode />
       {children}
       <WhatsAppButton />
-    </>
+    </div>
   )
 }

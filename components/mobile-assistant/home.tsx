@@ -24,7 +24,8 @@ import type { AssistantCardAction, AssistantView } from './types'
 
 const HOME_ACTIONS: AssistantCardAction[] = [
   { id: 'make-return', label: 'Hacer devolución', description: 'Devolver productos', icon: Undo2 },
-  { id: 'add-stock', label: 'Agregar stock', description: 'Sumar unidades', icon: PackagePlus },
+  { id: 'add-product', label: 'Agregar producto', description: 'Crear nuevo', icon: PackagePlus },
+  { id: 'add-stock', label: 'Agregar stock', description: 'Sumar unidades', icon: Package },
   { id: 'change-price', label: 'Cambiar precio', description: 'Actualizar precio', icon: DollarSign },
   { id: 'today-sales', label: 'Ventas de hoy', description: 'Resumen del día', icon: BarChart3 },
   { id: 'low-stock-products', label: 'Poco stock', description: 'Productos críticos', icon: AlertTriangle },

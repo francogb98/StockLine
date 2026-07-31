@@ -202,35 +202,35 @@ export function StockManagement() {
     <div className="flex h-full flex-col bg-background">
       {/* Header */}
       <div className="shrink-0 border-b bg-card">
-        <div className="flex items-center justify-between px-6 py-4">
+        <div className="flex items-center justify-between px-4 py-3">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="text-xl font-bold text-foreground">
               Gestión de Stock
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {products.length} productos en total
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {user?.role === "admin" && (
               <>
                 <button
                   onClick={() => setImportSheetOpen(true)}
                   data-testid="open-import-sheet-btn"
                   className={cn(
-                    "flex items-center gap-2 rounded-lg border bg-background px-4 py-2 font-medium text-foreground transition-colors",
+                    "flex items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors",
                     "hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                   )}
                   type="button"
                 >
-                  <Upload className="h-5 w-5" />
+                  <Upload className="h-4 w-4" />
                   Importar
                 </button>
                 <button
                   onClick={() => setCategoryDialogOpen(true)}
                   data-testid="open-category-dialog-btn"
                   className={cn(
-                    "flex items-center gap-2 rounded-lg border bg-background px-4 py-2 font-medium text-foreground transition-colors",
+                    "flex items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors",
                     "hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                   )}
                   type="button"
@@ -243,19 +243,19 @@ export function StockManagement() {
               onClick={() => setDialogOpen(true)}
               data-testid="open-product-dialog-btn"
               className={cn(
-                "flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors",
+                "flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors",
                 "hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
               )}
               type="button"
             >
-              <Plus className="h-5 w-5" />
+              <Plus className="h-4 w-4" />
               Nuevo Producto
             </button>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap items-center gap-4 px-6 pb-4">
+        <div className="flex flex-wrap items-center gap-3 px-4 pb-3">
           {/* Search */}
           <div className="relative flex-1 min-w-[250px]">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -351,8 +351,8 @@ export function StockManagement() {
 
       {/* Showing X of Y indicator */}
       {filteredProducts.length > 0 && (
-        <div className="shrink-0 border-b bg-muted/30 px-6 py-2">
-          <p className="text-sm text-muted-foreground">
+          <div className="shrink-0 border-b bg-muted/30 px-4 py-1.5">
+            <p className="text-xs text-muted-foreground">
             Mostrando{" "}
             {(currentPage - 1) * ITEMS_PER_PAGE + 1}-
             {Math.min(currentPage * ITEMS_PER_PAGE, filteredProducts.length)}{" "}
@@ -363,7 +363,7 @@ export function StockManagement() {
 
       {/* Table */}
         <div className="flex-1 overflow-auto">
-          <div className="p-6">
+          <div className="p-4">
           <table className="w-full">
           <thead className="sticky top-0 bg-muted/80 backdrop-blur">
             <tr className="border-b">
@@ -548,8 +548,8 @@ export function StockManagement() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="shrink-0 border-t bg-card">
-          <div className="flex items-center justify-between px-6 py-4">
-            <p className="text-sm text-muted-foreground">
+          <div className="flex items-center justify-between px-4 py-3">
+            <p className="text-xs text-muted-foreground">
               Mostrando{" "}
               {(currentPage - 1) * ITEMS_PER_PAGE + 1}-
               {Math.min(currentPage * ITEMS_PER_PAGE, filteredProducts.length)}{" "}

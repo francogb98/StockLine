@@ -100,8 +100,11 @@ export async function POST(req: NextRequest) {
         };
       }
     } else {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
       const openSession = await prisma.cashSession.findFirst({
-        where: { storeId: user.storeId, closedAt: null },
+        where: { storeId: user.storeId, closedAt: null, createdAt: { lt: todayStart } },
         include: {
           user: { select: { name: true } },
           _count: { select: { sales: true } },

@@ -83,6 +83,7 @@ interface AssistantContextType {
 const AssistantContext = createContext<AssistantContextType | null>(null)
 
 const VIEW_LABELS_MAP: Record<string, string> = {
+  'add-product': 'Agregar producto',
   'add-stock': 'Agregar stock',
   'change-price': 'Cambiar precio',
   'today-sales': 'Ventas de hoy',

@@ -8,6 +8,55 @@
   }
 }
 
+@layer components {
+  .brand-container {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    --brand-name-color: #111827;
+    --brand-slogan-color: #6b7280;
+    --brand-svg-color: #111827;
+  }
+
+  .dark .brand-container {
+    --brand-name-color: #ffffff;
+    --brand-slogan-color: #9ca3af;
+    --brand-svg-color: #ffffff;
+  }
+
+  .brand-svg {
+    width: 38px;
+    height: auto;
+    margin-right: 10px;
+  }
+
+  .brand-text {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .brand-name {
+    font-size: 22px;
+    line-height: 1;
+    margin: 0;
+    font-weight: 800;
+    color: var(--brand-name-color);
+  }
+
+  .brand-line {
+    font-weight: 400;
+    color: #0052ff;
+  }
+
+  .brand-slogan {
+    font-size: 9px;
+    font-weight: 500;
+    text-transform: uppercase;
+    color: var(--brand-slogan-color);
+    letter-spacing: 2px;
+  }
+}
+
 @layer base {
   :root {
     --background: 210 20% 98%;
@@ -155,4 +204,58 @@
 
 [data-keyboard-zone] {
   outline: none;
+}
+
+/* ─── Hero Image Showcase ─── */
+
+.hero-image-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 750px;
+  position: relative;
+  animation: fadeInUpHero 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+  padding-top: 2rem;
+}
+
+.hero-mockup-img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  animation: floatHeroMockup 6s ease-in-out infinite;
+}
+
+@keyframes fadeInUpHero {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes floatHeroMockup {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@media (max-width: 768px) {
+  .hero-image-container {
+    margin-top: 2rem;
+    max-width: 100%;
+  }
+  .hero-mockup-img {
+    animation: none;
+  }
 }

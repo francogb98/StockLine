@@ -24,12 +24,13 @@ export const metadata: Metadata = {
   robots: 'index,follow',
   icons: {
     icon: [
-      { url: '/icon.svg', type: 'image/svg+xml' },
-      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/fab-ico/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
+      { url: '/fab-ico/favicon-16x16.png', type: 'image/png', sizes: '16x16' },
+      { url: '/fab-ico/favicon.ico', sizes: 'any' },
     ],
-    apple: '/apple-touch-icon.svg',
+    apple: '/fab-ico/apple-touch-icon.png',
   },
-  manifest: '/manifest.webmanifest',
+  manifest: '/fab-ico/site.webmanifest',
   openGraph: {
     title: 'StockLine',
     description: 'Sistema inteligente para gestionar inventario, ventas y stock desde cualquier lugar.',

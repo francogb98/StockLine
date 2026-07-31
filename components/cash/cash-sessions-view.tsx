@@ -79,19 +79,19 @@ export function CashSessionsView() {
     <div className="flex h-full flex-col bg-background">
       {/* Header */}
       <div className="shrink-0 border-b bg-card">
-        <div className="flex items-center justify-between px-6 py-4">
+        <div className="flex items-center justify-between px-4 py-3">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="text-xl font-bold text-foreground">
               Sesiones de Caja
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Aperturas, cierres y diferencias
             </p>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-2 px-6 pb-4">
+        <div className="flex items-center gap-2 px-4 pb-3">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <div className="flex rounded-md border">
             {[
@@ -120,7 +120,7 @@ export function CashSessionsView() {
       {/* Content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sessions list */}
-        <div className="w-1/2 overflow-auto border-r p-6">
+        <div className="w-1/2 overflow-auto border-r p-4">
           {loading ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -186,7 +186,7 @@ export function CashSessionsView() {
         </div>
 
         {/* Detail panel */}
-        <div className="w-1/2 overflow-auto p-6">
+        <div className="w-1/2 overflow-auto p-4">
           {!selectedSession ? (
             <div className="flex h-full items-center justify-center text-muted-foreground">
               <p className="text-sm">Seleccioná una sesión para ver el detalle</p>

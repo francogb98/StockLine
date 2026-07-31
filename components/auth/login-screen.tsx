@@ -1,65 +1,75 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { motion } from "framer-motion"
-import { Loader2, Eye, EyeOff, LogIn, Check } from "lucide-react"
-import { useAuth } from "@/lib/store-context"
-import { cn } from "@/lib/utils"
-import { AuthLayout } from "./auth-layout"
-import { AuthBranding } from "./auth-branding"
-import { AuthCard } from "./auth-card"
-import { PendingCashSessionDialog } from "@/components/cash/pending-cash-session-dialog"
-import Link from "next/link"
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { Loader2, Eye, EyeOff, LogIn, Check } from "lucide-react";
+import { useAuth } from "@/lib/store-context";
+import { cn } from "@/lib/utils";
+import { AuthLayout } from "./auth-layout";
+import { AuthHeroShowcase } from "./auth-hero-showcase";
+import { AuthCard } from "./auth-card";
+import { GoogleSignInButton, GoogleDivider } from "./google-signin-button";
+import { PendingCashSessionDialog } from "@/components/cash/pending-cash-session-dialog";
+import { BrandLogo } from "@/components/brand-logo";
+import Link from "next/link";
 
 interface LoginScreenProps {
-  onLoginSuccess?: () => void
+  onLoginSuccess?: () => void;
 }
 
 function LoginForm({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
-  const { login, isLoading, pendingCashSession, clearPendingCashSession } = useAuth()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [showPendingSession, setShowPendingSession] = useState(false)
+  const { login, isLoading, pendingCashSession, clearPendingCashSession } =
+    useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showPendingSession, setShowPendingSession] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
+    e.preventDefault();
+    setError(null);
 
     if (!email || !password) {
-      setError("Por favor ingresa email y contraseña")
-      return
+      setError("Por favor ingresa email y contraseña");
+      return;
     }
 
-    const result = await login(email, password)
+    const result = await login(email, password);
     if (result.success) {
       if (result.pendingCashSession) {
-        setShowPendingSession(true)
+        setShowPendingSession(true);
       } else {
-        onLoginSuccess?.()
+        onLoginSuccess?.();
       }
     } else {
-      setError("Credenciales inválidas")
+      setError("Credenciales inválidas");
     }
-  }
+  };
 
   const handlePendingClosed = () => {
-    setShowPendingSession(false)
-    clearPendingCashSession()
-    onLoginSuccess?.()
-  }
+    setShowPendingSession(false);
+    clearPendingCashSession();
+    onLoginSuccess?.();
+  };
 
   const handlePendingDismiss = () => {
-    setShowPendingSession(false)
-    clearPendingCashSession()
-    onLoginSuccess?.()
-  }
+    setShowPendingSession(false);
+    clearPendingCashSession();
+    onLoginSuccess?.();
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      <GoogleSignInButton />
+
+      <GoogleDivider />
+
       <div className="space-y-1.5">
-        <label htmlFor="email" className="text-sm font-medium text-foreground/80">
+        <label
+          htmlFor="email"
+          className="text-sm font-medium text-foreground/80"
+        >
           Email
         </label>
         <input
@@ -81,7 +91,10 @@ function LoginForm({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
       </div>
 
       <div className="space-y-1.5">
-        <label htmlFor="password" className="text-sm font-medium text-foreground/80">
+        <label
+          htmlFor="password"
+          className="text-sm font-medium text-foreground/80"
+        >
           Contraseña
         </label>
         <div className="relative">
@@ -152,6 +165,25 @@ function LoginForm({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
         )}
       </button>
 
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{
+          duration: 0.5,
+          delay: 0.2,
+          ease: [0.25, 0.1, 0.25, 1],
+        }}
+        className="text-center text-sm text-muted-foreground"
+      >
+        ¿No tenés cuenta?{" "}
+        <Link
+          href="/register"
+          className="font-semibold text-primary hover:text-primary/80 transition-colors"
+        >
+          Crear cuenta
+        </Link>
+      </motion.p>
+
       <div className="rounded-xl bg-muted/20 p-3">
         <p className="mb-1.5 text-[11px] font-medium text-muted-foreground/50">
           Credenciales de prueba:
@@ -181,13 +213,13 @@ function LoginForm({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
         />
       )}
     </form>
-  )
+  );
 }
 
 export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   return (
     <AuthLayout
-      left={<AuthBranding />}
+      left={<AuthHeroShowcase />}
       right={
         <motion.div
           initial={{ opacity: 0 }}
@@ -198,7 +230,11 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.05, ease: [0.25, 0.1, 0.25, 1] }}
+            transition={{
+              duration: 0.5,
+              delay: 0.05,
+              ease: [0.25, 0.1, 0.25, 1],
+            }}
             className="text-center md:text-left space-y-1"
           >
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
@@ -212,32 +248,25 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.12, ease: [0.25, 0.1, 0.25, 1] }}
+            transition={{
+              duration: 0.5,
+              delay: 0.12,
+              ease: [0.25, 0.1, 0.25, 1],
+            }}
           >
             <AuthCard>
               <LoginForm onLoginSuccess={onLoginSuccess} />
             </AuthCard>
           </motion.div>
 
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-            className="text-center text-sm text-muted-foreground"
-          >
-            ¿No tenés cuenta?{" "}
-            <Link
-              href="/register"
-              className="font-semibold text-primary hover:text-primary/80 transition-colors"
-            >
-              Crear cuenta
-            </Link>
-          </motion.p>
-
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+            transition={{
+              duration: 0.5,
+              delay: 0.3,
+              ease: [0.25, 0.1, 0.25, 1],
+            }}
             className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[11px] text-muted-foreground/40"
           >
             <span className="flex items-center gap-1">
@@ -257,7 +286,11 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+            transition={{
+              duration: 0.5,
+              delay: 0.35,
+              ease: [0.25, 0.1, 0.25, 1],
+            }}
             className="text-center text-xs text-muted-foreground/50"
           >
             &copy; 2026 StockLine. Todos los derechos reservados.
@@ -265,5 +298,5 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         </motion.div>
       }
     />
-  )
+  );
 }

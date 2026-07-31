@@ -51,7 +51,7 @@ export function AppHeader() {
 
   return (
     <>
-      <header className="flex h-12 shrink-0 items-center border-b bg-card px-4">
+      <header className="flex h-14 shrink-0 items-center border-b bg-card px-4">
         <button
           onClick={() => setMobileMenuOpen((v) => !v)}
           className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"

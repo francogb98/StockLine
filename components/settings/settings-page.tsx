@@ -63,18 +63,18 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-foreground">Configuración</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+    <div className="mx-auto max-w-3xl px-4 py-4 sm:px-4 lg:px-8">
+      <div className="mb-4">
+        <h1 className="text-xl font-bold text-foreground">Configuración</h1>
+        <p className="mt-0.5 text-xs text-muted-foreground">
           Administra la configuración general de tu negocio.
         </p>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Appearance Section */}
         <div>
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h2 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Apariencia
           </h2>
           <Card>
@@ -141,7 +141,7 @@ export function SettingsPage() {
 
         {/* Cash Register Section */}
         <div>
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h2 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Caja
           </h2>
           <Card>
@@ -197,7 +197,7 @@ export function SettingsPage() {
 
         {/* Payment Methods Section */}
         <div>
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h2 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Métodos de pago
           </h2>
           <Card>
@@ -248,7 +248,7 @@ export function SettingsPage() {
         {/* Users Section */}
         {user?.role === "admin" && (
           <div>
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <h2 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Administración
             </h2>
             <Card>
@@ -284,7 +284,7 @@ export function SettingsPage() {
         {/* Subscription Section — hidden in demo mode */}
         {process.env.NEXT_PUBLIC_USE_MOCK_DATA !== "1" && (
           <div>
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <h2 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Cuenta
             </h2>
             <Card>

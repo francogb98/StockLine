@@ -114,12 +114,12 @@ export function SkeletonDashboard() {
 
 export function ProductCardSkeleton() {
   return (
-    <div className="flex flex-col rounded-lg border p-2">
+    <div className="flex flex-col rounded-xl border p-3.5">
       <Skeleton className="h-4 w-full" />
-      <Skeleton className="mt-1.5 h-3 w-3/4" />
+      <div className="flex-1" />
       <div className="mt-2 flex items-center justify-between gap-2">
-        <Skeleton className="h-4 w-16" />
-        <Skeleton className="h-3 w-14" />
+        <Skeleton className="h-3.5 w-16" />
+        <Skeleton className="h-3 w-12" />
       </div>
     </div>
   );
@@ -127,7 +127,7 @@ export function ProductCardSkeleton() {
 
 export function SkeletonProductGrid({ count = 6 }: { count?: number }) {
   return (
-    <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
+    <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))' }}>
       {Array.from({ length: count }).map((_, i) => (
         <ProductCardSkeleton key={i} />
       ))}

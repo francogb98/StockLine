@@ -247,18 +247,18 @@ export function SalesDashboard() {
   return (
     <PageContainer>
         {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-4 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="text-xl font-bold text-foreground">
               Dashboard de Ventas
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Análisis y reportes de ventas
             </p>
           </div>
 
           {/* Date range selector */}
-          <div className="flex items-center gap-2 rounded-lg border bg-card p-1">
+          <div className="flex items-center rounded-lg border bg-card p-0.5">
             {[
               { value: "today", label: "Hoy" },
               { value: "week", label: "Semana" },
@@ -268,7 +268,7 @@ export function SalesDashboard() {
                 key={option.value}
                 onClick={() => setDateRange(option.value as DateRange)}
                 className={cn(
-                  "rounded-md px-4 py-2 text-sm font-medium transition-colors",
+                  "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
                   dateRange === option.value
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -282,7 +282,7 @@ export function SalesDashboard() {
         </div>
 
         {/* Stats cards */}
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="Ingresos Totales"
             value={formatCurrency(stats.totalRevenue)}
@@ -316,10 +316,10 @@ export function SalesDashboard() {
         </div>
 
         {/* Charts row 1 */}
-        <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
           {/* Sales by day */}
           <div className="lg:col-span-2 rounded-lg border bg-card p-4">
-            <h3 className="mb-4 font-semibold text-foreground">
+            <h3 className="mb-3 font-semibold text-foreground">
               Ventas por Día
             </h3>
             <ResponsiveContainer width="100%" height={300}>
@@ -394,10 +394,10 @@ export function SalesDashboard() {
         </div>
 
         {/* Charts row 2 */}
-        <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
           {/* Sales by hour */}
           <div className="lg:col-span-2 rounded-lg border bg-card p-4">
-            <h3 className="mb-4 font-semibold text-foreground">
+            <h3 className="mb-3 font-semibold text-foreground">
               <Clock className="mr-2 inline h-4 w-4" />
               Ventas por Horario
             </h3>
@@ -574,17 +574,17 @@ function StatCard({
   };
 
   return (
-    <div className="rounded-lg border bg-card p-4" data-testid={testId}>
+    <div className="rounded-lg border bg-card p-3.5" data-testid={testId}>
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-muted-foreground">
+        <span className="text-xs font-medium text-muted-foreground">
           {title}
         </span>
-        <span className={cn("rounded-full p-2", colorClasses[color])}>
-          <Icon className="h-4 w-4" />
+        <span className={cn("rounded-full p-1.5", colorClasses[color])}>
+          <Icon className="h-3.5 w-3.5" />
         </span>
       </div>
-      <p className="mt-2 text-2xl font-bold text-foreground">{value}</p>
-      <div className="mt-1 flex items-center gap-1 text-sm">
+      <p className="mt-1 text-xl font-bold text-foreground">{value}</p>
+      <div className="mt-0.5 flex items-center gap-1 text-xs">
         {isPositive ? (
           <TrendingUp className="h-4 w-4 text-[hsl(var(--success))]" />
         ) : (

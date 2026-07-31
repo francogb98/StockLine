@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
-import { BrandLogo } from "@/components/brand-logo";
+import { AnimatedLogo } from "@/components/ui/loading/animated-logo";
 
 const STARTUP_MESSAGES = [
   "Cargando tu espacio de trabajo...",
@@ -55,12 +54,8 @@ export function LoadingScreen({ messages }: LoadingScreenProps) {
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-background">
       <div className="animate-fade-in flex flex-col items-center gap-4">
-        <div className="animate-[spin_4s_ease-in-out_infinite] opacity-80">
-          <BrandLogo showText={false} className="h-14 w-14" />
-        </div>
+        <AnimatedLogo className="h-16 w-16" />
       </div>
-
-      <Loader2 className="h-10 w-10 animate-spin text-primary" />
 
       <p className="h-5 text-sm text-muted-foreground transition-opacity duration-300">
         {msgs[messageIndex]}

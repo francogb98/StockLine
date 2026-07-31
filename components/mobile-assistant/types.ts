@@ -1,5 +1,6 @@
 export type AssistantView =
   | 'home'
+  | 'add-product'
   | 'add-stock'
   | 'change-price'
   | 'today-sales'

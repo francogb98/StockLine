@@ -1,8 +1,4 @@
-"use client";
-
 import { cn } from "@/lib/utils";
-import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
 
 interface BrandLogoProps {
   showText?: boolean;
@@ -10,17 +6,10 @@ interface BrandLogoProps {
 }
 
 export function BrandLogo({ showText = true, className }: BrandLogoProps) {
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
-
-  const isDark = mounted && resolvedTheme === "dark";
-
-  if (showText) {
+  if (!showText) {
     return (
       <img
-        src={isDark ? "/logo-horizontal-dark(1).svg" : "/logo-horizontal.svg"}
+        src="/IsoTipo.svg"
         alt="StockLine"
         className={cn("object-contain", className)}
       />
@@ -28,10 +17,14 @@ export function BrandLogo({ showText = true, className }: BrandLogoProps) {
   }
 
   return (
-    <img
-      src={isDark ? "/icon-dark.svg" : "/icon.svg"}
-      alt="StockLine"
-      className={cn("object-contain", className)}
-    />
+    <div className={cn("brand-container", className)}>
+      <img src="/IsoTipo.svg" alt="StockLine" className="brand-svg" />
+      <div className="brand-text">
+        <h1 className="brand-name">
+          Stock<span className="brand-line">Line</span>
+        </h1>
+        <span className="brand-slogan">GESTIÓN & VENTAS</span>
+      </div>
+    </div>
   );
 }

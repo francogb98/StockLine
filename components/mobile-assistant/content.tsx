@@ -6,6 +6,7 @@ import { useAssistant } from './context'
 import { AssistantHome } from './home'
 import { CashStatusView } from './views/cash-status-view'
 import { TodaySalesView } from './views/today-sales-view'
+import { AddProductView } from './views/add-product-view'
 import { AddStockView } from './views/add-stock-view'
 import { ChangePriceView } from './views/change-price-view'
 import { LowStockProductsView } from './views/low-stock-products-view'
@@ -14,6 +15,7 @@ import type { AssistantView } from './types'
 
 export const VIEW_LABELS: Record<AssistantView, string> = {
   home: 'Inicio',
+  'add-product': 'Agregar producto',
   'add-stock': 'Agregar stock',
   'change-price': 'Cambiar precio',
   'today-sales': 'Ventas de hoy',
@@ -27,6 +29,7 @@ const VIEW_COMPONENTS: Record<string, React.ComponentType> = {
   home: AssistantHome,
   'cash-status': CashStatusView,
   'today-sales': TodaySalesView,
+  'add-product': AddProductView,
   'add-stock': AddStockView,
   'change-price': ChangePriceView,
   'low-stock-products': LowStockProductsView,

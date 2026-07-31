@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import { useRef, useEffect, useCallback } from "react"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRef, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   User,
@@ -14,106 +14,108 @@ import {
   Check,
   Sparkles,
   Loader2,
-} from "lucide-react"
-import Link from "next/link"
-import { useAuth } from "@/lib/store-context"
-import { cn } from "@/lib/utils"
-import { AuthLayout } from "./auth-layout"
-import { AuthBranding } from "./auth-branding"
-import { AuthCard } from "./auth-card"
-import { motion } from "framer-motion"
+} from "lucide-react";
+import Link from "next/link";
+import { useAuth } from "@/lib/store-context";
+import { cn } from "@/lib/utils";
+import { AuthLayout } from "./auth-layout";
+import { AuthHeroShowcase } from "./auth-hero-showcase";
+import { AuthCard } from "./auth-card";
+import { GoogleSignInButton, GoogleDivider } from "./google-signin-button";
+import { BrandLogo } from "@/components/brand-logo";
+import { motion } from "framer-motion";
 
 interface RegisterScreenProps {
-  onBack?: () => void
+  onBack?: () => void;
 }
 
 export function RegisterScreen({ onBack }: RegisterScreenProps) {
-  const { login } = useAuth()
-  const router = useRouter()
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [storeName, setStoreName] = useState("")
-  const [storeAddress, setStoreAddress] = useState("")
-  const [storePhone, setStorePhone] = useState("")
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
+  const { login } = useAuth();
+  const router = useRouter();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [storeName, setStoreName] = useState("");
+  const [storeAddress, setStoreAddress] = useState("");
+  const [storePhone, setStorePhone] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  const [progress, setProgress] = useState(0)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [progress, setProgress] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const progressRef = useRef<{ timer: ReturnType<typeof setTimeout> | null }>({
     timer: null,
-  })
+  });
 
   const clearProgressTimer = useCallback(() => {
     if (progressRef.current.timer) {
-      clearTimeout(progressRef.current.timer)
-      progressRef.current.timer = null
+      clearTimeout(progressRef.current.timer);
+      progressRef.current.timer = null;
     }
-  }, [])
+  }, []);
 
   const simulateProgress = useCallback(
     (onComplete: () => void) => {
-      clearProgressTimer()
-      setProgress(0)
+      clearProgressTimer();
+      setProgress(0);
 
       const step = (current: number) => {
-        let next: number
-        let delay: number
+        let next: number;
+        let delay: number;
 
         if (current < 70) {
-          next = current + 2
-          delay = 20
+          next = current + 2;
+          delay = 20;
         } else if (current < 90) {
-          next = current + 1
-          delay = 200
+          next = current + 1;
+          delay = 200;
         } else {
-          onComplete()
-          return
+          onComplete();
+          return;
         }
 
-        setProgress(next)
-        progressRef.current.timer = setTimeout(() => step(next), delay)
-      }
+        setProgress(next);
+        progressRef.current.timer = setTimeout(() => step(next), delay);
+      };
 
-      progressRef.current.timer = setTimeout(() => step(0), 20)
+      progressRef.current.timer = setTimeout(() => step(0), 20);
     },
     [clearProgressTimer],
-  )
+  );
 
   useEffect(() => {
-    return () => clearProgressTimer()
-  }, [clearProgressTimer])
+    return () => clearProgressTimer();
+  }, [clearProgressTimer]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
+    e.preventDefault();
+    setError(null);
 
     if (!name || !email || !password || !confirmPassword || !storeName) {
-      setError("Por favor completa todos los campos requeridos")
-      return
+      setError("Por favor completa todos los campos requeridos");
+      return;
     }
 
     if (password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres")
-      return
+      setError("La contraseña debe tener al menos 6 caracteres");
+      return;
     }
 
     if (password !== confirmPassword) {
-      setError("Las contraseñas no coinciden")
-      return
+      setError("Las contraseñas no coinciden");
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
 
-    let requestCompleted = false
+    let requestCompleted = false;
 
     simulateProgress(() => {
       if (!requestCompleted) {
-        setProgress(90)
+        setProgress(90);
       }
-    })
+    });
 
     try {
       const response = await fetch("/api/auth/register", {
@@ -127,42 +129,42 @@ export function RegisterScreen({ onBack }: RegisterScreenProps) {
           storeAddress,
           storePhone,
         }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        requestCompleted = true
-        clearProgressTimer()
-        setProgress(0)
-        setIsSubmitting(false)
-        setError(data.error || "Error al registrar el usuario")
-        return
+        requestCompleted = true;
+        clearProgressTimer();
+        setProgress(0);
+        setIsSubmitting(false);
+        setError(data.error || "Error al registrar el usuario");
+        return;
       }
 
-      requestCompleted = true
-      clearProgressTimer()
-      setProgress(100)
+      requestCompleted = true;
+      clearProgressTimer();
+      setProgress(100);
 
       setTimeout(() => {
-        setSuccess(true)
+        setSuccess(true);
 
         login(email, password).then((result) => {
           if (result.success) {
             setTimeout(() => {
-              router.push("/app")
-            }, 800)
+              router.push("/app");
+            }, 800);
           }
-        })
-      }, 600)
+        });
+      }, 600);
     } catch (err) {
-      requestCompleted = true
-      clearProgressTimer()
-      setProgress(0)
-      setIsSubmitting(false)
-      setError("Error de conexión. Por favor intenta nuevamente.")
+      requestCompleted = true;
+      clearProgressTimer();
+      setProgress(0);
+      setIsSubmitting(false);
+      setError("Error de conexión. Por favor intenta nuevamente.");
     }
-  }
+  };
 
   if (success) {
     return (
@@ -193,7 +195,7 @@ export function RegisterScreen({ onBack }: RegisterScreenProps) {
           </AuthCard>
         </div>
       </div>
-    )
+    );
   }
 
   const fields = [
@@ -265,11 +267,11 @@ export function RegisterScreen({ onBack }: RegisterScreenProps) {
       autoComplete: "tel",
       type: "tel",
     },
-  ]
+  ];
 
   return (
     <AuthLayout
-      left={<AuthBranding />}
+      left={<AuthHeroShowcase />}
       right={
         <div className="space-y-6">
           <div className="text-center md:text-left space-y-1">
@@ -292,6 +294,10 @@ export function RegisterScreen({ onBack }: RegisterScreenProps) {
                   Volver
                 </button>
               )}
+
+              <GoogleSignInButton />
+
+              <GoogleDivider />
 
               {fields.map((f) => (
                 <div key={f.id} className="space-y-1.5">
@@ -328,12 +334,14 @@ export function RegisterScreen({ onBack }: RegisterScreenProps) {
                 <p className="text-sm font-medium text-destructive">{error}</p>
               )}
 
-              <div className="rounded-xl border border-emerald-200/50 bg-emerald-50/50 dark:border-emerald-900/30 dark:bg-emerald-950/30 px-4 py-3">
+              <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/60 px-4 py-3 mb-4">
                 <div className="flex items-start gap-3">
-                  <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
-                  <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                    Tu cuenta incluye una prueba gratuita de{" "}
-                    <strong>15 días</strong>. No se requiere tarjeta.
+                  <Sparkles className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+                  <p className="text-xs text-emerald-800 leading-relaxed">
+                    <strong>🎁 Oferta especial:</strong> Tu cuenta incluye{" "}
+                    <strong>15 días de prueba gratis</strong> +{" "}
+                    <strong>50% OFF</strong> en tus primeros 3 meses. No se
+                    requiere tarjeta de crédito.
                   </p>
                 </div>
               </div>
@@ -374,18 +382,17 @@ export function RegisterScreen({ onBack }: RegisterScreenProps) {
                   )}
                 </span>
               </button>
+              <p className="text-center text-sm text-muted-foreground">
+                ¿Ya tenés cuenta?{" "}
+                <Link
+                  href="/login"
+                  className="font-semibold text-primary hover:text-primary/80 transition-colors"
+                >
+                  Iniciar sesión
+                </Link>
+              </p>
             </form>
           </AuthCard>
-
-          <p className="text-center text-sm text-muted-foreground">
-            ¿Ya tenés cuenta?{" "}
-            <Link
-              href="/login"
-              className="font-semibold text-primary hover:text-primary/80 transition-colors"
-            >
-              Iniciar sesión
-            </Link>
-          </p>
 
           <p className="text-center text-xs text-muted-foreground/50">
             &copy; 2026 StockLine. Todos los derechos reservados.
@@ -393,5 +400,5 @@ export function RegisterScreen({ onBack }: RegisterScreenProps) {
         </div>
       }
     />
-  )
+  );
 }

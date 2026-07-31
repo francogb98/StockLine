@@ -10,7 +10,7 @@ const PageContainer = React.forwardRef<HTMLDivElement, PageContainerProps>(
   ({ className, maxWidth = 'max-w-7xl', children, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn('h-full overflow-auto bg-background p-6', className)}
+      className={cn('h-full overflow-auto bg-background p-4', className)}
       {...props}
     >
       <div className={cn('mx-auto', maxWidth)}>{children}</div>

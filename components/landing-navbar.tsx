@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 
-export function LandingNavbar() {
+export function LandingNavbar({ promoVisible }: { promoVisible?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -26,15 +26,15 @@ export function LandingNavbar() {
         scrolled
           ? "border-b border-border/40 bg-background/80 backdrop-blur-xl"
           : "border-transparent bg-transparent"
-      }`}
+      } ${promoVisible ? "top-11" : "top-0"}`}
     >
-      <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-        <BrandLogo className="h-8" />
+      <nav className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
+        <BrandLogo className="h-7" />
 
         <div className="hidden items-center gap-8 md:flex">
           <NavLink href="#como-funciona">Cómo funciona</NavLink>
           <NavLink href="#funcionalidades">Funcionalidades</NavLink>
-          <NavLink href="#precios">Planes</NavLink>
+          <NavLink href="#planes">Planes</NavLink>
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
@@ -46,7 +46,7 @@ export function LandingNavbar() {
           </Link>
           <Link
             href="/register"
-            className="inline-flex h-9 items-center rounded-lg border bg-foreground px-4 text-sm font-medium text-background transition-all duration-200 hover:scale-[1.02] hover:shadow-md active:scale-[0.98]"
+            className="inline-flex h-9 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-all duration-200 hover:brightness-90 hover:shadow-md active:scale-[0.98]"
           >
             Crear cuenta
           </Link>
@@ -82,15 +82,15 @@ export function LandingNavbar() {
               <MobileNavLink href="#funcionalidades" onClick={() => setMobileMenuOpen(false)}>
                 Funcionalidades
               </MobileNavLink>
-              <MobileNavLink href="#precios" onClick={() => setMobileMenuOpen(false)}>
+              <MobileNavLink href="#planes" onClick={() => setMobileMenuOpen(false)}>
                 Planes
               </MobileNavLink>
               <Link
                 href="/register"
                 onClick={() => setMobileMenuOpen(false)}
-                className="mt-4 block rounded-lg bg-foreground px-3 py-2.5 text-center text-sm font-medium text-background transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                className="mt-4 block rounded-lg bg-primary px-3 py-2.5 text-center text-sm font-medium text-primary-foreground shadow-sm transition-all duration-200 hover:brightness-90 active:scale-[0.98]"
               >
-                Empezar prueba gratis
+                Comenzar gratis
               </Link>
             </div>
           </motion.div>

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from "react";
 import Link from "next/link";
-import { Search, Package, AlertTriangle, Loader2, MoreVertical, Pencil } from "lucide-react";
+import { Search, Package, Loader2, MoreVertical, Pencil } from "lucide-react";
 import { useAuth, useData, usePOS } from "@/lib/store-context";
 import { formatCurrency } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
@@ -110,7 +110,7 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="border-b bg-muted/30 px-4 py-3">
+      <div className="border-b bg-muted/30 px-3 py-2">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -123,7 +123,7 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
             }}
             placeholder="Buscar productos..."
             className={cn(
-              "h-10 w-full rounded-md border bg-background pl-9 pr-4 text-sm",
+              "h-9 w-full rounded-md border bg-background pl-9 pr-4 text-sm",
               "placeholder:text-muted-foreground",
               "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
             )}
@@ -131,14 +131,14 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
         </div>
 
         {/* Category filter */}
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-2 flex flex-wrap gap-1.5">
           <button
             onClick={() => {
               setSelectedCategory(null);
               setCurrentPage(1);
             }}
             className={cn(
-              "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+              "rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
               selectedCategory === null
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:bg-muted/80",
@@ -155,7 +155,7 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
                 setCurrentPage(1);
               }}
               className={cn(
-                "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                "rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
                 selectedCategory === category.id
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:bg-muted/80",
@@ -196,8 +196,8 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
           </div>
         ) : (
           <>
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
               Mostrando{" "}
               {(currentPage - 1) * ITEMS_PER_PAGE + 1}-
               {Math.min(currentPage * ITEMS_PER_PAGE, filteredProducts.length)}{" "}
@@ -207,7 +207,8 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
           <div
             ref={gridContainerRef}
             data-keyboard-zone="products"
-            className="grid grid-cols-3 gap-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
+            className="grid gap-3"
+            style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))' }}
             onKeyDown={handleGridKeyDown}
             role="grid"
             aria-label="Productos"
@@ -229,7 +230,7 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
                   data-product-name={product.name}
                   data-product-index={index}
                   className={cn(
-                    "group relative flex cursor-pointer flex-col rounded-xl border p-3 text-left transition-all duration-150",
+                    "group relative flex h-full cursor-pointer flex-col rounded-xl border p-3.5 text-left transition-all duration-200",
                     "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                     isOutOfStock
                       ? "cursor-not-allowed bg-muted/50 opacity-60"
@@ -245,41 +246,6 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
                     }
                   }}
                 >
-                  {/* Low stock indicator */}
-                  {isLowStock && !isOutOfStock && (
-                    <div className="absolute -right-1 -top-1 z-10">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[hsl(var(--warning))] text-[hsl(var(--warning-foreground))]">
-                        <AlertTriangle className="h-3 w-3" />
-                      </span>
-                    </div>
-                  )}
-
-                  <p className="line-clamp-1 text-xs font-medium leading-tight text-foreground">
-                    {product.name}
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">
-                    {product.barcode}
-                  </p>
-                  <div className="mt-1 flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-primary">
-                      {formatCurrency(product.price)}
-                    </span>
-                    <span
-                      className={cn(
-                        "truncate text-[11px]",
-                        isOutOfStock
-                          ? "font-medium text-destructive"
-                          : isLowStock
-                            ? "text-[hsl(var(--warning))]"
-                            : "text-muted-foreground",
-                      )}
-                    >
-                      {isOutOfStock
-                        ? "Sin stock"
-                        : `Stock: ${getAvailableStock(product.id)}`}
-                    </span>
-                  </div>
-
                   {/* 3-dot menu */}
                   {user?.role === "admin" && (
                     <div className="absolute right-1 top-1 z-20">
@@ -313,6 +279,35 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
                       </DropdownMenu>
                     </div>
                   )}
+
+                  {/* Name — primary element */}
+                  <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">
+                    {product.name}
+                  </p>
+
+                  {/* Spacer to keep price+stock at bottom */}
+                  <div className="flex-1" />
+
+                  {/* Price + Stock on same line */}
+                  <div className="mt-2 flex items-center justify-between gap-1.5">
+                    <span className="text-sm font-semibold text-primary">
+                      {formatCurrency(product.price)}
+                    </span>
+                    <span
+                      className={cn(
+                        "truncate text-xs",
+                        isOutOfStock
+                          ? "font-medium text-destructive"
+                          : isLowStock
+                            ? "font-medium text-[hsl(var(--warning))]"
+                            : "text-muted-foreground",
+                      )}
+                    >
+                      {isOutOfStock
+                        ? "Sin stock"
+                        : `Stock: ${getAvailableStock(product.id)}`}
+                    </span>
+                  </div>
                 </div>
               );
             })}
