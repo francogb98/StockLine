@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Package,
@@ -9,6 +10,10 @@ import {
   Settings,
 } from "lucide-react";
 import { useAssistant } from "@/components/mobile-assistant/context";
+
+interface MobileBottomNavigationProps {
+  onHeightChange?: (height: number) => void;
+}
 
 const navItems = [
   { icon: Package, label: "Productos", href: "/app/stock" },
@@ -23,14 +28,32 @@ const navItems = [
   { icon: Settings, label: "Ajustes", href: "/app/settings" },
 ] as const;
 
-export function MobileBottomNavigation() {
+export function MobileBottomNavigation({
+  onHeightChange,
+}: MobileBottomNavigationProps) {
   const pathname = usePathname();
   const router = useRouter();
   const assistant = useAssistant();
+  const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el || !onHeightChange) return;
+    const report = () =>
+      onHeightChange(Math.ceil(el.getBoundingClientRect().height));
+    report();
+    const observer = new ResizeObserver(report);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [onHeightChange]);
 
   return (
-    <nav className="fixed bottom-0 z-40 w-full">
-      <div className="rounded-t-2xl border-t bg-white px-4 pb-1 pt-2 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] dark:bg-card">
+    <nav
+      ref={navRef}
+      className="fixed bottom-0 z-40 w-full"
+      aria-label="Navegación principal"
+    >
+      <div className="rounded-t-2xl border-t bg-white px-4 pt-2 pb-[max(env(safe-area-inset-bottom),0.25rem)] shadow-[0_-2px_10px_rgba(0,0,0,0.05)] dark:bg-card">
         <div className="flex items-start justify-around">
           {navItems.map((item) => {
             if ("isPrimary" in item) {

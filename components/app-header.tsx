@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/store-context";
 import { useCashControl } from "@/lib/cash-control-context";
 import { getNavigationForRole } from "@/lib/module-registry";
@@ -171,9 +172,10 @@ export function AppHeader() {
               const Icon = item.icon;
               const isActive = currentPath === `/${item.viewId}`;
               return (
-                <button
+                <Link
                   key={`mobile-${item.viewId}`}
-                  onClick={() => navigate(item.viewId)}
+                  href={`/app/${item.viewId}`}
+                  onClick={() => setMobileMenuOpen(false)}
                   data-testid={`nav-mobile-${item.viewId}`}
                   className={cn(
                     "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
@@ -181,14 +183,12 @@ export function AppHeader() {
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
-                  type="button"
                 >
                   <Icon className="h-5 w-5" />
                   <span>{item.label}</span>
-                </button>
+                </Link>
               );
             })}
-
           </nav>
         </div>
       </div>

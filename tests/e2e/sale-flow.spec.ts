@@ -31,8 +31,8 @@ test.describe("Sale flow E2E", () => {
     await page.getByLabel("Código de Barras *").fill(barcode);
     await page.getByLabel("Nombre del Producto *").fill(productName);
     await page.getByLabel("Categoría *").selectOption({ label: categoryName });
-    await page.getByLabel("Precio de Venta *").fill("1000");
-    await page.getByLabel("Costo *").fill("700");
+    await page.getByLabel("Precio de Venta ($) *").fill("1000");
+    await page.getByLabel("Costo ($) *").fill("700");
     await page.getByLabel("Stock Actual *").fill("10");
     await page.getByLabel("Stock Mínimo *").fill("2");
     await page.getByTestId("submit-product-btn").click();

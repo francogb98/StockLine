@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/store-context";
 import { useCashControl } from "@/lib/cash-control-context";
 import { getNavigationForRole } from "@/lib/module-registry";
@@ -20,7 +20,6 @@ export default function FullLayout({
   const { user } = useAuth();
   const { cashControlEnabled } = useCashControl();
   const pathname = usePathname();
-  const router = useRouter();
   const isMobile = useIsMobile();
 
   const navItems = useMemo(
@@ -30,19 +29,11 @@ export default function FullLayout({
 
   const currentPath = pathname.replace("/app", "") || "/pos";
 
-  const navigate = (view: string) => {
-    router.push(`/app/${view}`);
-  };
-
   const desktop = (
     <>
       <div className="relative flex h-screen flex-col overflow-hidden bg-background">
         <div className="flex flex-1 overflow-hidden">
-          <SidebarNav
-            items={navItems}
-            currentPath={currentPath}
-            onNavigate={navigate}
-          />
+          <SidebarNav items={navItems} currentPath={currentPath} />
 
           <main className="flex flex-1 flex-col overflow-hidden">
             <AppHeader />

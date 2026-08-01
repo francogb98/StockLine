@@ -48,19 +48,11 @@ export default function PanelLayout({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isMobile]);
 
-  const navigate = (view: string) => {
-    router.push(`/app/${view}`);
-  };
-
   const desktop = (
     <>
       <div className="relative flex h-screen flex-col overflow-hidden bg-background">
         <div className="flex flex-1 overflow-hidden">
-          <SidebarNav
-            items={navItems}
-            currentPath={currentPath}
-            onNavigate={navigate}
-          />
+          <SidebarNav items={navItems} currentPath={currentPath} />
 
           <main className="flex flex-1 flex-col overflow-hidden">
             <AppHeader />

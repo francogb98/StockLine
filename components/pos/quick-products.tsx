@@ -31,6 +31,7 @@ const ITEMS_PER_PAGE = 20;
 export interface QuickProductsHandle {
   focusSearch: () => void;
   focusFirstProduct: () => void;
+  scrollToTop: () => void;
 }
 
 export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProducts(
@@ -46,6 +47,7 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
@@ -104,6 +106,9 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
     },
     focusFirstProduct: () => {
       if (filteredProducts.length > 0) focusFirst();
+    },
+    scrollToTop: () => {
+      scrollContainerRef.current?.scrollTo({ top: 0 });
     },
   }));
 
@@ -169,7 +174,7 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
       </div>
 
       {/* Products grid */}
-      <div className="flex-1 overflow-auto p-3">
+      <div ref={scrollContainerRef} className="flex-1 overflow-auto p-3">
         {isSessionLoading ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 py-12 text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin" />

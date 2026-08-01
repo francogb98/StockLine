@@ -274,6 +274,12 @@ export function RegisterScreen({ onBack }: RegisterScreenProps) {
       left={<AuthHeroShowcase />}
       right={
         <div className="space-y-6">
+          <div className="flex justify-center md:hidden">
+            <Link href="/">
+              <BrandLogo className="h-16" />
+            </Link>
+          </div>
+
           <div className="text-center md:text-left space-y-1">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
               Crear cuenta

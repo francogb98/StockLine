@@ -26,8 +26,8 @@ test.describe("Product E2E", () => {
     await page.getByLabel("Código de Barras *").fill(product.barcode);
     await page.getByLabel("Nombre del Producto *").fill(product.name);
     await page.getByLabel("Categoría *").selectOption({ label: category.name });
-    await page.getByLabel("Precio de Venta *").fill(String(product.price));
-    await page.getByLabel("Costo *").fill(String(product.cost));
+    await page.getByLabel("Precio de Venta ($) *").fill(String(product.price));
+    await page.getByLabel("Costo ($) *").fill(String(product.cost));
     await page.getByLabel("Stock Actual *").fill(String(product.stock));
     await page.getByLabel("Stock Mínimo *").fill(String(product.minStock));
 

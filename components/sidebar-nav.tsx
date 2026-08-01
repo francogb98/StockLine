@@ -1,28 +1,17 @@
 "use client";
 
-import { ChevronDown, LogOut } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/lib/store-context";
-import { BrandLogo } from "@/components/brand-logo";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { BrandLogo } from "@/components/brand-logo";
 import type { NavigationItem } from "@/lib/module-registry";
 
 export function SidebarNav({
   items,
   currentPath,
-  onNavigate,
 }: {
   items: NavigationItem[];
   currentPath: string;
-  onNavigate: (view: string) => void;
 }) {
-  const { user, logout } = useAuth();
-
   const isActive = (viewId: string) => currentPath === `/${viewId}`;
 
   return (
@@ -40,11 +29,11 @@ export function SidebarNav({
             const active = isActive(item.viewId);
 
             return (
-              <button
+              <Link
                 key={item.viewId}
-                onClick={() => onNavigate(item.viewId)}
+                href={`/app/${item.viewId}`}
                 data-testid={`nav-${item.viewId}`}
-                type="button"
+                aria-current={active ? "page" : undefined}
                 className={cn(
                   "flex h-[44px] items-center gap-3 rounded-lg px-3 text-sm font-medium transition-all duration-200",
                   active
@@ -54,7 +43,7 @@ export function SidebarNav({
               >
                 <Icon className="h-5 w-5 shrink-0" />
                 <span>{item.label}</span>
-              </button>
+              </Link>
             );
           })}
         </div>

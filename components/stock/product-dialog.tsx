@@ -16,10 +16,21 @@ import {
   CommandEmpty,
   CommandItem,
 } from "@/components/ui/command";
+import { formatCurrency } from "@/lib/mock-data";
 import type { Product, Category } from "@/lib/types";
 
 const HELP_USES_KEY = "product-dialog-help-uses";
 const HELP_COLLAPSE_THRESHOLD = 3;
+const QUICK_MARGINS = [20, 30, 40, 50];
+
+function roundTo2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+function deriveMargin(price: number, cost: number): string {
+  if (cost <= 0 || price <= 0) return "";
+  return String(roundTo2(((price - cost) / cost) * 100));
+}
 
 interface ProductDialogProps {
   open: boolean;
@@ -61,6 +72,7 @@ export function ProductDialog({
     categoryId: "",
     price: "",
     cost: "",
+    margin: "",
     stock: "",
     minStock: "",
   });
@@ -74,6 +86,7 @@ export function ProductDialog({
       categoryId: categories[0]?.id || "",
       price: "",
       cost: "",
+      margin: "",
       stock: "",
       minStock: "5",
     });
@@ -100,6 +113,7 @@ export function ProductDialog({
         categoryId: product.categoryId,
         price: product.price.toString(),
         cost: product.cost.toString(),
+        margin: deriveMargin(product.price, product.cost),
         stock: product.stock.toString(),
         minStock: product.minStock.toString(),
       });
@@ -132,6 +146,60 @@ export function ProductDialog({
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const handlePricingChange = (
+    field: "price" | "cost" | "margin",
+    value: string,
+  ) => {
+    setFormData((prev) => {
+      const next = { ...prev, [field]: value };
+
+      const costNum = parseFloat(next.cost);
+      const priceNum = parseFloat(next.price);
+      const marginNum = parseFloat(next.margin);
+
+      const costValid = !isNaN(costNum) && costNum > 0;
+      const priceValid = !isNaN(priceNum) && priceNum > 0;
+      const marginValid = !isNaN(marginNum) && marginNum >= 0;
+
+      if (field === "cost") {
+        if (costValid) {
+          if (marginValid) {
+            next.price = String(roundTo2(costNum * (1 + marginNum / 100)));
+          }
+        } else {
+          next.margin = "";
+        }
+      } else if (field === "margin") {
+        if (costValid && marginValid) {
+          next.price = String(roundTo2(costNum * (1 + marginNum / 100)));
+        }
+      } else if (field === "price") {
+        if (costValid && priceValid) {
+          next.margin = deriveMargin(priceNum, costNum);
+        }
+      }
+
+      return next;
+    });
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  const applyMargin = (margin: number) => {
+    setFormData((prev) => {
+      const next = { ...prev, margin: String(margin) };
+      const costNum = parseFloat(next.cost);
+      if (!isNaN(costNum) && costNum > 0) {
+        next.price = String(roundTo2(costNum * (1 + margin / 100)));
+      }
+      return next;
+    });
+    if (errors.margin) {
+      setErrors((prev) => ({ ...prev, margin: "" }));
     }
   };
 
@@ -234,6 +302,11 @@ export function ProductDialog({
   const selectedCategory = categories.find(
     (c) => c.id === formData.categoryId,
   );
+
+  const parsedCost = parseFloat(formData.cost);
+  const parsedPrice = parseFloat(formData.price);
+  const profit =
+    !isNaN(parsedCost) && !isNaN(parsedPrice) ? parsedPrice - parsedCost : null;
 
   const filteredCategories = categorySearch
     ? categories.filter((c) =>
@@ -439,40 +512,14 @@ export function ProductDialog({
                 )}
               </div>
 
-              {/* Price and Cost */}
+              {/* Cost and Margin */}
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label
-                    htmlFor="price"
-                    className="block text-sm font-medium text-foreground"
-                  >
-                    Precio de Venta *
-                  </label>
-                  <input
-                    id="price"
-                    name="price"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.price}
-                    onChange={handleChange}
-                    className={cn(
-                      "mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm",
-                      "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
-                      errors.price && "border-destructive",
-                    )}
-                    placeholder="15000"
-                  />
-                  {errors.price && (
-                    <p className="mt-0.5 text-xs text-destructive">{errors.price}</p>
-                  )}
-                </div>
                 <div>
                   <label
                     htmlFor="cost"
                     className="block text-sm font-medium text-foreground"
                   >
-                    Costo *
+                    Costo ($) *
                   </label>
                   <input
                     id="cost"
@@ -481,7 +528,7 @@ export function ProductDialog({
                     min="0"
                     step="0.01"
                     value={formData.cost}
-                    onChange={handleChange}
+                    onChange={(e) => handlePricingChange("cost", e.target.value)}
                     className={cn(
                       "mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm",
                       "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
@@ -493,6 +540,78 @@ export function ProductDialog({
                     <p className="mt-0.5 text-xs text-destructive">{errors.cost}</p>
                   )}
                 </div>
+                <div>
+                  <label
+                    htmlFor="margin"
+                    className="block text-sm font-medium text-foreground"
+                  >
+                    Margen (%)
+                  </label>
+                  <input
+                    id="margin"
+                    name="margin"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.margin}
+                    onChange={(e) => handlePricingChange("margin", e.target.value)}
+                    className={cn(
+                      "mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm",
+                      "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
+                    )}
+                    placeholder="20"
+                  />
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {QUICK_MARGINS.map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => applyMargin(m)}
+                        className={cn(
+                          "h-6 rounded-md border px-2 text-xs font-medium transition-colors",
+                          "hover:bg-muted",
+                          parseFloat(formData.margin) === m &&
+                            "border-primary bg-primary/10 text-primary",
+                        )}
+                      >
+                        {m}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Price */}
+              <div>
+                <label
+                  htmlFor="price"
+                  className="block text-sm font-medium text-foreground"
+                >
+                  Precio de Venta ($) *
+                </label>
+                <input
+                  id="price"
+                  name="price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.price}
+                  onChange={(e) => handlePricingChange("price", e.target.value)}
+                  className={cn(
+                    "mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm",
+                    "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
+                    errors.price && "border-destructive",
+                  )}
+                  placeholder="15000"
+                />
+                {errors.price && (
+                  <p className="mt-0.5 text-xs text-destructive">{errors.price}</p>
+                )}
+                {profit !== null && (
+                  <p className="mt-0.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                    Ganancia {formatCurrency(profit)}
+                  </p>
+                )}
               </div>
 
               {/* Stock and Min Stock */}

@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingCart, Receipt, ArrowLeft } from "lucide-react";
+import { Receipt, ArrowLeft } from "lucide-react";
 import { usePOS } from "@/lib/store-context";
-import { QuickProducts } from "./quick-products";
+import { QuickProducts, type QuickProductsHandle } from "./quick-products";
 import { CartPanel } from "./cart-panel";
 import { PaymentPanel } from "./payment-panel";
 import { TodaySalesPanel } from "./today-sales-panel";
+import { CartFloatingBar } from "./cart-floating-bar";
+import { SellFab } from "./sell-fab";
 import { OfflineBanner } from "@/components/offline/offline-banner";
 import { toast } from "sonner";
 import type { Sale } from "@/lib/types";
@@ -20,7 +22,8 @@ interface MobilePOSProps {
 
 export function MobilePOS({ onSaleComplete }: MobilePOSProps) {
   const [view, setView] = useState<View>("products");
-  const { cart } = usePOS();
+  const { cart, total } = usePOS();
+  const quickProductsRef = useRef<QuickProductsHandle>(null);
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -34,6 +37,11 @@ export function MobilePOS({ onSaleComplete }: MobilePOSProps) {
     setView("cart");
   }, [totalItems]);
 
+  const handleSellFabTap = useCallback(() => {
+    quickProductsRef.current?.scrollToTop();
+    quickProductsRef.current?.focusSearch();
+  }, []);
+
   const handleSaleComplete = useCallback(
     (sale: Sale) => {
       onSaleComplete?.(sale);
@@ -43,7 +51,7 @@ export function MobilePOS({ onSaleComplete }: MobilePOSProps) {
   );
 
   return (
-    <div className="flex min-h-[calc(100dvh-52px-72px)] flex-col">
+    <div className="flex flex-1 flex-col">
       <OfflineBanner />
 
       <div className="relative flex flex-1 flex-col overflow-hidden">
@@ -68,8 +76,8 @@ export function MobilePOS({ onSaleComplete }: MobilePOSProps) {
                   Ventas
                 </button>
               </div>
-              <div className="flex-1 overflow-hidden">
-                <QuickProducts />
+              <div className="flex-1 overflow-hidden pb-28">
+                <QuickProducts ref={quickProductsRef} />
               </div>
             </motion.div>
           )}
@@ -132,23 +140,19 @@ export function MobilePOS({ onSaleComplete }: MobilePOSProps) {
         </AnimatePresence>
       </div>
 
-      {view === "products" && totalItems > 0 && (
-        <motion.button
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0, opacity: 0 }}
-          transition={{ type: "spring", stiffness: 400, damping: 25 }}
-          onClick={handleCartOpen}
-          className="fixed bottom-24 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg hover:shadow-xl transition-shadow active:scale-95"
-          type="button"
-          aria-label={`Carrito con ${totalItems} productos`}
-        >
-          <ShoppingCart className="h-6 w-6" />
-          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-destructive-foreground tabular-nums">
-            {totalItems > 99 ? "99+" : totalItems}
-          </span>
-        </motion.button>
-      )}
+      <AnimatePresence initial={false} mode="wait">
+        {view === "products" &&
+          (totalItems === 0 ? (
+            <SellFab key="sell-fab" onClick={handleSellFabTap} />
+          ) : (
+            <CartFloatingBar
+              key="cart-bar"
+              totalItems={totalItems}
+              totalPrice={total}
+              onClick={handleCartOpen}
+            />
+          ))}
+      </AnimatePresence>
     </div>
   );
 }
