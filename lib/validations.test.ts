@@ -7,7 +7,44 @@ import {
   loginSchema,
   registerSchema,
   suspendedSaleSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  validateImageFile,
+  MAX_IMAGE_SIZE,
 } from "@/lib/validations";
+
+describe("validateImageFile", () => {
+  it("accept valid jpg image under 5MB", () => {
+    expect(
+      validateImageFile({ type: "image/jpeg", size: 1024 }),
+    ).toBeNull();
+  });
+
+  it("accept valid png/webp/gif", () => {
+    expect(validateImageFile({ type: "image/png", size: 100 })).toBeNull();
+    expect(validateImageFile({ type: "image/webp", size: 100 })).toBeNull();
+    expect(validateImageFile({ type: "image/gif", size: 100 })).toBeNull();
+  });
+
+  it("reject non-image file", () => {
+    expect(
+      validateImageFile({ type: "application/pdf", size: 1024 }),
+    ).toMatch(/imagen/i);
+  });
+
+  it("reject image over 5MB", () => {
+    expect(
+      validateImageFile({ type: "image/png", size: MAX_IMAGE_SIZE + 1 }),
+    ).toMatch(/5 MB/i);
+  });
+
+  it("accept image exactly at 5MB limit", () => {
+    expect(
+      validateImageFile({ type: "image/png", size: MAX_IMAGE_SIZE }),
+    ).toBeNull();
+  });
+});
+
 
 describe("createSaleSchema", () => {
   it("accept valid sale", () => {
@@ -181,5 +218,52 @@ describe("suspendedSaleSchema", () => {
 
   it("reject empty items", () => {
     expect(suspendedSaleSchema.safeParse({ items: [], total: 0 }).success).toBe(false);
+  });
+});
+
+describe("forgotPasswordSchema", () => {
+  it("accept valid email", () => {
+    expect(forgotPasswordSchema.safeParse({ email: "test@test.com" }).success).toBe(true);
+  });
+
+  it("reject invalid email", () => {
+    expect(forgotPasswordSchema.safeParse({ email: "not-an-email" }).success).toBe(false);
+  });
+
+  it("trim whitespace around email", () => {
+    const result = forgotPasswordSchema.safeParse({ email: "  test@test.com  " });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.email).toBe("test@test.com");
+    }
+  });
+});
+
+describe("resetPasswordSchema", () => {
+  it("accept valid token and password", () => {
+    expect(
+      resetPasswordSchema.safeParse({
+        token: "token-de-al-menos-20-caracteres",
+        password: "12345678",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("reject short token", () => {
+    expect(
+      resetPasswordSchema.safeParse({
+        token: "short",
+        password: "12345678",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("reject short password", () => {
+    expect(
+      resetPasswordSchema.safeParse({
+        token: "token-de-al-menos-20-caracteres",
+        password: "123",
+      }).success,
+    ).toBe(false);
   });
 });

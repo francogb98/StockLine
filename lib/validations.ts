@@ -1,5 +1,26 @@
 import { z } from "zod";
 
+export const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
+export const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+];
+
+export function validateImageFile(file: {
+  type: string;
+  size: number;
+}): string | null {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    return "El archivo debe ser una imagen (JPG, PNG, WEBP o GIF).";
+  }
+  if (file.size > MAX_IMAGE_SIZE) {
+    return "La imagen no puede superar los 5 MB.";
+  }
+  return null;
+}
+
 export const saleItemSchema = z.object({
   productId: z.string().min(1, "ProductId es requerido"),
   productName: z.string().min(1, "ProductName es requerido"),
@@ -71,6 +92,15 @@ export const suspendedSaleSchema = z.object({
   total: z.number().positive("El total debe ser mayor a 0"),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().email("Email inválido").max(255, "Email inválido"),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(20, "El enlace es inválido o ha expirado"),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres").max(128, "La contraseña no puede superar los 128 caracteres"),
+});
+
 export type CreateSaleInput = z.infer<typeof createSaleSchema>;
 export type AdjustStockInput = z.infer<typeof adjustStockSchema>;
 export type CreateProductInput = z.infer<typeof createProductSchema>;
@@ -78,3 +108,5 @@ export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type SuspendedSaleInput = z.infer<typeof suspendedSaleSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

@@ -3,7 +3,7 @@
 import React from "react";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { X, Save, Loader2, Check, Keyboard, ChevronDown } from "lucide-react";
+import { X, Save, Loader2, Check, Keyboard, ChevronDown, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
 import { useData } from "@/lib/store-context";
 import { useIsMobile } from "@/components/ui/use-mobile";
@@ -17,6 +17,11 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import { formatCurrency } from "@/lib/mock-data";
+import { uploadProductImage } from "@/lib/image-upload";
+import {
+  ProductImageField,
+  type ProductImageSelection,
+} from "@/components/products/product-image-field";
 import type { Product, Category } from "@/lib/types";
 
 const HELP_USES_KEY = "product-dialog-help-uses";
@@ -77,6 +82,11 @@ export function ProductDialog({
     minStock: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isUploading, setIsUploading] = useState(false);
+  const [imageSelection, setImageSelection] = useState<ProductImageSelection>({
+    file: null,
+    removed: false,
+  });
 
   const resetForm = useCallback(() => {
     setFormData({
@@ -91,6 +101,7 @@ export function ProductDialog({
       minStock: "5",
     });
     setErrors({});
+    setImageSelection({ file: null, removed: false });
   }, [categories]);
 
   useEffect(() => {
@@ -121,6 +132,7 @@ export function ProductDialog({
       resetForm();
     }
     setErrors({});
+    setImageSelection({ file: null, removed: false });
   }, [product, open, categories, resetForm]);
 
   useEffect(() => {
@@ -262,12 +274,48 @@ export function ProductDialog({
       minStock: Number(formData.minStock),
     };
 
+    const { file, removed } = imageSelection;
+    const currentImageUrl = product?.imageUrl ?? null;
+    const currentPublicId = product?.cloudinaryPublicId ?? null;
+
+    let imageUrl: string | null = currentImageUrl;
+    let cloudinaryPublicId: string | null = currentPublicId;
+
+    if (file) {
+      setIsUploading(true);
+      try {
+        const uploaded = await uploadProductImage(file);
+        imageUrl = uploaded.imageUrl;
+        cloudinaryPublicId = uploaded.cloudinaryPublicId;
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Error al subir la imagen",
+        );
+        setIsUploading(false);
+        setIsSubmitting(false);
+        return;
+      } finally {
+        setIsUploading(false);
+      }
+    }
+
+    if (removed) {
+      imageUrl = null;
+      cloudinaryPublicId = null;
+    }
+
     if (product) {
-      updateProduct(product.id, productData);
+      const imageChanged = Boolean(file) || removed;
+      updateProduct(product.id, {
+        ...productData,
+        imageUrl,
+        cloudinaryPublicId,
+        oldCloudinaryPublicId: imageChanged ? currentPublicId : undefined,
+      });
       setIsSubmitting(false);
       onClose();
     } else {
-      addProduct(productData);
+      addProduct({ ...productData, imageUrl, cloudinaryPublicId });
       setIsSubmitting(false);
       toast.success("Product created successfully");
       resetForm();
@@ -670,6 +718,29 @@ export function ProductDialog({
                   )}
                 </div>
               </div>
+
+              {/* Product image (optional) */}
+              <div>
+                <div className="flex items-center gap-2">
+                  <ImagePlus className="h-4 w-4 text-muted-foreground" />
+                  <label className="text-sm font-medium text-foreground">
+                    Imagen del producto
+                  </label>
+                </div>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Opcional. Puedes agregar una imagen ahora o más adelante.
+                </p>
+                <div className="mt-2">
+                  <ProductImageField
+                    key={`${product?.id ?? "new"}-${open}`}
+                    imageUrl={product?.imageUrl ?? null}
+                    productName={product?.name}
+                    selection={imageSelection}
+                    onSelectionChange={setImageSelection}
+                    disabled={isUploading}
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -729,13 +800,18 @@ export function ProductDialog({
               <button
                 type="submit"
                 data-testid="submit-product-btn"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isUploading}
                 className={cn(
                   "flex items-center gap-2 rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground transition-colors",
                   "hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50",
                 )}
               >
-                {isSubmitting ? (
+                {isUploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Subiendo imagen...
+                  </>
+                ) : isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Guardando...

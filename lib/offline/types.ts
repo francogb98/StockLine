@@ -32,6 +32,7 @@ export interface CachedProduct {
   categoryId: string;
   barcode: string | null;
   description: string;
+  imageUrl?: string | null;
   updatedAt: string;
 }
 

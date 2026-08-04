@@ -31,6 +31,7 @@ import { CategoryDialog } from "./category-dialog";
 import { StockMovementHistory } from "./stock-movement-history";
 import { StockAdjustmentDialog } from "./stock-adjustment-dialog";
 import { ImportSheet } from "./import/import-sheet";
+import { ProductThumbnail } from "@/components/products/product-thumbnail";
 import type { Product, Category } from "@/lib/types";
 
 type SortField = "name" | "stock" | "price" | "category";
@@ -446,6 +447,11 @@ export function StockManagement() {
                   >
                     <td className="p-3">
                       <div className="flex items-center gap-2">
+                        <ProductThumbnail
+                          imageUrl={product.imageUrl}
+                          name={product.name}
+                          className="h-9 w-9 shrink-0 rounded-md"
+                        />
                         {(isLowStock || isOutOfStock) && (
                           <AlertTriangle
                             className={cn(

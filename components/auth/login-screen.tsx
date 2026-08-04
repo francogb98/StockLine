@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Loader2, Eye, EyeOff, LogIn, Check } from "lucide-react";
+import { Loader2, Eye, EyeOff, LogIn, Check, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/lib/store-context";
 import { cn } from "@/lib/utils";
 import { AuthLayout } from "./auth-layout";
@@ -15,9 +15,16 @@ import Link from "next/link";
 
 interface LoginScreenProps {
   onLoginSuccess?: () => void;
+  resetSuccess?: boolean;
 }
 
-function LoginForm({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
+function LoginForm({
+  onLoginSuccess,
+  resetSuccess,
+}: {
+  onLoginSuccess?: () => void;
+  resetSuccess?: boolean;
+}) {
   const { login, isLoading, pendingCashSession, clearPendingCashSession } =
     useAuth();
   const [email, setEmail] = useState("");
@@ -61,6 +68,17 @@ function LoginForm({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      {resetSuccess && (
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-start gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-700"
+        >
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          Tu contraseña fue actualizada. Iniciá sesión con tu nueva contraseña.
+        </motion.div>
+      )}
+
       <GoogleSignInButton />
 
       <GoogleDivider />
@@ -91,12 +109,20 @@ function LoginForm({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
       </div>
 
       <div className="space-y-1.5">
-        <label
-          htmlFor="password"
-          className="text-sm font-medium text-foreground/80"
-        >
-          Contraseña
-        </label>
+        <div className="flex items-center justify-between">
+          <label
+            htmlFor="password"
+            className="text-sm font-medium text-foreground/80"
+          >
+            Contraseña
+          </label>
+          <Link
+            href="/forgot-password"
+            className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+          >
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </div>
         <div className="relative">
           <input
             id="password"
@@ -216,7 +242,7 @@ function LoginForm({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
   );
 }
 
-export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
+export function LoginScreen({ onLoginSuccess, resetSuccess }: LoginScreenProps) {
   return (
     <AuthLayout
       left={<AuthHeroShowcase />}
@@ -270,7 +296,10 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             }}
           >
             <AuthCard>
-              <LoginForm onLoginSuccess={onLoginSuccess} />
+              <LoginForm
+                onLoginSuccess={onLoginSuccess}
+                resetSuccess={resetSuccess}
+              />
             </AuthCard>
           </motion.div>
 

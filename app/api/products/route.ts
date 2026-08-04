@@ -67,6 +67,8 @@ export async function POST(request: Request) {
       cost: data.cost,
       stock: data.stock,
       minStock: data.minStock,
+      imageUrl: data.imageUrl ?? null,
+      cloudinaryPublicId: data.cloudinaryPublicId ?? null,
     });
 
     return jsonResponse(product, 201);

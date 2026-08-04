@@ -67,6 +67,8 @@ export async function createProduct(
     cost: number;
     stock: number;
     minStock: number;
+    imageUrl?: string | null;
+    cloudinaryPublicId?: string | null;
   },
 ): Promise<StoredProduct> {
   if (isTest(ctx)) {

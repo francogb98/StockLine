@@ -121,7 +121,10 @@ interface DataContextType {
   addProduct: (
     product: Omit<Product, "id" | "storeId" | "createdAt" | "updatedAt">,
   ) => void;
-  updateProduct: (id: string, data: Partial<Product>) => void;
+  updateProduct: (
+    id: string,
+    data: Partial<Product> & { oldCloudinaryPublicId?: string | null },
+  ) => void;
   deleteProduct: (id: string) => void;
   getProductByBarcode: (barcode: string) => Product | undefined;
   getLowStockProducts: () => Product[];
@@ -361,6 +364,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               categoryId: cp.categoryId,
               barcode: cp.barcode,
               description: cp.description,
+              imageUrl: cp.imageUrl ?? null,
               createdAt: new Date(cp.updatedAt),
               updatedAt: new Date(cp.updatedAt),
             }));
@@ -658,26 +662,35 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [store],
   );
 
-  const updateProduct = useCallback((id: string, data: Partial<Product>) => {
-    setProducts((prev) =>
-      prev.map((p) =>
-        p.id === id ? { ...p, ...data, updatedAt: new Date() } : p,
-      ),
-    );
+  const updateProduct = useCallback(
+    (
+      id: string,
+      data: Partial<Product> & { oldCloudinaryPublicId?: string | null },
+    ) => {
+      const { oldCloudinaryPublicId: _ignored, ...productFields } = data;
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? { ...p, ...productFields, updatedAt: new Date() }
+            : p,
+        ),
+      );
 
-    if (!useMockData) {
-      fetch(`/api/products/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }).catch((error) => {
-        console.error(
-          "updateProduct API failed, state is updated locally only",
-          error,
-        );
-      });
-    }
-  }, []);
+      if (!useMockData) {
+        fetch(`/api/products/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }).catch((error) => {
+          console.error(
+            "updateProduct API failed, state is updated locally only",
+            error,
+          );
+        });
+      }
+    },
+    [],
+  );
 
   const deleteProduct = useCallback((id: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== id));

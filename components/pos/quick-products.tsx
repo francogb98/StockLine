@@ -24,6 +24,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { ProductDialog } from "@/components/stock/product-dialog";
+import { ProductThumbnail } from "@/components/products/product-thumbnail";
 import type { Product } from "@/lib/types";
 
 const ITEMS_PER_PAGE = 20;
@@ -284,6 +285,17 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
                       </DropdownMenu>
                     </div>
                   )}
+
+                  {/* Product image (optional) */}
+                  <div className="mb-2.5 overflow-hidden rounded-lg border bg-muted/40">
+                    <div className="aspect-[4/3] w-full">
+                      <ProductThumbnail
+                        imageUrl={product.imageUrl}
+                        name={product.name}
+                        className="h-full w-full"
+                      />
+                    </div>
+                  </div>
 
                   {/* Name — primary element */}
                   <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">

@@ -57,6 +57,8 @@ export interface Product {
   cost: number;
   stock: number;
   minStock: number;
+  imageUrl?: string | null;
+  cloudinaryPublicId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

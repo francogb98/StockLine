@@ -21,6 +21,7 @@ export async function cacheProducts(products: Product[]): Promise<void> {
       categoryId: p.categoryId,
       barcode: p.barcode,
       description: p.description ?? "",
+      imageUrl: p.imageUrl ?? null,
       updatedAt: new Date().toISOString(),
     };
     await tx.store.put(cached);

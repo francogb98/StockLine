@@ -22,6 +22,8 @@ export interface StoredProduct {
   cost: number;
   stock: number;
   minStock: number;
+  imageUrl?: string | null;
+  cloudinaryPublicId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -214,6 +216,8 @@ class SessionDataStore {
     cost: number;
     stock: number;
     minStock: number;
+    imageUrl?: string | null;
+    cloudinaryPublicId?: string | null;
   }): StoredProduct {
     const now = new Date();
     const product: StoredProduct = {

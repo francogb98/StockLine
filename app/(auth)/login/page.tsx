@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/store-context";
 import { LoginScreen } from "@/components/auth/login-screen";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isSessionLoading } = useAuth();
+
+  const resetSuccess = searchParams.get("reset") === "success";
 
   useEffect(() => {
     if (!isSessionLoading && user) {
@@ -23,5 +26,18 @@ export default function LoginPage() {
     return null;
   }
 
-  return <LoginScreen onLoginSuccess={() => router.push("/app")} />;
+  return (
+    <LoginScreen
+      onLoginSuccess={() => router.push("/app")}
+      resetSuccess={resetSuccess}
+    />
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
+  );
 }

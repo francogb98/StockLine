@@ -1,5 +1,7 @@
 import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { requireSessionUser } from "@/lib/api-auth";
+import { isTestUserEmail } from "@/lib/test-users";
+import { deleteImage } from "@/lib/cloudinary/image-service";
 import {
   findProduct,
   findCategory,
@@ -75,7 +77,7 @@ export async function PUT(
       }
     }
 
-    const updated = await updateProduct(ctx, id, {
+    const updateData: Record<string, unknown> = {
       barcode,
       name: data.name,
       description: data.description ?? null,
@@ -85,7 +87,22 @@ export async function PUT(
       stock: data.stock,
       minStock: data.minStock,
       reason: data.reason,
-    });
+    };
+    if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl;
+    if (data.cloudinaryPublicId !== undefined) {
+      updateData.cloudinaryPublicId = data.cloudinaryPublicId;
+    }
+
+    const updated = await updateProduct(ctx, id, updateData as any);
+
+    const { oldCloudinaryPublicId } = data;
+    if (
+      oldCloudinaryPublicId &&
+      oldCloudinaryPublicId === existing.cloudinaryPublicId &&
+      !isTestUserEmail(auth.user.email)
+    ) {
+      await deleteImage(oldCloudinaryPublicId);
+    }
 
     return jsonResponse(updated);
   } catch (error) {
@@ -115,7 +132,14 @@ export async function DELETE(
       return errorResponse("Product not found", 404);
     }
 
+    const cloudinaryPublicId = existing.cloudinaryPublicId;
+
     await deleteProduct(ctx, id);
+
+    if (cloudinaryPublicId && !isTestUserEmail(auth.user.email)) {
+      await deleteImage(cloudinaryPublicId);
+    }
+
     return new Response(null, { status: 204 });
   } catch (error) {
     console.error("DELETE /api/products/[id]", error);
