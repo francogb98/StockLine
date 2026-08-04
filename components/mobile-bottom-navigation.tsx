@@ -68,8 +68,8 @@ export function MobileBottomNavigation({
                     onClick={() => router.push(item.href)}
                     className={`flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-shadow hover:shadow-xl ${
                       isActive
-                        ? "bg-primary ring-2 ring-primary/30"
-                        : "bg-primary"
+                        ? "bg-emerald-600 ring-2 ring-emerald-600/30"
+                        : "bg-emerald-600"
                     }`}
                     type="button"
                     aria-label={item.label}
@@ -78,7 +78,7 @@ export function MobileBottomNavigation({
                   </button>
                   <span
                     className={`mt-0.5 text-[10px] font-medium ${
-                      isActive ? "text-primary" : "text-muted-foreground"
+                      isActive ? "text-emerald-600" : "text-muted-foreground"
                     }`}
                   >
                     {item.label}

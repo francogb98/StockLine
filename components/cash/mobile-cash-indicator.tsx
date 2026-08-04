@@ -5,7 +5,7 @@ import { useCashSession } from "./cash-session-provider";
 import { formatCurrency } from "@/lib/mock-data";
 
 export function MobileCashIndicator() {
-  const { session, loading } = useCashSession();
+  const { session, loading, syncing } = useCashSession();
   const { cashControlEnabled } = useCashControl();
 
   if (!cashControlEnabled) return null;
@@ -30,10 +30,10 @@ export function MobileCashIndicator() {
 
   return (
     <div className="flex items-center gap-1.5">
-      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+      <span className={`h-1.5 w-1.5 rounded-full bg-emerald-400 ${syncing ? "animate-pulse" : ""}`} />
       <div className="flex items-baseline gap-1">
         <span className="text-xs font-medium text-emerald-300">Abierta</span>
-        <span className="text-xs font-semibold text-white tabular-nums">
+        <span className={`text-xs font-semibold text-white tabular-nums ${syncing ? "animate-pulse" : ""}`}>
           {formatCurrency(session.currentCashTotal)}
         </span>
       </div>

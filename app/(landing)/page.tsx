@@ -41,7 +41,7 @@ export default function LandingPage() {
 
       {/* ─── Hero ─── */}
       <section
-        className="relative mx-auto max-w-6xl px-4 pt-20 pb-12 md:pt-24 md:pb-16 lg:pt-28 lg:pb-16"
+        className="relative mx-auto max-w-6xl px-4 pt-28 pb-12 md:pt-32 md:pb-16 lg:pt-36 lg:pb-16"
         style={{
           minHeight: promoVisible
             ? "calc(100vh - 6.25rem)"

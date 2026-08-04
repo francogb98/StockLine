@@ -17,12 +17,22 @@ export function LandingNavbar({ promoVisible }: { promoVisible?: boolean }) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      const previousOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = previousOverflow;
+      };
+    }
+  }, [mobileMenuOpen]);
+
   return (
     <motion.header
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className={`fixed top-0 z-50 w-full transition-all duration-300 ${
+      className={`fixed z-50 w-full transition-all duration-300 ${
         scrolled
           ? "border-b border-border/40 bg-background/80 backdrop-blur-xl"
           : "border-transparent bg-transparent"
@@ -73,7 +83,7 @@ export function LandingNavbar({ promoVisible }: { promoVisible?: boolean }) {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
-            className="overflow-hidden border-t border-border/40 bg-background/95 backdrop-blur-xl md:hidden"
+            className="overflow-hidden border-t border-border/40 bg-background shadow-lg md:hidden"
           >
             <div className="space-y-1.5 px-4 py-4">
               <MobileNavLink href="#como-funciona" onClick={() => setMobileMenuOpen(false)}>
@@ -91,6 +101,13 @@ export function LandingNavbar({ promoVisible }: { promoVisible?: boolean }) {
                 className="mt-4 block rounded-lg bg-primary px-3 py-2.5 text-center text-sm font-medium text-primary-foreground shadow-sm transition-all duration-200 hover:brightness-90 active:scale-[0.98]"
               >
                 Comenzar gratis
+              </Link>
+              <Link
+                href="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block rounded-lg border border-border bg-background px-3 py-2.5 text-center text-sm font-medium text-foreground transition-all duration-200 hover:bg-muted active:scale-[0.98]"
+              >
+                Iniciar sesión
               </Link>
             </div>
           </motion.div>

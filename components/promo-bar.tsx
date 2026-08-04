@@ -19,13 +19,10 @@ export function PromoBar({
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -44, opacity: 0 }}
           transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-          className="fixed inset-x-0 top-0 z-[60] grid h-11 grid-cols-[1fr_auto_1fr] items-center border-b border-emerald-200/60 bg-emerald-50 px-4 text-sm text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-950 dark:text-emerald-200"
+          className="fixed inset-x-0 top-0 z-[60] flex h-11 items-center border-b border-emerald-200/60 bg-emerald-50 pl-4 pr-12 text-sm text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-950 dark:text-emerald-200"
         >
-          {/* Espacio izquierdo */}
-          <div />
-
           {/* Contenido centrado */}
-          <div className="flex items-center justify-center gap-1.5">
+          <div className="flex flex-1 items-center justify-center gap-1.5">
             <span className="shrink-0">🎁</span>
 
             <span className="truncate">
@@ -46,16 +43,14 @@ export function PromoBar({
           </div>
 
           {/* Botón cerrar */}
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={onDismiss}
-              className="rounded p-1 transition-colors hover:bg-emerald-200/60 dark:hover:bg-emerald-800/60"
-              aria-label="Cerrar promoción"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 transition-colors hover:bg-emerald-200/60 dark:hover:bg-emerald-800/60"
+            aria-label="Cerrar promoción"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </motion.div>
       )}
     </AnimatePresence>

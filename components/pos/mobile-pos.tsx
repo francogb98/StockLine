@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Receipt, ArrowLeft } from "lucide-react";
+import { Receipt, ArrowLeft, Clock } from "lucide-react";
 import { usePOS } from "@/lib/store-context";
-import { QuickProducts, type QuickProductsHandle } from "./quick-products";
+import { cn } from "@/lib/utils";
+import { QuickProducts } from "./quick-products";
 import { CartPanel } from "./cart-panel";
 import { PaymentPanel } from "./payment-panel";
 import { TodaySalesPanel } from "./today-sales-panel";
 import { CartFloatingBar } from "./cart-floating-bar";
-import { SellFab } from "./sell-fab";
+import { HeldSalesSheet } from "./held-sales-sheet";
 import { OfflineBanner } from "@/components/offline/offline-banner";
 import { toast } from "sonner";
 import type { Sale } from "@/lib/types";
@@ -22,8 +23,8 @@ interface MobilePOSProps {
 
 export function MobilePOS({ onSaleComplete }: MobilePOSProps) {
   const [view, setView] = useState<View>("products");
-  const { cart, total } = usePOS();
-  const quickProductsRef = useRef<QuickProductsHandle>(null);
+  const [isHeldSheetOpen, setIsHeldSheetOpen] = useState(false);
+  const { cart, total, clearCart, suspendedSales } = usePOS();
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -37,10 +38,13 @@ export function MobilePOS({ onSaleComplete }: MobilePOSProps) {
     setView("cart");
   }, [totalItems]);
 
-  const handleSellFabTap = useCallback(() => {
-    quickProductsRef.current?.scrollToTop();
-    quickProductsRef.current?.focusSearch();
-  }, []);
+  const handleClearCart = useCallback(() => {
+    const count = totalItems;
+    clearCart();
+    toast.success("Carrito vaciado", {
+      description: `${count} ${count === 1 ? "producto eliminado" : "productos eliminados"}`,
+    });
+  }, [clearCart, totalItems]);
 
   const handleSaleComplete = useCallback(
     (sale: Sale) => {
@@ -49,6 +53,10 @@ export function MobilePOS({ onSaleComplete }: MobilePOSProps) {
     },
     [onSaleComplete],
   );
+
+  const handleRestoredToCart = useCallback(() => {
+    setView("cart");
+  }, []);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -67,17 +75,41 @@ export function MobilePOS({ onSaleComplete }: MobilePOSProps) {
             >
               <div className="flex items-center justify-between px-4 pt-3 pb-0">
                 <h1 className="text-lg font-semibold">Vender</h1>
-                <button
-                  onClick={() => setView("sales")}
-                  className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                  type="button"
-                >
-                  <Receipt className="h-4 w-4" />
-                  Ventas
-                </button>
+                <div className="flex items-center gap-1.5">
+                  {suspendedSales.length > 0 && (
+                    <button
+                      onClick={() => setIsHeldSheetOpen(true)}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors",
+                        "bg-amber-100 text-amber-800 hover:bg-amber-200",
+                        "dark:bg-amber-900/40 dark:text-amber-200 dark:hover:bg-amber-900/60",
+                        "focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-1",
+                      )}
+                      type="button"
+                      aria-label={`Ver ${suspendedSales.length} ventas en espera`}
+                    >
+                      <Clock className="h-3.5 w-3.5" />
+                      <span className="tabular-nums">{suspendedSales.length}</span>
+                      <span className="hidden sm:inline">En espera</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setView("sales")}
+                    className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    type="button"
+                  >
+                    <Receipt className="h-4 w-4" />
+                    Ventas
+                  </button>
+                </div>
               </div>
-              <div className="flex-1 overflow-hidden pb-28">
-                <QuickProducts ref={quickProductsRef} />
+              <div
+                className={cn(
+                  "flex-1 overflow-hidden transition-[padding] duration-200",
+                  totalItems > 0 ? "pb-28" : "pb-0",
+                )}
+              >
+                <QuickProducts />
               </div>
             </motion.div>
           )}
@@ -141,18 +173,22 @@ export function MobilePOS({ onSaleComplete }: MobilePOSProps) {
       </div>
 
       <AnimatePresence initial={false} mode="wait">
-        {view === "products" &&
-          (totalItems === 0 ? (
-            <SellFab key="sell-fab" onClick={handleSellFabTap} />
-          ) : (
-            <CartFloatingBar
-              key="cart-bar"
-              totalItems={totalItems}
-              totalPrice={total}
-              onClick={handleCartOpen}
-            />
-          ))}
+        {view === "products" && totalItems > 0 && (
+          <CartFloatingBar
+            key="cart-bar"
+            totalItems={totalItems}
+            totalPrice={total}
+            onClick={handleCartOpen}
+            onClear={handleClearCart}
+          />
+        )}
       </AnimatePresence>
+
+      <HeldSalesSheet
+        open={isHeldSheetOpen}
+        onOpenChange={setIsHeldSheetOpen}
+        onRestored={handleRestoredToCart}
+      />
     </div>
   );
 }

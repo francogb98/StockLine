@@ -877,7 +877,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         );
       }
 
-      window.dispatchEvent(new CustomEvent("sale-completed"));
+      window.dispatchEvent(new CustomEvent("sale-completed", {
+        detail: { sale: realSale, optimisticSaleId: sale.id },
+      }));
       return realSale;
     } catch (error) {
       console.error("addSale network error:", error);
@@ -1075,6 +1077,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         );
       });
       clearCart();
+
+      // Notify the cash indicator before the background request resolves.
+      window.dispatchEvent(new CustomEvent("sale-processing", { detail: { sale } }));
 
       // Sync with server in background (non-blocking)
       addSale(sale, true).catch((error) => {

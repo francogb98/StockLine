@@ -137,14 +137,14 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
         </div>
 
         {/* Category filter */}
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="no-scrollbar mt-2 flex gap-2 overflow-x-auto pb-1">
           <button
             onClick={() => {
               setSelectedCategory(null);
               setCurrentPage(1);
             }}
             className={cn(
-              "rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
+              "shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors",
               selectedCategory === null
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:bg-muted/80",
@@ -161,7 +161,7 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
                 setCurrentPage(1);
               }}
               className={cn(
-                "rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
+                "shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition-colors",
                 selectedCategory === category.id
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:bg-muted/80",
@@ -236,7 +236,7 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
                   data-product-name={product.name}
                   data-product-index={index}
                   className={cn(
-                    "group relative flex h-full cursor-pointer flex-col rounded-xl border p-3.5 text-left transition-all duration-200",
+                    "group relative flex h-full cursor-pointer flex-col rounded-xl border p-3.5 text-left transition-all duration-200 active:scale-95",
                     "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                     isOutOfStock
                       ? "cursor-not-allowed bg-muted/50 opacity-60"

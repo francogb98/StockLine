@@ -3,6 +3,7 @@
 import React from "react";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { X, Save, Loader2, Check, Keyboard, ChevronDown, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
 import { useData } from "@/lib/store-context";
@@ -148,6 +149,20 @@ export function ProductDialog({
       return () => clearTimeout(timer);
     }
   }, [categoryOpen]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open, onClose]);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -345,8 +360,6 @@ export function ProductDialog({
     }
   };
 
-  if (!open) return null;
-
   const selectedCategory = categories.find(
     (c) => c.id === formData.categoryId,
   );
@@ -365,28 +378,52 @@ export function ProductDialog({
   const showHelp = !isMobile && !product;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Overlay */}
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={onClose}
-        onKeyDown={(e) => e.key === "Escape" && onClose()}
-        role="button"
-        tabIndex={0}
-        aria-label="Close dialog"
-      />
+    <AnimatePresence>
+      {open && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto p-4 sm:p-6"
+          role="presentation"
+        >
+          <motion.div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={onClose}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            aria-hidden
+          />
 
-      {/* Dialog */}
-      <div className="relative z-10 flex max-h-[95vh] w-full max-w-lg flex-col rounded-lg bg-card shadow-xl">
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="product-dialog-title"
+            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97, y: 4 }}
+            transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
+            className="relative z-10 flex w-full max-w-full flex-col overflow-hidden rounded-xl border bg-card shadow-2xl shadow-black/20 sm:max-w-2xl"
+          >
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between border-b px-5 py-3">
-          <h2 className="text-lg font-semibold text-foreground">
-            {product ? "Editar Producto" : "Nuevo Producto"}
-          </h2>
+        <div className="flex shrink-0 items-center justify-between border-b px-6 py-4">
+          <div className="min-w-0">
+            <h2
+              id="product-dialog-title"
+              className="text-lg font-semibold leading-tight text-foreground"
+            >
+              {product ? "Editar Producto" : "Nuevo Producto"}
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {product
+                ? "Modificá los datos y guardá los cambios."
+                : "Cargá un producto nuevo en tu catálogo."}
+            </p>
+          </div>
           <button
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             type="button"
+            aria-label="Cerrar"
           >
             <X className="h-4 w-4" />
           </button>
@@ -399,8 +436,8 @@ export function ProductDialog({
           className="flex min-h-0 flex-1 flex-col"
           data-testid="product-form"
         >
-          <div className="flex-1 overflow-y-auto px-5 py-3">
-            <div className="space-y-3">
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            <div className="space-y-5">
               {/* Barcode */}
               <div>
                 <label
@@ -417,7 +454,7 @@ export function ProductDialog({
                   value={formData.barcode}
                   onChange={handleChange}
                   className={cn(
-                    "mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm",
+                    "mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm",
                     "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
                   )}
                   placeholder="7790001000011"
@@ -439,14 +476,14 @@ export function ProductDialog({
                   value={formData.name}
                   onChange={handleChange}
                   className={cn(
-                    "mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm",
+                    "mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm",
                     "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
                     errors.name && "border-destructive",
                   )}
                   placeholder="Mouse Inalámbrico"
                 />
                 {errors.name && (
-                  <p className="mt-0.5 text-xs text-destructive">{errors.name}</p>
+                  <p className="mt-1 text-xs text-destructive">{errors.name}</p>
                 )}
               </div>
 
@@ -463,9 +500,9 @@ export function ProductDialog({
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
-                  rows={1}
+                  rows={2}
                   className={cn(
-                    "mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm resize-none",
+                    "mt-1.5 w-full rounded-md border bg-background px-3 py-2 text-sm resize-none",
                     "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
                   )}
                   placeholder="Descripción opcional..."
@@ -481,7 +518,7 @@ export function ProductDialog({
                   Categoría *
                 </label>
                 {categories.length === 0 ? (
-                  <div className="mt-1 rounded-md border border-dashed p-2">
+                  <div className="mt-1.5 rounded-md border border-dashed p-3">
                     <p className="text-xs text-muted-foreground">
                       No hay categorías cargadas.
                     </p>
@@ -505,7 +542,7 @@ export function ProductDialog({
                         aria-expanded={categoryOpen}
                         onKeyDown={handleCategoryTriggerKeyDown}
                         className={cn(
-                          "mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm text-left",
+                          "mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm text-left",
                           "flex items-center justify-between",
                           "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
                           errors.categoryId && "border-destructive",
@@ -554,7 +591,7 @@ export function ProductDialog({
                   </Popover>
                 )}
                 {errors.categoryId && (
-                  <p className="mt-0.5 text-xs text-destructive">
+                  <p className="mt-1 text-xs text-destructive">
                     {errors.categoryId}
                   </p>
                 )}
@@ -578,14 +615,14 @@ export function ProductDialog({
                     value={formData.cost}
                     onChange={(e) => handlePricingChange("cost", e.target.value)}
                     className={cn(
-                      "mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm",
+                      "mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm",
                       "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
                       errors.cost && "border-destructive",
                     )}
                     placeholder="9000"
                   />
                   {errors.cost && (
-                    <p className="mt-0.5 text-xs text-destructive">{errors.cost}</p>
+                    <p className="mt-1 text-xs text-destructive">{errors.cost}</p>
                   )}
                 </div>
                 <div>
@@ -604,7 +641,7 @@ export function ProductDialog({
                     value={formData.margin}
                     onChange={(e) => handlePricingChange("margin", e.target.value)}
                     className={cn(
-                      "mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm",
+                      "mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm",
                       "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
                     )}
                     placeholder="20"
@@ -616,7 +653,7 @@ export function ProductDialog({
                         type="button"
                         onClick={() => applyMargin(m)}
                         className={cn(
-                          "h-6 rounded-md border px-2 text-xs font-medium transition-colors",
+                          "h-7 rounded-md border px-2.5 text-xs font-medium transition-colors",
                           "hover:bg-muted",
                           parseFloat(formData.margin) === m &&
                             "border-primary bg-primary/10 text-primary",
@@ -646,17 +683,17 @@ export function ProductDialog({
                   value={formData.price}
                   onChange={(e) => handlePricingChange("price", e.target.value)}
                   className={cn(
-                    "mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm",
+                    "mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm",
                     "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
                     errors.price && "border-destructive",
                   )}
                   placeholder="15000"
                 />
                 {errors.price && (
-                  <p className="mt-0.5 text-xs text-destructive">{errors.price}</p>
+                  <p className="mt-1 text-xs text-destructive">{errors.price}</p>
                 )}
                 {profit !== null && (
-                  <p className="mt-0.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                  <p className="mt-1 text-sm font-medium text-emerald-600 dark:text-emerald-400">
                     Ganancia {formatCurrency(profit)}
                   </p>
                 )}
@@ -679,14 +716,14 @@ export function ProductDialog({
                     value={formData.stock}
                     onChange={handleChange}
                     className={cn(
-                      "mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm",
+                      "mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm",
                       "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
                       errors.stock && "border-destructive",
                     )}
                     placeholder="25"
                   />
                   {errors.stock && (
-                    <p className="mt-0.5 text-xs text-destructive">{errors.stock}</p>
+                    <p className="mt-1 text-xs text-destructive">{errors.stock}</p>
                   )}
                 </div>
                 <div>
@@ -705,14 +742,14 @@ export function ProductDialog({
                     value={formData.minStock}
                     onChange={handleChange}
                     className={cn(
-                      "mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm",
+                      "mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm",
                       "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
                       errors.minStock && "border-destructive",
                     )}
                     placeholder="5"
                   />
                   {errors.minStock && (
-                    <p className="mt-0.5 text-xs text-destructive">
+                    <p className="mt-1 text-xs text-destructive">
                       {errors.minStock}
                     </p>
                   )}
@@ -745,12 +782,12 @@ export function ProductDialog({
           </div>
 
           {/* Sticky footer */}
-          <div className="shrink-0 border-t px-5 py-3">
+          <div className="shrink-0 border-t bg-muted/20 px-6 py-4">
             {/* Keyboard Tips - desktop only, collapsible */}
             {showHelp && (
               <div
                 className={cn(
-                  "mb-2 rounded-md bg-muted/50 transition-all",
+                  "mb-3 rounded-md bg-background transition-all",
                   helpExpanded ? "px-3 py-2" : "px-3 py-1.5",
                 )}
               >
@@ -776,23 +813,23 @@ export function ProductDialog({
                 </button>
                 {helpExpanded && (
                   <ul className="mt-1 space-y-0.5 pl-5 text-xs text-muted-foreground">
-                    <li><kbd className="rounded bg-background px-1 py-0.5 text-[10px] font-mono">Ctrl+N</kbd> → Abrir formulario</li>
-                    <li><kbd className="rounded bg-background px-1 py-0.5 text-[10px] font-mono">Tab</kbd> → Siguiente campo</li>
+                    <li><kbd className="rounded bg-muted px-1 py-0.5 text-[10px] font-mono">Ctrl+N</kbd> → Abrir formulario</li>
+                    <li><kbd className="rounded bg-muted px-1 py-0.5 text-[10px] font-mono">Tab</kbd> → Siguiente campo</li>
                     <li>Buscá categorías escribiendo</li>
-                    <li><kbd className="rounded bg-background px-1 py-0.5 text-[10px] font-mono">Enter</kbd> → Guardar producto</li>
+                    <li><kbd className="rounded bg-muted px-1 py-0.5 text-[10px] font-mono">Enter</kbd> → Guardar producto</li>
                   </ul>
                 )}
               </div>
             )}
 
             {/* Actions */}
-            <div className="flex justify-end gap-3">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-2">
               <button
                 type="button"
                 onClick={onClose}
                 className={cn(
-                  "rounded-md border px-4 py-1.5 text-sm font-medium transition-colors",
-                  "hover:bg-muted",
+                  "h-10 rounded-md border px-4 text-sm font-medium transition-colors",
+                  "hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring",
                 )}
               >
                 Cancelar
@@ -802,8 +839,9 @@ export function ProductDialog({
                 data-testid="submit-product-btn"
                 disabled={isSubmitting || isUploading}
                 className={cn(
-                  "flex items-center gap-2 rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground transition-colors",
-                  "hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50",
+                  "flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors",
+                  "hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                  "disabled:cursor-not-allowed disabled:opacity-50",
                 )}
               >
                 {isUploading ? (
@@ -826,7 +864,9 @@ export function ProductDialog({
             </div>
           </div>
         </form>
-      </div>
-    </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }

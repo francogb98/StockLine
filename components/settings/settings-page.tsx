@@ -34,6 +34,7 @@ import {
   Gem,
   ChevronRight,
   Check,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -45,13 +46,15 @@ const PAYMENT_METHODS = [
 
 export function SettingsPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { cashControlEnabled, enableCashControl, disableCashControl } =
     useCashControl();
   const { theme, setTheme } = useTheme();
 
   const [showEnableCashDialog, setShowEnableCashDialog] = useState(false);
   const [showDisableCashDialog, setShowDisableCashDialog] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState<
     Record<string, boolean>
   >(() =>
@@ -60,6 +63,18 @@ export function SettingsPage() {
 
   const handlePaymentMethodToggle = (methodId: string) => {
     setPaymentMethods((prev) => ({ ...prev, [methodId]: !prev[methodId] }));
+  };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      router.push("/login");
+      router.refresh();
+    } catch (error) {
+      console.error("Logout error:", error);
+      setIsLoggingOut(false);
+    }
   };
 
   return (
@@ -316,6 +331,39 @@ export function SettingsPage() {
             </Card>
           </div>
         )}
+
+        {/* Session Section */}
+        <div className="pt-4 mt-6 border-t border-border">
+          <h2 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Sesión
+          </h2>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10">
+                  <LogOut className="h-5 w-5 text-destructive" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Cerrar sesión</CardTitle>
+                  <CardDescription className="mt-0.5">
+                    Finaliza la sesión actual en este dispositivo. Tendrás que
+                    volver a iniciar sesión para seguir usando la aplicación.
+                  </CardDescription>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowLogoutDialog(true)}
+                className="shrink-0 border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 hover:text-destructive"
+                disabled={isLoggingOut}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Cerrar sesión
+              </Button>
+            </CardHeader>
+          </Card>
+        </div>
       </div>
 
       {/* Enable Cash Control Dialog */}
@@ -401,6 +449,39 @@ export function SettingsPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Sí, deshabilitar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Logout Confirmation Dialog */}
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Cerrar sesión?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  Vas a finalizar tu sesión actual en este dispositivo. Vas a
+                  tener que volver a iniciar sesión con tu email y contraseña
+                  para seguir usando la aplicación.
+                </p>
+                <p className="font-medium text-foreground">
+                  ¿Estás seguro de que querés continuar?
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoggingOut}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isLoggingOut ? "Cerrando..." : "Sí, cerrar sesión"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

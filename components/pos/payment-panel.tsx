@@ -43,14 +43,23 @@ const paymentMethods: {
   },
 ];
 
-export function PaymentPanel({
-  onSaleComplete,
-}: PaymentPanelProps) {
-  const { cart, total, completeSale, clearCart, suspendSale, receivedAmount, setReceivedAmount, change } = usePOS();
+export function PaymentPanel({ onSaleComplete }: PaymentPanelProps) {
+  const {
+    cart,
+    total,
+    completeSale,
+    clearCart,
+    suspendSale,
+    receivedAmount,
+    setReceivedAmount,
+    change,
+  } = usePOS();
   const { subscription } = useAuth();
   const { cashControlEnabled } = useCashControl();
   const { session, loading, openCashDialog } = useCashSession();
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(
+    null,
+  );
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastSale, setLastSale] = useState<Sale | null>(null);
 
@@ -78,8 +87,10 @@ export function PaymentPanel({
 
   const isPastDue =
     subscription?.status === "past_due" || subscription?.status === "canceled";
-  const cashBlocked = cashControlEnabled && !session && !loading && cart.length > 0;
-  const isDisabled = cart.length === 0 || isProcessing || isPastDue || cashBlocked;
+  const cashBlocked =
+    cashControlEnabled && !session && !loading && cart.length > 0;
+  const isDisabled =
+    cart.length === 0 || isProcessing || isPastDue || cashBlocked;
   const isActionDisabled = isDisabled || !selectedMethod;
 
   useEffect(() => {
@@ -208,7 +219,7 @@ export function PaymentPanel({
             Abrir Caja
           </button>
           <p className="text-xs text-amber-600 dark:text-amber-400">
-            Si no usás caja, podés desactivar este control desde{' '}
+            Si no usás caja, podés desactivar este control desde{" "}
             <Link
               href="/app/settings"
               className="underline underline-offset-2 hover:text-amber-800 dark:hover:text-amber-200"
@@ -247,21 +258,28 @@ export function PaymentPanel({
           {/* Cash received input */}
           {selectedMethod === "cash" && (
             <div className="space-y-1 animate-in fade-in duration-150">
-              <label htmlFor="received-amount" className="text-[10px] text-muted-foreground">
+              <label
+                htmlFor="received-amount"
+                className="text-[10px] text-muted-foreground"
+              >
                 Dinero recibido
               </label>
               <input
                 id="received-amount"
                 type="number"
                 value={receivedAmount || ""}
-                onChange={(e) => setReceivedAmount(parseFloat(e.target.value) || 0)}
+                onChange={(e) =>
+                  setReceivedAmount(parseFloat(e.target.value) || 0)
+                }
                 placeholder="0"
                 className="h-8 w-full rounded-md border bg-background px-2.5 text-sm font-semibold tabular-nums focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-150"
                 min="0"
               />
               {receivedAmount > 0 && (
                 <div className="flex items-center justify-between rounded-md bg-green-50 px-2.5 py-1 dark:bg-green-950 animate-in fade-in slide-in-from-top-1 duration-150">
-                  <span className="text-xs text-green-700 dark:text-green-300">Vuelto</span>
+                  <span className="text-xs text-green-700 dark:text-green-300">
+                    Vuelto
+                  </span>
                   <span className="text-sm font-bold tabular-nums text-green-700 dark:text-green-300">
                     {change > 0 ? formatCurrency(change) : "—"}
                   </span>
@@ -300,27 +318,7 @@ export function PaymentPanel({
                 </>
               )}
             </button>
-            <button
-              onClick={handleSuspendSale}
-              disabled={isActionDisabled}
-              className={cn(
-                "flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-muted-foreground/30 bg-background text-xs font-medium text-muted-foreground transition-all duration-150",
-                "hover:border-muted-foreground/50 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
-                "active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50",
-              )}
-              type="button"
-            >
-              <PauseCircle className="h-4 w-4" />
-              Enviar a Espera
-            </button>
           </div>
-
-          {/* Keyboard shortcut hint */}
-          <p className="text-center text-[10px] text-muted-foreground">
-            Presiona{' '}
-            <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-[10px]">C</kbd>{' '}
-            para cobrar rápido
-          </p>
         </>
       )}
     </div>
