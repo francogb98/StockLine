@@ -138,6 +138,7 @@ export default function FeaturesSection() {
           return (
             <motion.div
               key={i}
+              //@ts-ignore
               variants={itemVariants}
               className="bg-white rounded-2xl p-6 border border-gray-200/80 shadow-sm hover:border-gray-300 hover:shadow-md transition-all flex flex-col justify-between relative group"
             >
@@ -191,6 +192,7 @@ export default function FeaturesSection() {
           {secondaryFeatures.map((item, index) => (
             <motion.div
               key={index}
+              //@ts-ignore
               variants={itemVariants}
               className="flex items-start gap-3"
             >
