@@ -51,6 +51,12 @@ export const adjustStockSchema = z.object({
   reason: z.string().min(1, "El motivo es requerido").max(500, "El motivo es demasiado largo"),
 });
 
+export const ownerWithdrawalSchema = z.object({
+  productId: z.string().min(1, "ProductId es requerido"),
+  quantity: z.number().int().positive("La cantidad debe ser mayor a cero"),
+  reason: z.string().max(500, "El motivo es demasiado largo").optional().default(""),
+});
+
 export const createProductSchema = z.object({
   barcode: z.string().nullable().optional(),
   name: z.string().min(1, "El nombre es requerido").max(200, "El nombre es demasiado largo"),
@@ -103,6 +109,7 @@ export const resetPasswordSchema = z.object({
 
 export type CreateSaleInput = z.infer<typeof createSaleSchema>;
 export type AdjustStockInput = z.infer<typeof adjustStockSchema>;
+export type OwnerWithdrawalInput = z.infer<typeof ownerWithdrawalSchema>;
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 export type LoginInput = z.infer<typeof loginSchema>;

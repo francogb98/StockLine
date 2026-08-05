@@ -77,7 +77,8 @@ export type MovementType =
   | "PRODUCT_CREATION"
   | "IMPORT"
   | "STOCK_CORRECTION"
-  | "CANCELLATION";
+  | "CANCELLATION"
+  | "OWNER_WITHDRAWAL";
 
 export interface StockMovement {
   id: string;

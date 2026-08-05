@@ -13,6 +13,7 @@ const typeLabels: Record<MovementType, string> = {
   IMPORT: "Importación",
   STOCK_CORRECTION: "Corrección",
   CANCELLATION: "Cancelación",
+  OWNER_WITHDRAWAL: "Retiro de dueño",
 };
 
 const typeColors: Record<MovementType, string> = {
@@ -23,6 +24,7 @@ const typeColors: Record<MovementType, string> = {
   IMPORT: "text-cyan-600 bg-cyan-50 dark:text-cyan-400 dark:bg-cyan-950",
   STOCK_CORRECTION: "text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-950",
   CANCELLATION: "text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950",
+  OWNER_WITHDRAWAL: "text-pink-600 bg-pink-50 dark:text-pink-400 dark:bg-pink-950",
 };
 
 function formatDateTime(date: Date): string {

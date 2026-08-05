@@ -402,7 +402,7 @@ export function ProductDialog({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 4 }}
             transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
-            className="relative z-10 flex w-full max-w-full flex-col overflow-hidden rounded-xl border bg-card shadow-2xl shadow-black/20 sm:max-w-2xl"
+            className="relative z-10 flex w-full max-w-full max-h-[80vh] flex-col overflow-hidden rounded-xl border bg-card shadow-2xl shadow-black/20 sm:max-w-2xl"
           >
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b px-6 py-4">

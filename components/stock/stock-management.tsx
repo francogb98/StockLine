@@ -12,6 +12,7 @@ import {
   Filter,
   History,
   Upload,
+  HandCoins,
 } from "lucide-react";
 import { useAuth, useData } from "@/lib/store-context";
 import { formatCurrency } from "@/lib/mock-data";
@@ -30,6 +31,7 @@ import { ProductDialog } from "./product-dialog";
 import { CategoryDialog } from "./category-dialog";
 import { StockMovementHistory } from "./stock-movement-history";
 import { StockAdjustmentDialog } from "./stock-adjustment-dialog";
+import { OwnerWithdrawalDialog } from "./owner-withdrawal-dialog";
 import { ImportSheet } from "./import/import-sheet";
 import { ProductThumbnail } from "@/components/products/product-thumbnail";
 import type { Product, Category } from "@/lib/types";
@@ -61,6 +63,7 @@ export function StockManagement() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
   const [adjustProduct, setAdjustProduct] = useState<Product | null>(null);
+  const [withdrawalProduct, setWithdrawalProduct] = useState<Product | null>(null);
   const [importSheetOpen, setImportSheetOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -506,17 +509,32 @@ export function StockManagement() {
                           <History className="h-4 w-4" />
                         </button>
                         {user?.role === "admin" && (
-                          <button
-                            onClick={() => setAdjustProduct(product)}
-                            className={cn(
-                              "flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors",
-                              "hover:bg-muted hover:text-foreground",
-                            )}
-                            title="Ajustar stock"
-                            type="button"
-                          >
-                            <ArrowUpDown className="h-4 w-4" />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => setWithdrawalProduct(product)}
+                              disabled={product.stock <= 0}
+                              className={cn(
+                                "flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors",
+                                "hover:bg-muted hover:text-foreground",
+                                "disabled:cursor-not-allowed disabled:opacity-40",
+                              )}
+                              title="Retiro de dueño"
+                              type="button"
+                            >
+                              <HandCoins className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => setAdjustProduct(product)}
+                              className={cn(
+                                "flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors",
+                                "hover:bg-muted hover:text-foreground",
+                              )}
+                              title="Ajustar stock"
+                              type="button"
+                            >
+                              <ArrowUpDown className="h-4 w-4" />
+                            </button>
+                          </>
                         )}
                         <button
                           onClick={() => handleEdit(product)}
@@ -653,6 +671,15 @@ export function StockManagement() {
           open={adjustProduct !== null}
           onClose={() => setAdjustProduct(null)}
           product={adjustProduct}
+        />
+      )}
+
+      {withdrawalProduct && (
+        <OwnerWithdrawalDialog
+          open={withdrawalProduct !== null}
+          onClose={() => setWithdrawalProduct(null)}
+          product={withdrawalProduct}
+          onSuccess={refreshData}
         />
       )}
 

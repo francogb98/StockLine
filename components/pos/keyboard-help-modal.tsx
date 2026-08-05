@@ -19,7 +19,7 @@ export function KeyboardHelpModal({
 }: KeyboardHelpModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Atajos de teclado</DialogTitle>
           <DialogDescription>
@@ -27,7 +27,7 @@ export function KeyboardHelpModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto space-y-4">
           <section>
             <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Globales

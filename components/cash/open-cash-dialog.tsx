@@ -68,7 +68,7 @@ export function OpenCashDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wallet className="h-5 w-5 text-emerald-600" />
@@ -79,7 +79,7 @@ export function OpenCashDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto space-y-4">
           <div>
             <label className="text-sm font-medium text-foreground">
               Monto inicial en efectivo

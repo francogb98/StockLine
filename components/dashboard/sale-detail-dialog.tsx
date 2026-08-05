@@ -39,7 +39,7 @@ export function SaleDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             Detalle de Venta
@@ -49,6 +49,7 @@ export function SaleDetailDialog({
           </DialogTitle>
         </DialogHeader>
 
+        <div className="flex-1 overflow-y-auto space-y-4">
         {/* Info grid */}
         <div className="grid grid-cols-2 gap-x-6 gap-y-3 rounded-lg border bg-muted/30 p-4 text-sm">
           <div>
@@ -140,6 +141,7 @@ export function SaleDetailDialog({
               {formatCurrency(sale.total)}
             </span>
           </div>
+        </div>
         </div>
       </DialogContent>
     </Dialog>

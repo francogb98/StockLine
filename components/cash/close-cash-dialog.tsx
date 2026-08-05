@@ -86,7 +86,7 @@ export function CloseCashDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Coins className="h-5 w-5 text-amber-600" />
@@ -97,7 +97,7 @@ export function CloseCashDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto space-y-4">
           {/* Resumen */}
           <div className="rounded-lg border bg-muted/30 p-3">
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">

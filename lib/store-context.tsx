@@ -129,6 +129,11 @@ interface DataContextType {
   getProductByBarcode: (barcode: string) => Product | undefined;
   getLowStockProducts: () => Product[];
   addSale: (sale: Sale, background?: boolean) => Promise<Sale | null>;
+  recordOwnerWithdrawal: (
+    productId: string,
+    quantity: number,
+    reason: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
   getTodaySales: () => Sale[];
   getSalesByDateRange: (start: Date, end: Date) => Sale[];
   refreshData: () => Promise<void>;
@@ -931,6 +936,59 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return sales.filter((s) => new Date(s.createdAt) >= today);
   }, [sales]);
 
+  const recordOwnerWithdrawal = useCallback(
+    async (
+      productId: string,
+      quantity: number,
+      reason: string,
+    ): Promise<{ ok: boolean; error?: string }> => {
+      let previousStock = 0;
+      setProducts((prev) => {
+        const product = prev.find((p) => p.id === productId);
+        if (!product) return prev;
+        previousStock = product.stock;
+        return prev.map((p) =>
+          p.id === productId
+            ? { ...p, stock: Math.max(0, p.stock - quantity), updatedAt: new Date() }
+            : p,
+        );
+      });
+
+      if (useMockData) {
+        return { ok: true };
+      }
+
+      try {
+        const res = await fetch("/api/stock-movements/owner-withdrawal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ productId, quantity, reason }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({ error: "Error al registrar retiro" }));
+          setProducts((prev) =>
+            prev.map((p) =>
+              p.id === productId ? { ...p, stock: previousStock } : p,
+            ),
+          );
+          return { ok: false, error: errData.error ?? "Error al registrar retiro" };
+        }
+
+        return { ok: true };
+      } catch (error) {
+        console.error("recordOwnerWithdrawal network error:", error);
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === productId ? { ...p, stock: previousStock } : p,
+          ),
+        );
+        return { ok: false, error: "Sin conexión. El cambio no se pudo guardar." };
+      }
+    },
+    [],
+  );
+
   const getSalesByDateRange = useCallback(
     (start: Date, end: Date) => {
       return sales.filter((s) => {
@@ -1197,6 +1255,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           getProductByBarcode,
           getLowStockProducts,
           addSale,
+          recordOwnerWithdrawal,
           getTodaySales,
           getSalesByDateRange,
           refreshData,

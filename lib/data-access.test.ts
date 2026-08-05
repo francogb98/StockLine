@@ -22,6 +22,8 @@ import {
   closeCashSession,
   findOpenCashSession,
   adjustStock,
+  recordOwnerWithdrawal,
+  findStockMovements,
   createSuspendedSale,
   findSuspendedSales,
   deleteSuspendedSale,
@@ -208,6 +210,57 @@ describe("Stock Movements (test mode)", () => {
     await expect(
       adjustStock(ctx, { productId: "prod-1", quantity: -99999, reason: "Too much" }),
     ).rejects.toThrow("STOCK_NEGATIVE");
+  });
+});
+
+describe("Owner Withdrawal (test mode)", () => {
+  it("recordOwnerWithdrawal decrements stock and writes OWNER_WITHDRAWAL movement", async () => {
+    const before = await findProduct(ctx, "prod-1");
+    const previousStock = before!.stock;
+    const withdrawQty = 3;
+
+    const result = await recordOwnerWithdrawal(ctx, {
+      productId: "prod-1",
+      quantity: withdrawQty,
+      reason: "Personal use",
+    });
+
+    expect(result.previousStock).toBe(previousStock);
+    expect(result.newStock).toBe(previousStock - withdrawQty);
+    expect(result.quantity).toBe(-withdrawQty);
+    expect(result.reason).toBe("Personal use");
+
+    const after = await findProduct(ctx, "prod-1");
+    expect(after!.stock).toBe(previousStock - withdrawQty);
+
+    const movements = await findStockMovements(ctx, { productId: "prod-1" });
+    const created = movements.find(
+      (m) => m.type === "OWNER_WITHDRAWAL" && m.reason === "Personal use",
+    );
+    expect(created).toBeDefined();
+    expect(created!.quantity).toBe(-withdrawQty);
+    expect(created!.previousStock).toBe(previousStock);
+    expect(created!.newStock).toBe(previousStock - withdrawQty);
+  });
+
+  it("recordOwnerWithdrawal rejects when quantity exceeds current stock and persists nothing", async () => {
+    const before = await findProduct(ctx, "prod-1");
+    const previousStock = before!.stock;
+    const movementsBefore = await findStockMovements(ctx, { productId: "prod-1" });
+
+    await expect(
+      recordOwnerWithdrawal(ctx, {
+        productId: "prod-1",
+        quantity: previousStock + 1000,
+        reason: "Impossible withdrawal",
+      }),
+    ).rejects.toThrow("STOCK_NEGATIVE");
+
+    const after = await findProduct(ctx, "prod-1");
+    expect(after!.stock).toBe(previousStock);
+
+    const movementsAfter = await findStockMovements(ctx, { productId: "prod-1" });
+    expect(movementsAfter.length).toBe(movementsBefore.length);
   });
 });
 

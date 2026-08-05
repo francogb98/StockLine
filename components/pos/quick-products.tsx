@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from "react";
 import Link from "next/link";
-import { Search, Package, Loader2, MoreVertical, Pencil } from "lucide-react";
+import { Search, Package, Loader2, MoreVertical, Pencil, PackageMinus } from "lucide-react";
 import { useAuth, useData, usePOS } from "@/lib/store-context";
 import { formatCurrency } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { ProductDialog } from "@/components/stock/product-dialog";
+import { OwnerWithdrawalDialog } from "@/components/stock/owner-withdrawal-dialog";
 import { ProductThumbnail } from "@/components/products/product-thumbnail";
 import type { Product } from "@/lib/types";
 
@@ -40,13 +41,15 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
   ref,
 ) {
   const { user, isSessionLoading } = useAuth();
-  const { products, categories, isDataLoading } = useData();
+  const { products, categories, isDataLoading, recordOwnerWithdrawal } = useData();
   const { addToCart, getAvailableStock } = usePOS();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [withdrawalProduct, setWithdrawalProduct] = useState<Product | null>(null);
+  const [withdrawalDialogOpen, setWithdrawalDialogOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -78,9 +81,40 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
     setEditDialogOpen(true);
   };
 
+  const handleOpenWithdrawal = (product: (typeof products)[0]) => {
+    setWithdrawalProduct(product);
+    setWithdrawalDialogOpen(true);
+  };
+
   const handleEditDialogClose = () => {
     setEditDialogOpen(false);
     setEditingProduct(null);
+  };
+
+  const handleWithdrawalDialogClose = () => {
+    setWithdrawalDialogOpen(false);
+    setWithdrawalProduct(null);
+  };
+
+  const handleWithdrawalConfirm = async (
+    quantity: number,
+    reason: string,
+  ): Promise<{ ok: boolean; error?: string }> => {
+    if (!withdrawalProduct) return { ok: false, error: "Producto no seleccionado" };
+
+    const result = await recordOwnerWithdrawal(
+      withdrawalProduct.id,
+      quantity,
+      reason,
+    );
+
+    if (result.ok) {
+      toast.success(`Retiro registrado: -${quantity} unidades`);
+      return { ok: true };
+    }
+
+    toast.error(result.error ?? "Error al registrar retiro");
+    return result;
   };
 
   const {
@@ -261,9 +295,8 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
                             type="button"
                             onClick={(e) => e.stopPropagation()}
                             className={cn(
-                              "flex h-6 w-6 items-center justify-center rounded-md opacity-0 transition-opacity",
-                              "text-muted-foreground hover:bg-muted hover:text-foreground",
-                              "group-hover:opacity-100 focus:opacity-100",
+                              "flex h-6 w-6 items-center justify-center rounded-md",
+                              "bg-background/80 text-muted-foreground hover:bg-muted hover:text-foreground",
                             )}
                             aria-label="Opciones"
                           >
@@ -280,6 +313,16 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
                           >
                             <Pencil className="h-4 w-4" />
                             Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="gap-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenWithdrawal(product);
+                            }}
+                          >
+                            <PackageMinus className="h-4 w-4" />
+                            Retiro de dueño
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -400,6 +443,16 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
         product={editingProduct}
         canManageCategories={false}
       />
+
+      {/* Owner Withdrawal Dialog */}
+      {withdrawalProduct && (
+        <OwnerWithdrawalDialog
+          open={withdrawalDialogOpen}
+          onClose={handleWithdrawalDialogClose}
+          product={withdrawalProduct}
+          onConfirm={handleWithdrawalConfirm}
+        />
+      )}
     </div>
   );
 });

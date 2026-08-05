@@ -666,6 +666,78 @@ export async function adjustStock(
   };
 }
 
+export async function recordOwnerWithdrawal(
+  ctx: DataContext,
+  data: { productId: string; quantity: number; reason?: string },
+): Promise<{ productId: string; previousStock: number; newStock: number; quantity: number; reason: string }> {
+  const trimmedReason = (data.reason ?? "").trim();
+
+  if (isTest(ctx)) {
+    const product = store(ctx).getProduct(data.productId, ctx.storeId);
+    if (!product) throw new Error("NOT_FOUND");
+    const newStock = product.stock - data.quantity;
+    if (newStock < 0) throw new Error("STOCK_NEGATIVE");
+
+    store(ctx).updateProduct(data.productId, { stock: newStock });
+    store(ctx).createStockMovement({
+      storeId: ctx.storeId,
+      productId: data.productId,
+      userId: ctx.userId,
+      type: "OWNER_WITHDRAWAL",
+      quantity: -data.quantity,
+      previousStock: product.stock,
+      newStock,
+      reason: trimmedReason,
+    });
+
+    return {
+      productId: data.productId,
+      previousStock: product.stock,
+      newStock,
+      quantity: -data.quantity,
+      reason: trimmedReason,
+    };
+  }
+
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const product = await tx.product.findFirst({
+      where: { id: data.productId, storeId: ctx.storeId },
+      select: { id: true, stock: true },
+    });
+    if (!product) throw new Error("NOT_FOUND");
+
+    const previousStock = product.stock;
+    const newStock = previousStock - data.quantity;
+    if (newStock < 0) throw new Error("STOCK_NEGATIVE");
+
+    await tx.product.update({
+      where: { id: product.id },
+      data: { stock: { decrement: data.quantity } },
+    });
+
+    await tx.stockMovement.create({
+      data: {
+        storeId: ctx.storeId,
+        productId: product.id,
+        userId: ctx.userId,
+        type: "OWNER_WITHDRAWAL",
+        quantity: -data.quantity,
+        previousStock,
+        newStock,
+        reason: trimmedReason,
+      },
+    });
+
+    return {
+      productId: product.id,
+      previousStock,
+      newStock,
+      quantity: -data.quantity,
+      reason: trimmedReason,
+    };
+  });
+}
+
 // ---- Suspended Sales ----
 export async function findSuspendedSales(ctx: DataContext): Promise<StoredSuspendedSale[]> {
   if (isTest(ctx)) return store(ctx).getSuspendedSales(ctx.storeId);
