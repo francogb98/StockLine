@@ -66,4 +66,41 @@ describe("GET /api/auth/me", () => {
     expect(data.user).toBeDefined();
     expect(data.user.passwordHash).toBeUndefined();
   });
+
+  it("fallbacks pending userName to userId instead of Unknown", async () => {
+    const { prisma } = await import("@/lib/prisma");
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-15T12:00:00Z"));
+
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: "user-1", email: "admin@store.com", name: "Admin",
+      role: "admin", storeId: "store-1", passwordHash: "hash",
+      store: { id: "store-1", name: "Store" },
+      hasCompletedOnboarding: false, onboardingStep: null, draftOnboardingState: null,
+      createdAt: new Date(), updatedAt: new Date(),
+    } as any);
+    vi.mocked(prisma.cashSession.findFirst).mockResolvedValue({
+      id: "cs-old",
+      storeId: "store-1",
+      userId: "user-2",
+      openingAmount: 10000,
+      createdAt: new Date("2026-01-14T10:00:00Z"),
+      closedAt: null,
+      user: { name: null },
+      _count: { sales: 0 },
+    } as any);
+    vi.mocked(prisma.sale.aggregate).mockResolvedValue({
+      _sum: { total: 0 },
+    } as any);
+
+    const req = new Request("http://localhost/api/auth/me");
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.pendingCashSession).toBeDefined();
+    expect(data.pendingCashSession.userName).not.toBe("Unknown");
+    expect(data.pendingCashSession.userName).toBe("user-2");
+
+    vi.useRealTimers();
+  });
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,7 @@ export function OpenCashDialog({
   onOpenChange,
   onSessionCreated,
 }: OpenCashDialogProps) {
+  const router = useRouter();
   const [openingAmount, setOpeningAmount] = useState("0");
   const [notes, setNotes] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -42,6 +44,15 @@ export function OpenCashDialog({
       const data = await res.json();
 
       if (!res.ok) {
+        if (res.status === 409 && data.openSessionId) {
+          toast.error(data.error || "Ya hay una sesión de caja abierta", {
+            action: {
+              label: "Cerrar caja pendiente",
+              onClick: () => router.push("/app/cash-sessions"),
+            },
+          });
+          return;
+        }
         toast.error(data.error || "Error al abrir caja");
         return;
       }

@@ -11,6 +11,16 @@ import {
 } from "@/lib/session-store";
 import type { Prisma } from "@prisma/client";
 
+export class CashSessionExistsError extends Error {
+  public readonly openSessionId: string;
+
+  constructor(openSessionId: string) {
+    super("SESSION_EXISTS");
+    this.name = "CashSessionExistsError";
+    this.openSessionId = openSessionId;
+  }
+}
+
 export interface DataContext {
   storeId: string;
   sessionId: string;
@@ -372,7 +382,7 @@ export async function findCashSessions(ctx: DataContext): Promise<StoredCashSess
     id: s.id,
     storeId: s.storeId,
     userId: s.userId,
-    userName: s.user.name,
+    userName: s.user.name ?? s.userId,
     openingAmount: Number(s.openingAmount),
     expectedAmount: s.expectedAmount ? Number(s.expectedAmount) : null,
     closingAmount: s.closingAmount ? Number(s.closingAmount) : null,
@@ -398,7 +408,7 @@ export async function findCashSession(
     id: s.id,
     storeId: s.storeId,
     userId: s.userId,
-    userName: s.user.name,
+    userName: s.user.name ?? s.userId,
     openingAmount: Number(s.openingAmount),
     expectedAmount: s.expectedAmount ? Number(s.expectedAmount) : null,
     closingAmount: s.closingAmount ? Number(s.closingAmount) : null,
@@ -414,6 +424,9 @@ export async function findOpenCashSession(
 ): Promise<StoredCashSession | null> {
   if (isTest(ctx)) return store(ctx).getOpenCashSession(ctx.storeId);
 
+  // Returns the most recently created open cash session for the store,
+  // regardless of the date it was created. Callers must decide whether a
+  // session from a previous day should be treated as stale/pending.
   const s = await prisma.cashSession.findFirst({
     where: { storeId: ctx.storeId, closedAt: null },
     include: {
@@ -427,7 +440,7 @@ export async function findOpenCashSession(
     id: s.id,
     storeId: s.storeId,
     userId: s.userId,
-    userName: s.user.name,
+    userName: s.user.name ?? s.userId,
     openingAmount: Number(s.openingAmount),
     expectedAmount: null,
     closingAmount: null,
@@ -440,24 +453,25 @@ export async function findOpenCashSession(
 
 export async function createCashSession(
   ctx: DataContext,
-  data: { openingAmount: number; notes: string | null },
+  data: { openingAmount: number; notes: string | null; userName?: string },
 ): Promise<StoredCashSession> {
   if (isTest(ctx)) {
     const existing = store(ctx).getOpenCashSession(ctx.storeId);
-    if (existing) throw new Error("SESSION_EXISTS");
+    if (existing) throw new CashSessionExistsError(existing.id);
     return store(ctx).createCashSession({
       storeId: ctx.storeId,
       userId: ctx.userId,
-      ...data,
+      userName: data.userName,
+      openingAmount: data.openingAmount,
+      notes: data.notes,
     });
   }
 
-  const { prisma: db } = await import("@/lib/prisma");
-  return db.$transaction(async (tx: Prisma.TransactionClient) => {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const existingOpen = await tx.cashSession.findFirst({
       where: { storeId: ctx.storeId, closedAt: null },
     });
-    if (existingOpen) throw new Error("SESSION_EXISTS");
+    if (existingOpen) throw new CashSessionExistsError(existingOpen.id);
 
     const session = await tx.cashSession.create({
       data: {
@@ -473,7 +487,7 @@ export async function createCashSession(
       id: session.id,
       storeId: session.storeId,
       userId: session.userId,
-      userName: session.user.name,
+      userName: session.user.name ?? session.userId,
       openingAmount: Number(session.openingAmount),
       expectedAmount: null,
       closingAmount: null,
@@ -515,8 +529,7 @@ export async function closeCashSession(
     return updated;
   }
 
-  const { prisma: db } = await import("@/lib/prisma");
-  const updated = await db.$transaction(async (tx: Prisma.TransactionClient) => {
+  const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const session = await tx.cashSession.findFirst({
       where: { id, storeId: ctx.storeId },
     });
@@ -555,7 +568,7 @@ export async function closeCashSession(
     id: updated.id,
     storeId: updated.storeId,
     userId: updated.userId,
-    userName: updated.user.name,
+    userName: updated.user.name ?? updated.userId,
     openingAmount: Number(updated.openingAmount),
     expectedAmount: updated.expectedAmount ? Number(updated.expectedAmount) : null,
     closingAmount: updated.closingAmount ? Number(updated.closingAmount) : null,

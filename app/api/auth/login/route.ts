@@ -72,8 +72,13 @@ export async function POST(req: NextRequest) {
     if (isTestUserEmail(user.email)) {
       const store = getOrCreateSessionStore(session.sessionId);
       const openSession = store.getOpenCashSession(user.storeId);
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
 
-      if (openSession) {
+      if (
+        openSession &&
+        (openSession.createdAt < todayStart || openSession.userId !== user.id)
+      ) {
         const cashTotal = store.aggregateSalesTotal({
           cashSessionId: openSession.id,
           paymentMethod: "cash",
@@ -86,7 +91,7 @@ export async function POST(req: NextRequest) {
 
         pendingCashSession = {
           id: openSession.id,
-          userName: openSession.userName ?? "Unknown",
+          userName: openSession.userName ?? openSession.userId,
           openingAmount: openSession.openingAmount,
           createdAt: openSession.createdAt instanceof Date
             ? openSession.createdAt.toISOString()
@@ -104,7 +109,11 @@ export async function POST(req: NextRequest) {
       todayStart.setHours(0, 0, 0, 0);
 
       const openSession = await prisma.cashSession.findFirst({
-        where: { storeId: user.storeId, closedAt: null, createdAt: { lt: todayStart } },
+        where: {
+          storeId: user.storeId,
+          closedAt: null,
+          OR: [{ createdAt: { lt: todayStart } }, { userId: { not: user.id } }],
+        },
         include: {
           user: { select: { name: true } },
           _count: { select: { sales: true } },
@@ -129,7 +138,7 @@ export async function POST(req: NextRequest) {
 
         pendingCashSession = {
           id: openSession.id,
-          userName: openSession.user.name,
+          userName: openSession.user.name ?? openSession.userId,
           openingAmount: Number(openSession.openingAmount),
           createdAt: openSession.createdAt.toISOString(),
           salesCount: openSession._count.sales,

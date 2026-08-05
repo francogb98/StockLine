@@ -137,7 +137,7 @@ describe("POST /api/cash-sessions", () => {
     expect(data.userName).toBe("Admin");
   });
 
-  it("rejects if there is already an open session", async () => {
+  it("rejects if there is already an open session and returns its id", async () => {
     vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
       user: tenantAdmin,
     });
@@ -158,6 +158,8 @@ describe("POST /api/cash-sessions", () => {
     if (!response) throw new Error("Expected response");
 
     expect(response.status).toBe(409);
+    const data = await response.json();
+    expect(data.openSessionId).toBe("cs-open");
   });
 
   it("defaults openingAmount to 0 if not provided", async () => {
@@ -191,5 +193,40 @@ describe("POST /api/cash-sessions", () => {
     if (!response) throw new Error("Expected response");
     expect(response.status).toBe(201);
     expect((await response.json()).openingAmount).toBe(0);
+  });
+
+  it("does not return Unknown as userName when user.name is missing", async () => {
+    vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      user: { ...tenantAdmin, name: "" },
+    });
+
+    vi.spyOn(prisma.cashSession, "findFirst").mockResolvedValue(null);
+    vi.spyOn(prisma.cashSession, "create").mockResolvedValue({
+      id: "cs-new",
+      storeId: "store-1",
+      userId: "admin-1",
+      openingAmount: 50000,
+      expectedAmount: null,
+      closingAmount: null,
+      difference: null,
+      notes: null,
+      closedAt: null,
+      createdAt: new Date(),
+      user: { name: null },
+    } as any);
+    vi.spyOn(prisma, "$transaction").mockImplementation(async (fn: any) => fn(prisma));
+
+    const request = new Request("http://localhost/api/cash-sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ openingAmount: 50000 }),
+    });
+
+    const response = await POST(request);
+    if (!response) throw new Error("Expected response");
+    expect(response.status).toBe(201);
+    const data = await response.json();
+    expect(data.userName).not.toBe("Unknown");
+    expect(data.userName).toBe("admin-1");
   });
 });

@@ -3,6 +3,7 @@ import { requireSessionUser } from "@/lib/api-auth";
 import {
   findCashSessions,
   createCashSession,
+  CashSessionExistsError,
 } from "@/lib/data-access";
 
 export async function GET(request: Request) {
@@ -85,6 +86,7 @@ export async function POST(request: Request) {
     const session = await createCashSession(ctx, {
       openingAmount: safeOpeningAmount,
       notes: notes ?? null,
+      userName: auth.user.name,
     });
 
     return jsonResponse({
@@ -104,8 +106,12 @@ export async function POST(request: Request) {
       currentTotal: 0,
     }, 201);
   } catch (error) {
-    if (error instanceof Error && error.message === "SESSION_EXISTS") {
-      return errorResponse("Ya hay una sesión de caja abierta. Cerrala antes de abrir una nueva.", 409);
+    if (error instanceof CashSessionExistsError) {
+      return errorResponse(
+        "Ya hay una sesión de caja abierta. Cerrala antes de abrir una nueva.",
+        409,
+        { openSessionId: error.openSessionId },
+      );
     }
     console.error("POST /api/cash-sessions", error);
     return errorResponse("Error al abrir sesión de caja", 500);

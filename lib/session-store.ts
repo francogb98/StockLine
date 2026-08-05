@@ -408,12 +408,17 @@ class SessionDataStore {
   createCashSession(data: {
     storeId: string;
     userId: string;
+    userName?: string;
     openingAmount: number;
     notes: string | null;
   }): StoredCashSession {
     const session: StoredCashSession = {
       id: generateId(),
-      ...data,
+      storeId: data.storeId,
+      userId: data.userId,
+      userName: data.userName ?? data.userId,
+      openingAmount: data.openingAmount,
+      notes: data.notes,
       expectedAmount: null,
       closingAmount: null,
       difference: null,
