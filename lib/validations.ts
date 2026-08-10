@@ -130,6 +130,27 @@ export const resetPasswordSchema = z.object({
   password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres").max(128, "La contraseña no puede superar los 128 caracteres"),
 });
 
+export const devolucionDetalleSchema = z.object({
+  saleItemId: z.string().min(1, "SaleItemId es requerido"),
+  cantidad: z.number().positive("La cantidad debe ser mayor a 0"),
+  disposicion: z.enum(["REINGRESAR_STOCK", "MERMAR"]).optional(),
+});
+
+export const createDevolucionSchema = z.object({
+  ventaId: z.string().min(1, "VentaId es requerido"),
+  motivo: z.string().max(500, "El motivo es demasiado largo").optional(),
+  observaciones: z.string().max(2000, "Las observaciones son demasiado largas").optional(),
+  total: z.boolean().optional(),
+  detalles: z.array(devolucionDetalleSchema).optional().default([]),
+}).refine(
+  (data) => {
+    const totalFlag = data.total === true;
+    const hasDetalles = Array.isArray(data.detalles) && data.detalles.length > 0;
+    return totalFlag || hasDetalles;
+  },
+  { message: "Devolución inválida: indicá total=true o al menos un detalle", path: ["detalles"] },
+);
+
 export const PRODUCT_UNITS_VALUES = PRODUCT_UNITS as readonly [string, ...string[]];
 
 export type CreateSaleInput = z.infer<typeof createSaleSchema>;
@@ -143,3 +164,5 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export type SuspendedSaleInput = z.infer<typeof suspendedSaleSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+export type CreateDevolucionInput = z.infer<typeof createDevolucionSchema>;
+export type DevolucionDetalleInput = z.infer<typeof devolucionDetalleSchema>;

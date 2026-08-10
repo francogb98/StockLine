@@ -89,7 +89,9 @@ const VIEW_LABELS_MAP: Record<string, string> = {
   'today-sales': 'Ventas de hoy',
   'low-stock-products': 'Productos con poco stock',
   'cash-status': 'Estado de caja',
+  'devoluciones-home': 'Devoluciones',
   'make-return': 'Hacer devolución',
+  'how-return-works': 'Cómo funciona la devolución',
 }
 
 function getLabelForView(view: AssistantView): string {

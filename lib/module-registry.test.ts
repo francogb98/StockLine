@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { NAVIGATION_ITEMS, getNavigationForRole } from "@/lib/module-registry";
 
 describe("NAVIGATION_ITEMS", () => {
-  it("have 4 items", () => {
-    expect(NAVIGATION_ITEMS).toHaveLength(4);
+  it("have at least the core 4 items", () => {
+    expect(NAVIGATION_ITEMS.length).toBeGreaterThanOrEqual(4);
   });
 
   it("include pos, stock, dashboard, cash-sessions", () => {
@@ -12,6 +12,12 @@ describe("NAVIGATION_ITEMS", () => {
     expect(viewIds).toContain("stock");
     expect(viewIds).toContain("dashboard");
     expect(viewIds).toContain("cash-sessions");
+  });
+
+  it("include devoluciones as admin-only entry", () => {
+    const devoluciones = NAVIGATION_ITEMS.find((i) => i.viewId === "devoluciones");
+    expect(devoluciones).toBeDefined();
+    expect(devoluciones?.adminOnly).toBe(true);
   });
 
   it("be sorted by sortOrder", () => {

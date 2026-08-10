@@ -129,6 +129,35 @@ export interface StoredSuspendedSale {
   createdAt: Date;
 }
 
+export interface StoredDevolucionDetalle {
+  id: string;
+  devolucionId: string;
+  productId: string;
+  productName?: string;
+  saleItemId: string;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
+  disposicion: "REINGRESAR_STOCK" | "MERMAR";
+  createdAt: Date;
+}
+
+export interface StoredDevolucion {
+  id: string;
+  storeId: string;
+  ventaId: string;
+  userId: string;
+  userName?: string;
+  fecha: Date;
+  motivo: string | null;
+  observaciones: string | null;
+  montoTotalDevuelto: number;
+  createdAt: Date;
+  updatedAt: Date;
+  detalles: StoredDevolucionDetalle[];
+  ventaTotal?: number;
+}
+
 function deepCloneDateFields<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj), (_, value) =>
     typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)
@@ -144,6 +173,7 @@ class SessionDataStore {
   cashSessions = new Map<string, StoredCashSession>();
   stockMovements = new Map<string, StoredStockMovement>();
   suspendedSales = new Map<string, StoredSuspendedSale>();
+  devoluciones = new Map<string, StoredDevolucion>();
 
   constructor() {
     this.seed();
@@ -548,6 +578,76 @@ class SessionDataStore {
 
   deleteSuspendedSale(id: string): boolean {
     return this.suspendedSales.delete(id);
+  }
+
+  // ---- Devoluciones ----
+  getDevoluciones(storeId: string): StoredDevolucion[] {
+    return [...this.devoluciones.values()]
+      .filter((d) => d.storeId === storeId)
+      .sort((a, b) => b.fecha.getTime() - a.fecha.getTime());
+  }
+
+  getDevolucion(id: string, storeId: string): StoredDevolucion | null {
+    const d = this.devoluciones.get(id);
+    if (!d || d.storeId !== storeId) return null;
+    const venta = this.sales.get(d.ventaId);
+    return {
+      ...d,
+      ventaTotal: venta && venta.storeId === storeId ? venta.total : undefined,
+    };
+  }
+
+  createDevolucion(data: {
+    storeId: string;
+    ventaId: string;
+    userId: string;
+    userName?: string;
+    motivo: string | null;
+    observaciones: string | null;
+    montoTotalDevuelto: number;
+    detalles: Array<{
+      productId: string;
+      productName?: string;
+      saleItemId: string;
+      cantidad: number;
+      precioUnitario: number;
+      subtotal: number;
+      disposicion: "REINGRESAR_STOCK" | "MERMAR";
+    }>;
+  }): StoredDevolucion {
+    const now = new Date();
+    const devolucionId = generateId();
+    const detalles: StoredDevolucionDetalle[] = data.detalles.map((d) => ({
+      id: generateId(),
+      devolucionId,
+      productId: d.productId,
+      productName: d.productName,
+      saleItemId: d.saleItemId,
+      cantidad: d.cantidad,
+      precioUnitario: d.precioUnitario,
+      subtotal: d.subtotal,
+      disposicion: d.disposicion,
+      createdAt: now,
+    }));
+
+    const venta = this.sales.get(data.ventaId);
+    const devolucion: StoredDevolucion = {
+      id: devolucionId,
+      storeId: data.storeId,
+      ventaId: data.ventaId,
+      userId: data.userId,
+      userName: data.userName,
+      fecha: now,
+      motivo: data.motivo,
+      observaciones: data.observaciones,
+      montoTotalDevuelto: data.montoTotalDevuelto,
+      createdAt: now,
+      updatedAt: now,
+      detalles,
+      ventaTotal: venta && venta.storeId === data.storeId ? venta.total : undefined,
+    };
+    this.devoluciones.set(devolucion.id, devolucion);
+    return devolucion;
   }
 }
 

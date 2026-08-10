@@ -2,6 +2,7 @@ import { Prisma, type DevolucionDisposicion } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isTestUserEmail } from "@/lib/test-users";
 import { getOrCreateSessionStore } from "@/lib/session-store";
+import { toDecimal } from "@/lib/decimal";
 
 const TRANSACTION_TIMEOUT_MS = 15_000;
 
@@ -27,6 +28,7 @@ export interface CreateDevolucionPayload {
   ventaId: string;
   motivo?: string;
   observaciones?: string;
+  total?: boolean;
   detalles: DevolucionDetalleInputLike[];
 }
 
@@ -177,14 +179,17 @@ export async function createDevolucion(
   payload: CreateDevolucionPayload,
   actor: DevolucionActor,
 ): Promise<StoredDevolucion> {
-  if (!payload || !Array.isArray(payload.detalles) || payload.detalles.length === 0) {
+  const totalFlag = payload?.total === true;
+  const detalles = Array.isArray(payload?.detalles) ? payload.detalles : [];
+
+  if (!payload || (!totalFlag && detalles.length === 0)) {
     throw new DevolucionProcessingError(
-      "La devolución debe incluir al menos un detalle",
+      "La devolución debe incluir al menos un detalle o ser total",
       400,
     );
   }
 
-  for (const [index, detalle] of payload.detalles.entries()) {
+  for (const [index, detalle] of detalles.entries()) {
     if (!detalle || !isFiniteNumber(detalle.cantidad)) {
       throw new DevolucionProcessingError(
         `Cantidad inválida en posición ${index + 1}`,
@@ -210,6 +215,49 @@ export async function createDevolucion(
   return createDevolucionInPrisma(payload, actor);
 }
 
+export async function findDevoluciones(
+  actor: DevolucionActor,
+  options: { ventaId?: string; limit?: number; offset?: number } = {},
+): Promise<{ items: StoredDevolucion[]; total: number }> {
+  const limit = Math.min(Math.max(options.limit ?? 50, 1), 200);
+  const offset = Math.max(options.offset ?? 0, 0);
+
+  if (isTest(actor)) {
+    const store = getOrCreateSessionStore(actor.sessionId);
+    const all = store.getDevoluciones(actor.storeId);
+    const filtered = options.ventaId
+      ? all.filter((d) => d.ventaId === options.ventaId)
+      : all;
+    return {
+      items: filtered.slice(offset, offset + limit),
+      total: filtered.length,
+    };
+  }
+
+  const where: Prisma.DevolucionWhereInput = { storeId: actor.storeId };
+  if (options.ventaId) where.ventaId = options.ventaId;
+
+  const [records, total] = await Promise.all([
+    prisma.devolucion.findMany({
+      where,
+      orderBy: { fecha: "desc" },
+      skip: offset,
+      take: limit,
+      include: {
+        user: { select: { name: true } },
+        venta: { select: { total: true } },
+        detalles: { include: { product: { select: { name: true } } } },
+      },
+    }),
+    prisma.devolucion.count({ where }),
+  ]);
+
+  return {
+    items: records.map((r) => buildReturnedDevolucion(r)),
+    total,
+  };
+}
+
 async function createDevolucionInPrisma(
   payload: CreateDevolucionPayload,
   actor: DevolucionActor,
@@ -227,7 +275,20 @@ async function createDevolucionInPrisma(
         throw new DevolucionProcessingError("Venta no encontrada", 404);
       }
 
-      const saleItemIds = payload.detalles.map((d) => d.saleItemId);
+      const totalFlag = payload.total === true;
+
+      let detallesAProcesar: DevolucionDetalleInputLike[];
+      if (totalFlag) {
+        detallesAProcesar = venta.items.map((si) => ({
+          saleItemId: si.id,
+          cantidad: Number(si.quantity),
+          disposicion: "REINGRESAR_STOCK" as DevolucionDisposicion,
+        }));
+      } else {
+        detallesAProcesar = payload.detalles;
+      }
+
+      const saleItemIds = detallesAProcesar.map((d) => d.saleItemId);
       const uniqueSaleItemIds = [...new Set(saleItemIds)];
 
       const saleItems = await tx.saleItem.findMany({
@@ -274,7 +335,7 @@ async function createDevolucionInPrisma(
       }
 
       const requestedBySaleItem = new Map<string, number>();
-      for (const d of payload.detalles) {
+      for (const d of detallesAProcesar) {
         requestedBySaleItem.set(
           d.saleItemId,
           (requestedBySaleItem.get(d.saleItemId) ?? 0) + d.cantidad,
@@ -301,8 +362,6 @@ async function createDevolucionInPrisma(
           );
         }
 
-        // SaleItem.quantity is in display units (e.g. 1 bolsa) and SaleItem.baseQuantity
-        // is the real stock impact (e.g. 25 kg). The customer returns in display units.
         const saleItemDisplayQty = Number(saleItem.quantity);
         const saleItemBaseQty = Number(saleItem.baseQuantity ?? saleItem.quantity);
 
@@ -320,10 +379,9 @@ async function createDevolucionInPrisma(
         const subtotal = roundCurrency(unitPrice * requested);
         montoTotal = roundCurrency(montoTotal + subtotal);
 
-        // Conversion factor: how many base units each display unit represents.
         const perUnitBase = saleItemDisplayQty > 0 ? saleItemBaseQty / saleItemDisplayQty : 0;
 
-        const perDetail: ResolvedDevolucionDetalle[] = payload.detalles
+        const perDetail: ResolvedDevolucionDetalle[] = detallesAProcesar
           .filter((d) => d.saleItemId === saleItemId)
           .map((d) => ({
             saleItemId,
@@ -379,7 +437,7 @@ async function createDevolucionInPrisma(
         if (d.disposicion === "REINGRESAR_STOCK") {
           await tx.product.update({
             where: { id: d.productId },
-            data: { stock: d.newStock },
+            data: { stock: toDecimal(d.newStock) },
           });
           const perUnitBase =
             Number(d.cantidad) > 0
@@ -391,9 +449,9 @@ async function createDevolucionInPrisma(
             productId: d.productId,
             userId: actor.userId,
             type: "CUSTOMER_RETURN",
-            quantity: baseReturned,
-            previousStock: d.previousStock,
-            newStock: d.newStock,
+            quantity: toDecimal(baseReturned),
+            previousStock: toDecimal(d.previousStock),
+            newStock: toDecimal(d.newStock),
             referenceId: devolucion.id,
             reason: `Devolución cliente — ${devolucion.id}`,
           });
@@ -407,13 +465,26 @@ async function createDevolucionInPrisma(
         await tx.stockMovement.createMany({ data: stockMovementsToCreate });
       }
 
-      // TODO: registrar movimiento de caja (reintegro de dinero al cliente).
-      // Cuando se implemente la integración con CashSession, aquí debe
-      // crearse el asiento correspondiente contra la sesión de caja abierta
-      // del usuario, con signo contrario al pago original.
+      // Reintegro de caja: si el usuario tiene una sesión de caja abierta,
+      // descontamos el monto devuelto del expectedAmount. Si la venta original
+      // pertenecía a otra caja, igual registramos el descuento sobre la caja
+      // del usuario que opera (es quien entrega el efectivo).
+      const openCashSession = await tx.cashSession.findFirst({
+        where: { storeId: actor.storeId, closedAt: null },
+        orderBy: { createdAt: "desc" },
+      });
+
+      if (openCashSession && openCashSession.expectedAmount !== null) {
+        await tx.cashSession.update({
+          where: { id: openCashSession.id },
+          data: {
+            expectedAmount: { decrement: toDecimal(montoTotal) },
+          },
+        });
+      }
 
       console.info(
-        `[Devolucion] tx committed in ${Date.now() - stepStart}ms — venta=${venta.id} totalDevuelto=${montoTotal} items=${resolved.length}`,
+        `[Devolucion] tx committed in ${Date.now() - stepStart}ms — venta=${venta.id} totalDevuelto=${montoTotal} items=${resolved.length} caja=${openCashSession?.id ?? "none"}`,
       );
 
       const record = await tx.devolucion.findUnique({
@@ -453,10 +524,19 @@ async function createDevolucionInSessionStore(
     throw new DevolucionProcessingError("Venta no encontrada", 404);
   }
 
+  const totalFlag = payload.total === true;
+  const detallesAProcesar: DevolucionDetalleInputLike[] = totalFlag
+    ? venta.items.map((si) => ({
+        saleItemId: si.id,
+        cantidad: si.quantity,
+        disposicion: "REINGRESAR_STOCK" as DevolucionDisposicion,
+      }))
+    : payload.detalles;
+
   const saleItemById = new Map(venta.items.map((si) => [si.id, si]));
 
   const uniqueSaleItemIds = [
-    ...new Set(payload.detalles.map((d) => d.saleItemId)),
+    ...new Set(detallesAProcesar.map((d) => d.saleItemId)),
   ];
 
   const missingSaleItemIds = uniqueSaleItemIds.filter(
@@ -482,7 +562,7 @@ async function createDevolucionInSessionStore(
   }
 
   const requestedBySaleItem = new Map<string, number>();
-  for (const d of payload.detalles) {
+  for (const d of detallesAProcesar) {
     requestedBySaleItem.set(
       d.saleItemId,
       (requestedBySaleItem.get(d.saleItemId) ?? 0) + d.cantidad,
@@ -515,7 +595,7 @@ async function createDevolucionInSessionStore(
     const unitPrice = saleItem.unitPrice;
     montoTotal = roundCurrency(montoTotal + roundCurrency(unitPrice * requested));
 
-    for (const d of payload.detalles.filter((x) => x.saleItemId === saleItemId)) {
+    for (const d of detallesAProcesar.filter((x) => x.saleItemId === saleItemId)) {
       const previousStock = product.stock;
       const newStock =
         d.disposicion === "REINGRESAR_STOCK" ? previousStock + d.cantidad : previousStock;
@@ -572,7 +652,13 @@ async function createDevolucionInSessionStore(
     }
   }
 
-  // TODO: registrar movimiento de caja (reintegro de dinero al cliente).
+  // Reintegro de caja (session-store)
+  const openCash = store.getOpenCashSession(actor.storeId);
+  if (openCash && openCash.expectedAmount !== null) {
+    store.updateCashSession(openCash.id, {
+      expectedAmount: roundCurrency(openCash.expectedAmount - montoTotal),
+    });
+  }
 
   return findDevolucion(actor, created.id) as Promise<StoredDevolucion>;
 }

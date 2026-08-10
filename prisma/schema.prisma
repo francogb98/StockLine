@@ -23,6 +23,7 @@ model Store {
   stockMovements StockMovement[]
   subscription   Subscription?
   suspendedSales SuspendedSale[]
+  devoluciones   Devolucion[]
 
   @@map("stores")
 }
@@ -62,6 +63,7 @@ model User {
   stockMovements           StockMovement[]
   sessions                 Session[]
   suspendedSales           SuspendedSale[]
+  devoluciones             Devolucion[]
   productions              Production[]
   ingredientStockMovements IngredientStockMovement[]
   passwordResetTokens      PasswordResetToken[]
@@ -131,10 +133,11 @@ model Product {
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
-  saleItems      SaleItem[]
-  stockMovements StockMovement[]
-  recipe         Recipe?
-  presentations  ProductPresentation[]
+  saleItems        SaleItem[]
+  stockMovements   StockMovement[]
+  devoluciones     DevolucionDetalle[]
+  recipe           Recipe?
+  presentations    ProductPresentation[]
 
   @@map("products")
 }
@@ -177,7 +180,8 @@ model Sale {
   status        String       @default("completed")
   createdAt     DateTime     @default(now())
 
-  items SaleItem[]
+  items        SaleItem[]
+  devoluciones Devolucion[]
 
   @@index([storeId, createdAt(sort: Desc)])
   @@index([cashSessionId])
@@ -220,6 +224,8 @@ model SaleItem {
   presentationName  String?
   baseQuantity      Decimal             @db.Decimal(12, 3) @default(0)
 
+  devoluciones DevolucionDetalle[]
+
   @@index([saleId])
   @@index([presentationId])
   @@map("sale_items")
@@ -234,6 +240,7 @@ enum MovementType {
   STOCK_CORRECTION
   CANCELLATION
   OWNER_WITHDRAWAL
+  CUSTOMER_RETURN
 }
 
 model StockMovement {
@@ -286,6 +293,54 @@ model SuspendedSaleItem {
 
   @@index([suspendedSaleId])
   @@map("suspended_sale_items")
+}
+
+enum DevolucionDisposicion {
+  REINGRESAR_STOCK
+  MERMAR
+}
+
+model Devolucion {
+  id                String           @id @default(uuid())
+  storeId           String
+  store             Store            @relation(fields: [storeId], references: [id])
+  ventaId           String
+  venta             Sale             @relation(fields: [ventaId], references: [id])
+  userId            String
+  user              User             @relation(fields: [userId], references: [id])
+  fecha             DateTime         @default(now())
+  motivo            String?
+  observaciones     String?
+  montoTotalDevuelto Decimal         @db.Decimal(12, 2)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  detalles DevolucionDetalle[]
+
+  @@index([storeId, fecha(sort: Desc)])
+  @@index([storeId, ventaId])
+  @@index([userId, fecha(sort: Desc)])
+  @@map("devoluciones")
+}
+
+model DevolucionDetalle {
+  id             String                @id @default(uuid())
+  devolucionId   String
+  devolucion     Devolucion            @relation(fields: [devolucionId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product               @relation(fields: [productId], references: [id])
+  saleItemId     String
+  saleItem       SaleItem              @relation(fields: [saleItemId], references: [id])
+  cantidad       Int
+  precioUnitario Decimal               @db.Decimal(12, 2)
+  subtotal       Decimal               @db.Decimal(12, 2)
+  disposicion    DevolucionDisposicion @default(REINGRESAR_STOCK)
+  createdAt      DateTime              @default(now())
+
+  @@index([devolucionId])
+  @@index([productId])
+  @@index([saleItemId])
+  @@map("devolucion_detalles")
 }
 
 // ============================================================

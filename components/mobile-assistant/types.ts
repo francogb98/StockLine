@@ -6,7 +6,9 @@ export type AssistantView =
   | 'today-sales'
   | 'low-stock-products'
   | 'cash-status'
+  | 'devoluciones-home'
   | 'make-return'
+  | 'how-return-works'
   | 'suggestion-form'
 
 export interface AssistantCardAction {

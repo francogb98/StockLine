@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { POST } from "./route";
+import { GET, POST } from "./route";
 import * as apiAuth from "@/lib/api-auth";
 import * as devolucionesService from "@/lib/devoluciones-service";
 
 vi.mock("@/lib/devoluciones-service", () => ({
   createDevolucion: vi.fn(),
   findDevolucion: vi.fn(),
+  findDevoluciones: vi.fn(),
   DevolucionProcessingError: class extends Error {
     statusCode: number;
     constructor(message: string, statusCode: number) {
@@ -193,5 +194,118 @@ describe("POST /api/devoluciones", () => {
     );
     if (!response) throw new Error("Expected response");
     expect(response.status).toBe(500);
+  });
+
+  it("accepts total: true without detalles", async () => {
+    vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
+      user: adminUser,
+    });
+    vi.mocked(devolucionesService.createDevolucion).mockResolvedValue({
+      id: "dev-total",
+      storeId: "store-1",
+      ventaId: "sale-1",
+      userId: "user-1",
+      fecha: new Date(),
+      motivo: null,
+      observaciones: null,
+      montoTotalDevuelto: 999,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      detalles: [],
+    } as any);
+
+    const response = await POST(
+      createRequest({
+        ventaId: "sale-1",
+        total: true,
+        detalles: [],
+      }),
+    );
+    if (!response) throw new Error("Expected response");
+    expect(response.status).toBe(201);
+    const data = await response.json();
+    expect(data.id).toBe("dev-total");
+    expect(devolucionesService.createDevolucion).toHaveBeenCalledWith(
+      expect.objectContaining({ total: true }),
+      expect.any(Object),
+    );
+  });
+
+  it("rejects payload without detalles and without total flag", async () => {
+    vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
+      user: adminUser,
+    });
+
+    const response = await POST(
+      createRequest({ ventaId: "sale-1", detalles: [] }),
+    );
+    if (!response) throw new Error("Expected response");
+    expect(response.status).toBe(400);
+  });
+});
+
+describe("GET /api/devoluciones", () => {
+  it("returns 401 when not authenticated", async () => {
+    vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      response: new Response(JSON.stringify({ error: "No autenticado" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    });
+    const response = await GET(
+      new Request("http://localhost/api/devoluciones"),
+    );
+    expect(response.status).toBe(401);
+  });
+
+  it("returns paginated list", async () => {
+    vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
+      user: adminUser,
+    });
+    vi.mocked(devolucionesService.findDevoluciones).mockResolvedValue({
+      items: [
+        {
+          id: "dev-1",
+          storeId: "store-1",
+          ventaId: "sale-1",
+          userId: "user-1",
+          fecha: new Date(),
+          motivo: null,
+          observaciones: null,
+          montoTotalDevuelto: 50,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          detalles: [],
+        },
+      ] as any,
+      total: 1,
+    });
+
+    const response = await GET(
+      new Request("http://localhost/api/devoluciones?limit=10&offset=0"),
+    );
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.items).toHaveLength(1);
+    expect(data.total).toBe(1);
+    expect(devolucionesService.findDevoluciones).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ limit: 10, offset: 0 }),
+    );
+  });
+
+  it("returns 400 on invalid limit", async () => {
+    vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
+      user: adminUser,
+    });
+
+    const response = await GET(
+      new Request("http://localhost/api/devoluciones?limit=999"),
+    );
+    expect(response.status).toBe(400);
   });
 });

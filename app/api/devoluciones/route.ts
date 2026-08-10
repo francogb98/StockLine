@@ -4,8 +4,43 @@ import { requireSessionUser } from "@/lib/api-auth";
 import { createDevolucionSchema } from "@/lib/validations";
 import {
   createDevolucion,
+  findDevoluciones,
   DevolucionProcessingError,
 } from "@/lib/devoluciones-service";
+
+export async function GET(request: NextRequest) {
+  try {
+    const auth = await requireSessionUser();
+    if ("response" in auth) return auth.response;
+
+    const url = new URL(request.url);
+    const ventaId = url.searchParams.get("ventaId") ?? undefined;
+    const limit = Number(url.searchParams.get("limit") ?? "50");
+    const offset = Number(url.searchParams.get("offset") ?? "0");
+
+    if (Number.isNaN(limit) || limit <= 0 || limit > 200) {
+      return errorResponse("limit inválido (1-200)", 400);
+    }
+    if (Number.isNaN(offset) || offset < 0) {
+      return errorResponse("offset inválido", 400);
+    }
+
+    const result = await findDevoluciones(
+      {
+        storeId: auth.user.storeId,
+        userId: auth.user.id,
+        userEmail: auth.user.email,
+        sessionId: auth.sessionId,
+      },
+      { ventaId, limit, offset },
+    );
+
+    return jsonResponse(result);
+  } catch (error) {
+    console.error("GET /api/devoluciones", error);
+    return errorResponse("Error al listar devoluciones", 500);
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,7 +62,8 @@ export async function POST(request: NextRequest) {
         ventaId: data.ventaId,
         motivo: data.motivo,
         observaciones: data.observaciones,
-        detalles: data.detalles.map((d) => ({
+        total: data.total === true,
+        detalles: (data.detalles ?? []).map((d) => ({
           saleItemId: d.saleItemId,
           cantidad: d.cantidad,
           disposicion: d.disposicion,

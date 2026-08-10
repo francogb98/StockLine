@@ -11,6 +11,8 @@ import { AddStockView } from './views/add-stock-view'
 import { ChangePriceView } from './views/change-price-view'
 import { LowStockProductsView } from './views/low-stock-products-view'
 import { MakeReturnView } from './views/make-return-view'
+import { DevolucionesHomeView } from './views/devoluciones-home-view'
+import { HowReturnWorksView } from './views/how-return-works-view'
 import type { AssistantView } from './types'
 
 export const VIEW_LABELS: Record<AssistantView, string> = {
@@ -21,7 +23,9 @@ export const VIEW_LABELS: Record<AssistantView, string> = {
   'today-sales': 'Ventas de hoy',
   'low-stock-products': 'Productos con poco stock',
   'cash-status': 'Estado de caja',
+  'devoluciones-home': 'Devoluciones',
   'make-return': 'Hacer devolución',
+  'how-return-works': 'Cómo funciona',
   'suggestion-form': 'Sugerencia',
 }
 
@@ -33,7 +37,9 @@ const VIEW_COMPONENTS: Record<string, React.ComponentType> = {
   'add-stock': AddStockView,
   'change-price': ChangePriceView,
   'low-stock-products': LowStockProductsView,
+  'devoluciones-home': DevolucionesHomeView,
   'make-return': MakeReturnView,
+  'how-return-works': HowReturnWorksView,
 }
 
 export function AssistantContent() {
