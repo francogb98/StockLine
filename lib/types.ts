@@ -39,6 +39,52 @@ export interface SubscriptionState {
   daysRemaining: number;
 }
 
+export type QuantityType = "DISCRETA" | "CONTINUA";
+
+export const PRODUCT_UNITS = [
+  "unit",
+  "kg",
+  "g",
+  "L",
+  "mL",
+  "m",
+  "cm",
+] as const;
+
+export type ProductUnit = (typeof PRODUCT_UNITS)[number];
+
+export const DISCRETE_UNITS: readonly ProductUnit[] = ["unit"];
+export const CONTINUOUS_UNITS: readonly ProductUnit[] = [
+  "kg",
+  "g",
+  "L",
+  "mL",
+  "m",
+  "cm",
+];
+
+export function isValidProductUnit(unit: string): unit is ProductUnit {
+  return (PRODUCT_UNITS as readonly string[]).includes(unit);
+}
+
+export function unitsForQuantityType(
+  quantityType: QuantityType,
+): readonly ProductUnit[] {
+  return quantityType === "DISCRETA" ? DISCRETE_UNITS : CONTINUOUS_UNITS;
+}
+
+export interface ProductPresentation {
+  id?: string;
+  productId?: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  active: boolean;
+  sortOrder?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export interface Category {
   id: string;
   storeId: string;
@@ -57,6 +103,9 @@ export interface Product {
   cost: number;
   stock: number;
   minStock: number;
+  quantityType: QuantityType;
+  unit: string;
+  presentations?: ProductPresentation[];
   imageUrl?: string | null;
   cloudinaryPublicId?: string | null;
   createdAt: Date;
@@ -66,6 +115,7 @@ export interface Product {
 export interface CartItem {
   product: Product;
   quantity: number;
+  presentation?: ProductPresentation | null;
 }
 
 export type PaymentMethod = "cash" | "card" | "transfer";
@@ -133,6 +183,9 @@ export interface SaleItem {
   quantity: number;
   unitPrice: number;
   total: number;
+  presentationId?: string | null;
+  presentationName?: string | null;
+  baseQuantity?: number;
 }
 
 export interface SuspendedSaleItem {
@@ -143,6 +196,9 @@ export interface SuspendedSaleItem {
   quantity: number;
   unitPrice: number;
   total: number;
+  presentationId?: string | null;
+  presentationName?: string | null;
+  baseQuantity?: number;
 }
 
 export interface SuspendedSale {

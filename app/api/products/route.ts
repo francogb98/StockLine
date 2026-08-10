@@ -6,6 +6,8 @@ import {
   findCategory,
   createProduct,
 } from "@/lib/data-access";
+import { createProductSchema } from "@/lib/validations";
+import { assertValidUnitForQuantityType, normalizeQuantityType, normalizeUnit } from "@/lib/decimal";
 
 export async function GET() {
   try {
@@ -39,7 +41,13 @@ export async function POST(request: Request) {
       userId: auth.user.id,
     };
 
-    const data = await request.json();
+    const rawData = await request.json();
+    const parseResult = createProductSchema.safeParse(rawData);
+    if (!parseResult.success) {
+      const firstError = parseResult.error.errors[0];
+      return errorResponse(firstError?.message || "Datos inválidos", 400);
+    }
+    const data = parseResult.data;
 
     const category = await findCategory(ctx, data.categoryId);
     if (!category) {
@@ -58,6 +66,37 @@ export async function POST(request: Request) {
       }
     }
 
+    const quantityType = normalizeQuantityType(data.quantityType);
+    if (
+      quantityType === "DISCRETA" &&
+      data.unit !== undefined &&
+      data.unit !== "unit"
+    ) {
+      return errorResponse(
+        "Un producto DISCRETO solo puede utilizar la unidad 'unit'",
+        400,
+      );
+    }
+    if (
+      quantityType === "CONTINUA" &&
+      data.unit !== undefined &&
+      data.unit === "unit"
+    ) {
+      return errorResponse(
+        "Un producto continuo no puede utilizar la unidad 'unit'",
+        400,
+      );
+    }
+    const unit = normalizeUnit(data.unit, quantityType);
+    try {
+      assertValidUnitForQuantityType(unit, quantityType);
+    } catch (err) {
+      return errorResponse(
+        err instanceof Error ? err.message : "Unidad inválida",
+        400,
+      );
+    }
+
     const product = await createProduct(ctx, {
       barcode,
       name: data.name,
@@ -67,12 +106,18 @@ export async function POST(request: Request) {
       cost: data.cost,
       stock: data.stock,
       minStock: data.minStock,
+      quantityType,
+      unit,
+      presentations: data.presentations ?? [],
       imageUrl: data.imageUrl ?? null,
       cloudinaryPublicId: data.cloudinaryPublicId ?? null,
     });
 
     return jsonResponse(product, 201);
   } catch (error) {
+    if (error instanceof Error && /presentaci/i.test(error.message)) {
+      return errorResponse(error.message, 400);
+    }
     console.error("POST /api/products", error);
     return errorResponse("Error creating product", 500);
   }

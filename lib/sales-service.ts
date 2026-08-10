@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import type { PaymentMethod } from "@/lib/types";
 import { prisma } from "@/lib/prisma";
 import { getTaxConfig, calculateTax } from "@/lib/tax-config";
+import { toDecimal, decimalToNumber, roundMoney } from "@/lib/decimal";
 
 const MAX_TRANSACTION_RETRIES = 3;
 const TRANSACTION_TIMEOUT_MS = 15_000;
@@ -11,6 +12,9 @@ type SaleItemInput = {
   quantity: number;
   unitPrice?: number;
   total?: number;
+  presentationId?: string | null;
+  presentationName?: string | null;
+  baseQuantity?: number;
 };
 
 type SalePayload = {
@@ -28,6 +32,15 @@ type ProductRecord = {
   name: string;
   price: number;
   stock: number;
+  quantityType: "DISCRETA" | "CONTINUA";
+  unit: string;
+  presentations: Array<{
+    id: string;
+    name: string;
+    quantity: number;
+    unit: string;
+    active: boolean;
+  }>;
 };
 
 export class SaleProcessingError extends Error {
@@ -44,12 +57,8 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function roundCurrency(value: number) {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
-}
-
-function assertPositiveInteger(value: number, message: string) {
-  if (!Number.isInteger(value) || value <= 0) {
+function assertPositiveNumber(value: number, message: string) {
+  if (!Number.isFinite(value) || value <= 0) {
     throw new SaleProcessingError(message, 400);
   }
 }
@@ -58,7 +67,6 @@ function normalizePaymentMethod(value: unknown): PaymentMethod {
   if (value === "cash" || value === "card" || value === "transfer") {
     return value;
   }
-
   throw new SaleProcessingError("Método de pago inválido", 400);
 }
 
@@ -66,25 +74,20 @@ function normalizeSalePayload(rawPayload: unknown): SalePayload {
   if (!rawPayload || typeof rawPayload !== "object") {
     throw new SaleProcessingError("Payload de venta inválido", 400);
   }
-
   const payload = rawPayload as Record<string, unknown>;
 
   if (!Array.isArray(payload.items) || payload.items.length === 0) {
     throw new SaleProcessingError("La venta debe incluir items", 400);
   }
 
-  // Amounts are optional — when omitted (e.g. offline sync), the server
-  // recalculates from current product prices and skips the match check.
   const subtotal =
     payload.subtotal !== undefined && payload.subtotal !== null
       ? (payload.subtotal as number)
       : undefined;
-
   const tax =
     payload.tax !== undefined && payload.tax !== null
       ? (payload.tax as number)
       : undefined;
-
   const total =
     payload.total !== undefined && payload.total !== null
       ? (payload.total as number)
@@ -97,7 +100,6 @@ function normalizeSalePayload(rawPayload: unknown): SalePayload {
         400,
       );
     }
-
     const rawItem = item as Record<string, unknown>;
     const productId = rawItem.productId;
     const quantity = rawItem.quantity;
@@ -108,18 +110,13 @@ function normalizeSalePayload(rawPayload: unknown): SalePayload {
         400,
       );
     }
-
     if (!isFiniteNumber(quantity)) {
       throw new SaleProcessingError(
         `Cantidad inválida en posición ${index + 1}`,
         400,
       );
     }
-
-    assertPositiveInteger(
-      quantity,
-      `Cantidad inválida en posición ${index + 1}`,
-    );
+    assertPositiveNumber(quantity, `Cantidad inválida en posición ${index + 1}`);
 
     if (rawItem.unitPrice !== undefined) {
       if (!isFiniteNumber(rawItem.unitPrice) || rawItem.unitPrice < 0) {
@@ -129,7 +126,6 @@ function normalizeSalePayload(rawPayload: unknown): SalePayload {
         );
       }
     }
-
     if (rawItem.total !== undefined) {
       if (!isFiniteNumber(rawItem.total) || rawItem.total < 0) {
         throw new SaleProcessingError(
@@ -138,14 +134,32 @@ function normalizeSalePayload(rawPayload: unknown): SalePayload {
         );
       }
     }
+    if (rawItem.baseQuantity !== undefined) {
+      const bq = rawItem.baseQuantity;
+      if (!isFiniteNumber(bq) || bq < 0) {
+        throw new SaleProcessingError(
+          `Cantidad base inválida en posición ${index + 1}`,
+          400,
+        );
+      }
+    }
 
     return {
       productId,
       quantity,
-      unitPrice: isFiniteNumber(rawItem.unitPrice)
-        ? rawItem.unitPrice
-        : undefined,
+      unitPrice: isFiniteNumber(rawItem.unitPrice) ? rawItem.unitPrice : undefined,
       total: isFiniteNumber(rawItem.total) ? rawItem.total : undefined,
+      presentationId:
+        typeof rawItem.presentationId === "string"
+          ? rawItem.presentationId
+          : null,
+      presentationName:
+        typeof rawItem.presentationName === "string"
+          ? rawItem.presentationName
+          : null,
+      baseQuantity: isFiniteNumber(rawItem.baseQuantity)
+        ? rawItem.baseQuantity
+        : undefined,
     };
   });
 
@@ -171,17 +185,27 @@ function normalizeSalePayload(rawPayload: unknown): SalePayload {
 }
 
 function aggregateItems(items: SaleItemInput[]) {
-  const aggregated = new Map<string, SaleItemInput & { quantity: number }>();
+  // Aggregate by (productId, presentationId) so that two lines for the same
+  // product in the same presentation collapse into one. Different
+  // presentations stay separate so the presentation flow is preserved.
+  const aggregated = new Map<
+    string,
+    SaleItemInput & { quantity: number; baseQuantity?: number }
+  >();
 
   for (const item of items) {
-    const existing = aggregated.get(item.productId);
+    const key = `${item.productId}::${item.presentationId ?? ""}`;
+    const existing = aggregated.get(key);
     if (existing) {
       existing.quantity += item.quantity;
+      if (item.baseQuantity !== undefined) {
+        existing.baseQuantity =
+          (existing.baseQuantity ?? existing.quantity) + item.baseQuantity;
+      }
     } else {
-      aggregated.set(item.productId, { ...item });
+      aggregated.set(key, { ...item });
     }
   }
-
   return [...aggregated.values()];
 }
 
@@ -190,8 +214,8 @@ function ensureMatchingAmount(
   expected: number,
   received: number | undefined,
 ) {
-  if (received === undefined) return; // server-computed, skip check
-  if (Math.abs(roundCurrency(expected) - roundCurrency(received)) > 0.01) {
+  if (received === undefined) return;
+  if (Math.abs(roundMoney(expected) - roundMoney(received)) > 0.01) {
     throw new SaleProcessingError(
       `Los importes de la venta no coinciden (${label})`,
       400,
@@ -209,6 +233,51 @@ function isRetryableTransactionError(error: unknown) {
   }
   const code = (error as { code?: string }).code;
   return code === "P2034" || code === "P2028";
+}
+
+function resolvePresentation(
+  item: SaleItemInput,
+  product: ProductRecord,
+):
+  | { id: string; name: string; quantity: number; unit: string }
+  | null {
+  if (!item.presentationId) return null;
+  const pres = product.presentations.find(
+    (p) => p.id === item.presentationId,
+  );
+  if (!pres) {
+    throw new SaleProcessingError(
+      `La presentación no pertenece al producto "${product.name}"`,
+      400,
+    );
+  }
+  if (!pres.active) {
+    throw new SaleProcessingError(
+      `La presentación "${pres.name}" está inactiva`,
+      400,
+    );
+  }
+  if (pres.unit !== product.unit) {
+    throw new SaleProcessingError(
+      `La presentación "${pres.name}" no coincide con la unidad del producto`,
+      400,
+    );
+  }
+  return pres;
+}
+
+function computeBaseQuantity(
+  item: SaleItemInput,
+  presentation: ReturnType<typeof resolvePresentation>,
+  product: ProductRecord,
+): number {
+  if (item.baseQuantity !== undefined) {
+    return item.baseQuantity;
+  }
+  if (presentation) {
+    return item.quantity * presentation.quantity;
+  }
+  return item.quantity;
 }
 
 export async function createSale(
@@ -240,11 +309,41 @@ export async function createSale(
               name: true,
               price: true,
               stock: true,
+              quantityType: true,
+              unit: true,
+              presentations: {
+                where: { active: true },
+                select: {
+                  id: true,
+                  name: true,
+                  quantity: true,
+                  unit: true,
+                  active: true,
+                },
+              },
             },
           });
 
           const productById = new Map<string, ProductRecord>(
-            products.map((product) => [product.id, { ...product, price: Number(product.price) }]),
+            products.map((p) => [
+              p.id,
+              {
+                id: p.id,
+                storeId: p.storeId,
+                name: p.name,
+                price: Number(p.price),
+                stock: decimalToNumber(p.stock),
+                quantityType: (p.quantityType ?? "DISCRETA") as "DISCRETA" | "CONTINUA",
+                unit: p.unit ?? "unit",
+                presentations: (p.presentations ?? []).map((pr) => ({
+                  id: pr.id,
+                  name: pr.name,
+                  quantity: decimalToNumber(pr.quantity),
+                  unit: pr.unit,
+                  active: pr.active,
+                })),
+              },
+            ]),
           );
 
           const missingProductIds = productIds.filter(
@@ -264,25 +363,47 @@ export async function createSale(
             if (!product) {
               throw new SaleProcessingError("Producto inexistente", 404);
             }
+            assertPositiveNumber(item.quantity, "Cantidad inválida");
 
-            assertPositiveInteger(item.quantity, "Cantidad inválida");
+            const presentation = resolvePresentation(item, product);
+            const baseQuantity = computeBaseQuantity(item, presentation, product);
+            if (baseQuantity <= 0) {
+              throw new SaleProcessingError(
+                `Cantidad base inválida para "${product.name}"`,
+                400,
+              );
+            }
+            if (baseQuantity > product.stock) {
+              throw new SaleProcessingError(
+                `Stock insuficiente para ${product.name}`,
+                409,
+              );
+            }
 
             previousStockMap.set(product.id, product.stock);
 
-            const itemTotal = roundCurrency(product.price * item.quantity);
-            computedSubtotal = roundCurrency(computedSubtotal + itemTotal);
+            const unitPrice = Number(item.unitPrice ?? product.price);
+            const itemTotal = roundMoney(unitPrice * baseQuantity);
+            computedSubtotal = roundMoney(computedSubtotal + itemTotal);
+
+            const displayQuantity = presentation
+              ? item.quantity
+              : baseQuantity;
 
             return {
               productId: product.id,
               productName: product.name,
-              quantity: item.quantity,
-              unitPrice: product.price,
+              quantity: displayQuantity,
+              unitPrice,
               total: itemTotal,
+              presentationId: presentation?.id ?? null,
+              presentationName: presentation?.name ?? null,
+              baseQuantity,
             };
           });
 
           const computedTax = calculateTax(computedSubtotal, taxConfig);
-          const computedTotal = roundCurrency(computedSubtotal + computedTax);
+          const computedTotal = roundMoney(computedSubtotal + computedTax);
 
           ensureMatchingAmount("subtotal", computedSubtotal, payload.subtotal);
           ensureMatchingAmount("tax", computedTax, payload.tax);
@@ -294,10 +415,10 @@ export async function createSale(
                 where: {
                   id: item.productId,
                   storeId: auth.storeId,
-                  stock: { gte: item.quantity },
+                  stock: { gte: toDecimal(item.baseQuantity) },
                 },
                 data: {
-                  stock: { decrement: item.quantity },
+                  stock: { decrement: toDecimal(item.baseQuantity) },
                 },
               }),
             ),
@@ -312,23 +433,26 @@ export async function createSale(
             }
           }
 
-          const sale = await tx.sale.create({
+          const created = await tx.sale.create({
             data: {
               storeId: auth.storeId,
               userId: auth.userId,
               cashSessionId: auth.cashSessionId ?? null,
-              subtotal: computedSubtotal,
-              tax: computedTax,
-              total: computedTotal,
+              subtotal: toDecimal(computedSubtotal),
+              tax: toDecimal(computedTax),
+              total: toDecimal(computedTotal),
               paymentMethod: payload.paymentMethod,
               createdAt: payload.createdAt ?? undefined,
               items: {
                 create: saleItems.map((item) => ({
                   productId: item.productId,
                   productName: item.productName,
-                  quantity: item.quantity,
-                  unitPrice: item.unitPrice,
-                  total: item.total,
+                  quantity: toDecimal(item.quantity),
+                  unitPrice: toDecimal(item.unitPrice),
+                  total: toDecimal(item.total),
+                  presentationId: item.presentationId,
+                  presentationName: item.presentationName,
+                  baseQuantity: toDecimal(item.baseQuantity),
                 })),
               },
             },
@@ -340,15 +464,16 @@ export async function createSale(
           await tx.stockMovement.createMany({
             data: saleItems.map((item) => {
               const prev = previousStockMap.get(item.productId)!;
+              const newStock = prev - item.baseQuantity;
               return {
                 storeId: auth.storeId,
                 productId: item.productId,
                 userId: auth.userId,
                 type: "SALE" as const,
-                quantity: -item.quantity,
-                previousStock: prev,
-                newStock: prev - item.quantity,
-                referenceId: sale.id,
+                quantity: toDecimal(-item.baseQuantity),
+                previousStock: toDecimal(prev),
+                newStock: toDecimal(newStock),
+                referenceId: created.id,
               };
             }),
           });
@@ -357,7 +482,7 @@ export async function createSale(
             `[Sale] tx committed in ${Date.now() - stepStart}ms — ${saleItems.length} items, total=${computedTotal}`,
           );
 
-          return sale;
+          return created;
         },
         {
           isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,

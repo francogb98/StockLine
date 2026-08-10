@@ -16,7 +16,7 @@ describe("SYSTEM_FIELDS", () => {
   it("have all expected fields", () => {
     expect(Object.keys(SYSTEM_FIELDS)).toEqual([
       "name", "barcode", "description", "category",
-      "price", "cost", "stock", "minStock",
+      "price", "cost", "stock", "minStock", "unit", "quantityType",
     ]);
   });
 });
@@ -28,8 +28,8 @@ describe("REQUIRED_FIELDS", () => {
 });
 
 describe("OPTIONAL_FIELDS", () => {
-  it("have 7 optional fields", () => {
-    expect(OPTIONAL_FIELDS).toHaveLength(7);
+  it("have 9 optional fields", () => {
+    expect(OPTIONAL_FIELDS).toHaveLength(9);
   });
 });
 
@@ -118,6 +118,8 @@ describe("importMappingSchema", () => {
         cost: null,
         stock: null,
         minStock: null,
+        unit: null,
+        quantityType: null,
       }).success,
     ).toBe(true);
   });
@@ -132,6 +134,8 @@ describe("importMappingSchema", () => {
       cost: null,
       stock: null,
       minStock: null,
+      unit: null,
+      quantityType: null,
     });
     expect(result.success).toBe(true);
   });

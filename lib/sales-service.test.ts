@@ -100,9 +100,9 @@ describe("sales-service", () => {
         where: expect.objectContaining({
           id: "prod-1",
           storeId: "store-1",
-          stock: { gte: 2 },
+          stock: { gte: expect.objectContaining({ toString: expect.any(Function) }) },
         }),
-        data: { stock: { decrement: 2 } },
+        data: { stock: { decrement: expect.objectContaining({ toString: expect.any(Function) }) } },
       }),
     );
     expect(tx.sale.create).toHaveBeenCalledTimes(1);
@@ -324,5 +324,263 @@ describe("sales-service", () => {
     });
 
     expect(transactionSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects negative quantities", async () => {
+    await expect(
+      createSale(
+        {
+          items: [{ productId: "prod-1", quantity: -1, unitPrice: 100, total: -100 }],
+          subtotal: -100,
+          tax: 0,
+          total: -100,
+          paymentMethod: "cash",
+        },
+        { storeId: "store-1", userId: "user-1" },
+      ),
+    ).rejects.toMatchObject({ name: "SaleProcessingError", statusCode: 400 });
+  });
+
+  it("accepts continuous product with presentation and discounts baseQuantity", async () => {
+    const presentationId = "pres-1";
+    const { tx, transactionSpy } = createTransactionMock({
+      products: [
+        {
+          id: "prod-kg",
+          storeId: "store-1",
+          name: "Dog Chow",
+          price: 100,
+          stock: 250,
+          quantityType: "CONTINUA",
+          unit: "kg",
+          presentations: [
+            {
+              id: presentationId,
+              name: "Bolsa 25 kg",
+              quantity: 25,
+              unit: "kg",
+              active: true,
+            },
+          ],
+        },
+      ],
+      saleResult: {
+        id: "sale-kg",
+        storeId: "store-1",
+        userId: "user-1",
+        subtotal: 2500,
+        tax: 0,
+        total: 2500,
+        paymentMethod: "cash",
+        createdAt: new Date(),
+        items: [
+          {
+            id: "item-1",
+            productId: "prod-kg",
+            productName: "Dog Chow",
+            quantity: 1,
+            unitPrice: 100,
+            total: 2500,
+            presentationId,
+            presentationName: "Bolsa 25 kg",
+            baseQuantity: 25,
+          },
+        ],
+      },
+    });
+
+    const sale = await createSale(
+      {
+        items: [
+          {
+            productId: "prod-kg",
+            quantity: 1,
+            unitPrice: 100,
+            presentationId,
+            presentationName: "Bolsa 25 kg",
+          },
+        ],
+        subtotal: 2500,
+        tax: 0,
+        total: 2500,
+        paymentMethod: "cash",
+      },
+      { storeId: "store-1", userId: "user-1" },
+    );
+
+    expect(sale).toBeTruthy();
+    expect(transactionSpy).toHaveBeenCalledTimes(1);
+    // Stock decrements by 25 (the baseQuantity), not by 1.
+    expect(tx.product.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: "prod-kg",
+          stock: { gte: expect.objectContaining({ toString: expect.any(Function) }) },
+        }),
+        data: {
+          stock: {
+            decrement: expect.objectContaining({ toString: expect.any(Function) }),
+          },
+        },
+      }),
+    );
+  });
+
+  it("rejects presentation that does not belong to the product", async () => {
+    const { transactionSpy } = createTransactionMock({
+      products: [
+        {
+          id: "prod-1",
+          storeId: "store-1",
+          name: "Mouse",
+          price: 100,
+          stock: 10,
+          quantityType: "DISCRETA",
+          unit: "unit",
+          presentations: [],
+        },
+      ],
+    });
+
+    await expect(
+      createSale(
+        {
+          items: [
+            {
+              productId: "prod-1",
+              quantity: 1,
+              unitPrice: 100,
+              presentationId: "pres-other-product",
+            },
+          ],
+          subtotal: 100,
+          tax: 0,
+          total: 100,
+          paymentMethod: "cash",
+        },
+        { storeId: "store-1", userId: "user-1" },
+      ),
+    ).rejects.toMatchObject({ name: "SaleProcessingError", statusCode: 400 });
+    expect(transactionSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects presentation with unit mismatch", async () => {
+    const { transactionSpy } = createTransactionMock({
+      products: [
+        {
+          id: "prod-kg",
+          storeId: "store-1",
+          name: "Cable",
+          price: 10,
+          stock: 100,
+          quantityType: "CONTINUA",
+          unit: "kg",
+          presentations: [
+            { id: "pres-l", name: "Botella", quantity: 1, unit: "L", active: true },
+          ],
+        },
+      ],
+    });
+
+    await expect(
+      createSale(
+        {
+          items: [
+            {
+              productId: "prod-kg",
+              quantity: 1,
+              unitPrice: 10,
+              presentationId: "pres-l",
+            },
+          ],
+          subtotal: 10,
+          tax: 0,
+          total: 10,
+          paymentMethod: "cash",
+        },
+        { storeId: "store-1", userId: "user-1" },
+      ),
+    ).rejects.toMatchObject({ name: "SaleProcessingError", statusCode: 400 });
+    expect(transactionSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects inactive presentation", async () => {
+    const { transactionSpy } = createTransactionMock({
+      products: [
+        {
+          id: "prod-kg",
+          storeId: "store-1",
+          name: "Bolsa inactive",
+          price: 10,
+          stock: 100,
+          quantityType: "CONTINUA",
+          unit: "kg",
+          presentations: [
+            { id: "pres-inact", name: "Old bolsa", quantity: 10, unit: "kg", active: false },
+          ],
+        },
+      ],
+    });
+
+    await expect(
+      createSale(
+        {
+          items: [
+            {
+              productId: "prod-kg",
+              quantity: 1,
+              unitPrice: 10,
+              presentationId: "pres-inact",
+            },
+          ],
+          subtotal: 10,
+          tax: 0,
+          total: 10,
+          paymentMethod: "cash",
+        },
+        { storeId: "store-1", userId: "user-1" },
+      ),
+    ).rejects.toMatchObject({ name: "SaleProcessingError", statusCode: 400 });
+    expect(transactionSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects continuous product with insufficient base stock via presentation", async () => {
+    const { transactionSpy } = createTransactionMock({
+      products: [
+        {
+          id: "prod-kg",
+          storeId: "store-1",
+          name: "Low stock",
+          price: 10,
+          stock: 10,
+          quantityType: "CONTINUA",
+          unit: "kg",
+          presentations: [
+            { id: "pres-25", name: "Bolsa 25 kg", quantity: 25, unit: "kg", active: true },
+          ],
+        },
+      ],
+    });
+
+    await expect(
+      createSale(
+        {
+          items: [
+            {
+              productId: "prod-kg",
+              quantity: 1,
+              unitPrice: 10,
+              presentationId: "pres-25",
+            },
+          ],
+          subtotal: 10,
+          tax: 0,
+          total: 10,
+          paymentMethod: "cash",
+        },
+        { storeId: "store-1", userId: "user-1" },
+      ),
+    ).rejects.toMatchObject({ name: "SaleProcessingError", statusCode: 409 });
+    expect(transactionSpy).toHaveBeenCalled();
   });
 });

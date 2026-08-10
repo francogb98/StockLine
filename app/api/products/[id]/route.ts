@@ -9,6 +9,8 @@ import {
   updateProduct,
   deleteProduct,
 } from "@/lib/data-access";
+import { createProductSchema } from "@/lib/validations";
+import { assertValidUnitForQuantityType, normalizeQuantityType, normalizeUnit } from "@/lib/decimal";
 
 export async function GET(
   _request: Request,
@@ -51,7 +53,13 @@ export async function PUT(
     };
 
     const { id } = await params;
-    const data = await request.json();
+    const rawData = await request.json();
+    const parseResult = createProductSchema.partial().safeParse(rawData);
+    if (!parseResult.success) {
+      const firstError = parseResult.error.errors[0];
+      return errorResponse(firstError?.message || "Datos inválidos", 400);
+    }
+    const data = parseResult.data;
 
     const existing = await findProduct(ctx, id);
     if (!existing) {
@@ -77,6 +85,22 @@ export async function PUT(
       }
     }
 
+    const mergedQuantityType = normalizeQuantityType(
+      data.quantityType ?? existing.quantityType,
+    );
+    const mergedUnit = normalizeUnit(
+      data.unit ?? existing.unit,
+      mergedQuantityType,
+    );
+    try {
+      assertValidUnitForQuantityType(mergedUnit, mergedQuantityType);
+    } catch (err) {
+      return errorResponse(
+        err instanceof Error ? err.message : "Unidad inválida",
+        400,
+      );
+    }
+
     const updateData: Record<string, unknown> = {
       barcode,
       name: data.name,
@@ -86,6 +110,9 @@ export async function PUT(
       cost: data.cost,
       stock: data.stock,
       minStock: data.minStock,
+      quantityType: mergedQuantityType,
+      unit: mergedUnit,
+      presentations: data.presentations,
       reason: data.reason,
     };
     if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl;
@@ -106,6 +133,9 @@ export async function PUT(
 
     return jsonResponse(updated);
   } catch (error) {
+    if (error instanceof Error && /presentaci/i.test(error.message)) {
+      return errorResponse(error.message, 400);
+    }
     console.error("PUT /api/products/[id]", error);
     return errorResponse("Error updating product", 500);
   }

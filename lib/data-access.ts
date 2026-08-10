@@ -3,13 +3,26 @@ import { isTestUserEmail } from "@/lib/test-users";
 import {
   getOrCreateSessionStore,
   type StoredProduct,
+  type StoredProductPresentation,
   type StoredCategory,
   type StoredSale,
   type StoredCashSession,
   type StoredStockMovement,
   type StoredSuspendedSale,
 } from "@/lib/session-store";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import {
+  assertValidUnitForQuantityType,
+  decimalToNumber,
+  normalizeQuantityType,
+  normalizeUnit,
+  toDecimal,
+} from "@/lib/decimal";
+import type {
+  ProductPresentation,
+  ProductUnit,
+  QuantityType,
+} from "@/lib/types";
 
 export class CashSessionExistsError extends Error {
   public readonly openSessionId: string;
@@ -37,12 +50,97 @@ function isTest(ctx: DataContext) {
 }
 
 // ---- Products ----
+function mapPrismaProductToStored(p: any): StoredProduct {
+  const presentations: StoredProductPresentation[] = Array.isArray(p?.presentations)
+    ? p.presentations
+        .map((pr: any) => ({
+          id: pr.id,
+          productId: pr.productId,
+          name: pr.name,
+          quantity: decimalToNumber(pr.quantity),
+          unit: pr.unit,
+          active: pr.active,
+          sortOrder: pr.sortOrder ?? 0,
+          createdAt: pr.createdAt,
+          updatedAt: pr.updatedAt,
+        }))
+        .sort((a: StoredProductPresentation, b: StoredProductPresentation) => a.sortOrder - b.sortOrder)
+    : [];
+  return {
+    id: p.id,
+    storeId: p.storeId,
+    barcode: p.barcode ?? null,
+    name: p.name,
+    description: p.description ?? null,
+    categoryId: p.categoryId,
+    price: decimalToNumber(p.price),
+    cost: decimalToNumber(p.cost),
+    stock: decimalToNumber(p.stock),
+    minStock: decimalToNumber(p.minStock),
+    quantityType: p.quantityType ?? "DISCRETA",
+    unit: p.unit ?? "unit",
+    presentations,
+    imageUrl: p.imageUrl !== undefined ? p.imageUrl : null,
+    cloudinaryPublicId: p.cloudinaryPublicId !== undefined ? p.cloudinaryPublicId : null,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+  };
+}
+
+function normalizePresentations(
+  presentations: ProductPresentation[] | undefined,
+  expectedUnit: string,
+): ProductPresentation[] {
+  if (!presentations || presentations.length === 0) return [];
+  return presentations.map((p) => {
+    if (p.unit !== expectedUnit) {
+      throw new Error(
+        `La presentación "${p.name}" usa la unidad "${p.unit}" pero la unidad del producto es "${expectedUnit}"`,
+      );
+    }
+    if (!Number.isFinite(p.quantity) || p.quantity <= 0) {
+      throw new Error(`La presentación "${p.name}" requiere una cantidad positiva`);
+    }
+    return {
+      id: p.id,
+      productId: p.productId,
+      name: p.name.trim(),
+      quantity: p.quantity,
+      unit: p.unit,
+      active: p.active ?? true,
+      sortOrder: p.sortOrder ?? 0,
+    };
+  });
+}
+
+function buildProductData(data: any) {
+  const quantityType = normalizeQuantityType(data.quantityType ?? "DISCRETA");
+  const unit = normalizeUnit(data.unit, quantityType);
+  assertValidUnitForQuantityType(unit, quantityType);
+
+  const out: Record<string, unknown> = { quantityType, unit };
+  if (data.price !== undefined) out.price = toDecimal(data.price);
+  if (data.cost !== undefined) out.cost = toDecimal(data.cost);
+  if (data.stock !== undefined) out.stock = toDecimal(data.stock);
+  if (data.minStock !== undefined) out.minStock = toDecimal(data.minStock);
+  if (data.name !== undefined) out.name = data.name;
+  if (data.description !== undefined) out.description = data.description ?? null;
+  if (data.categoryId !== undefined) out.categoryId = data.categoryId;
+  if (data.barcode !== undefined) out.barcode = data.barcode ?? null;
+  if (data.imageUrl !== undefined) out.imageUrl = data.imageUrl ?? null;
+  if (data.cloudinaryPublicId !== undefined)
+    out.cloudinaryPublicId = data.cloudinaryPublicId ?? null;
+  return { out, quantityType, unit };
+}
+
 export async function findProducts(ctx: DataContext): Promise<StoredProduct[]> {
   if (isTest(ctx)) return store(ctx).getProducts(ctx.storeId);
-  return prisma.product.findMany({
+  const products = await prisma.product.findMany({
     where: { storeId: ctx.storeId },
     orderBy: { createdAt: "desc" },
-  }) as unknown as StoredProduct[];
+    include: { presentations: { orderBy: { sortOrder: "asc" } } },
+  });
+  return products.map(mapPrismaProductToStored);
 }
 
 export async function findProduct(
@@ -50,9 +148,11 @@ export async function findProduct(
   id: string,
 ): Promise<StoredProduct | null> {
   if (isTest(ctx)) return store(ctx).getProduct(id, ctx.storeId);
-  return prisma.product.findFirst({
+  const product = await prisma.product.findFirst({
     where: { id, storeId: ctx.storeId },
-  }) as unknown as StoredProduct | null;
+    include: { presentations: { orderBy: { sortOrder: "asc" } } },
+  });
+  return product ? mapPrismaProductToStored(product) : null;
 }
 
 export async function findProductByBarcode(
@@ -63,26 +163,73 @@ export async function findProductByBarcode(
   if (isTest(ctx)) return store(ctx).getProductByBarcode(barcode, ctx.storeId);
   const where: any = { barcode, storeId: ctx.storeId };
   if (excludeId) where.NOT = { id: excludeId };
-  return prisma.product.findFirst({ where }) as unknown as StoredProduct | null;
+  const product = await prisma.product.findFirst({
+    where,
+    include: { presentations: { orderBy: { sortOrder: "asc" } } },
+  });
+  return product ? mapPrismaProductToStored(product) : null;
 }
+
+export type CreateProductInput = {
+  barcode: string | null;
+  name: string;
+  description: string | null;
+  categoryId: string;
+  price: number;
+  cost: number;
+  stock: number;
+  minStock: number;
+  quantityType?: QuantityType;
+  unit?: ProductUnit | string;
+  presentations?: ProductPresentation[];
+  imageUrl?: string | null;
+  cloudinaryPublicId?: string | null;
+};
+
+export type UpdateProductInput = Partial<{
+  barcode: string | null;
+  name: string;
+  description: string | null;
+  categoryId: string;
+  price: number;
+  cost: number;
+  stock: number;
+  minStock: number;
+  quantityType: QuantityType;
+  unit: ProductUnit | string;
+  presentations: ProductPresentation[];
+  imageUrl: string | null;
+  cloudinaryPublicId: string | null;
+  reason: string;
+}>;
 
 export async function createProduct(
   ctx: DataContext,
-  data: {
-    barcode: string | null;
-    name: string;
-    description: string | null;
-    categoryId: string;
-    price: number;
-    cost: number;
-    stock: number;
-    minStock: number;
-    imageUrl?: string | null;
-    cloudinaryPublicId?: string | null;
-  },
+  data: CreateProductInput,
 ): Promise<StoredProduct> {
+  const { out, quantityType, unit } = buildProductData(data);
+  const normalizedPresentations = normalizePresentations(
+    data.presentations,
+    unit,
+  );
+
   if (isTest(ctx)) {
-    const product = store(ctx).createProduct({ storeId: ctx.storeId, ...data });
+    const product = store(ctx).createProduct({
+      storeId: ctx.storeId,
+      barcode: data.barcode,
+      name: data.name,
+      description: data.description,
+      categoryId: data.categoryId,
+      price: data.price,
+      cost: data.cost,
+      stock: data.stock,
+      minStock: data.minStock,
+      quantityType,
+      unit,
+      presentations: normalizedPresentations as any,
+      imageUrl: data.imageUrl,
+      cloudinaryPublicId: data.cloudinaryPublicId,
+    });
     if (product.stock > 0) {
       store(ctx).createStockMovement({
         storeId: ctx.storeId,
@@ -100,9 +247,24 @@ export async function createProduct(
 
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const created = await tx.product.create({
-      data: { storeId: ctx.storeId, ...data },
+      data: {
+        storeId: ctx.storeId,
+        ...out,
+        presentations: normalizedPresentations.length > 0
+          ? {
+              create: normalizedPresentations.map((p, idx) => ({
+                name: p.name,
+                quantity: toDecimal(p.quantity),
+                unit: p.unit,
+                active: p.active ?? true,
+                sortOrder: p.sortOrder ?? idx,
+              })),
+            }
+          : undefined,
+      } as Prisma.ProductUncheckedCreateInput,
+      include: { presentations: { orderBy: { sortOrder: "asc" } } },
     });
-    if (created.stock > 0) {
+    if (decimalToNumber(created.stock) > 0) {
       await tx.stockMovement.create({
         data: {
           storeId: ctx.storeId,
@@ -116,22 +278,51 @@ export async function createProduct(
         },
       });
     }
-    return created as unknown as StoredProduct;
+    return mapPrismaProductToStored(created);
   });
 }
 
 export async function updateProduct(
   ctx: DataContext,
   id: string,
-  data: Partial<StoredProduct> & { reason?: string },
+  data: UpdateProductInput,
 ): Promise<StoredProduct | null> {
   if (isTest(ctx)) {
     const currentStock = store(ctx).getProductStock(id);
     const prev = store(ctx).getProduct(id, ctx.storeId);
     if (!prev) return null;
 
-    const stockChanged = data.stock !== undefined && data.stock !== currentStock;
-    const updated = store(ctx).updateProduct(id, data);
+    const { out, quantityType, unit } = buildProductData({
+      ...(data as UpdateProductInput),
+      quantityType: data.quantityType ?? prev.quantityType,
+      unit: data.unit ?? prev.unit,
+    });
+    const normalizedPresentations =
+      data.presentations !== undefined
+        ? normalizePresentations(data.presentations, unit)
+        : undefined;
+
+    const testSafeOut: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(out)) {
+      testSafeOut[key] =
+        value && typeof value === "object" && "toNumber" in (value as object)
+          ? (value as { toNumber: () => number }).toNumber()
+          : value;
+    }
+
+    const updatePayload: Record<string, unknown> = {
+      ...data,
+      ...testSafeOut,
+      presentations: undefined,
+    };
+    delete updatePayload.reason;
+
+    const stockChanged =
+      data.stock !== undefined && data.stock !== currentStock;
+    const updated = store(ctx).updateProduct(id, updatePayload as any);
+    if (normalizedPresentations) {
+      (updated as any).presentations = normalizedPresentations;
+    }
     if (stockChanged && updated) {
       store(ctx).createStockMovement({
         storeId: ctx.storeId,
@@ -147,35 +338,66 @@ export async function updateProduct(
     return updated;
   }
 
-  const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const current = await tx.product.findFirst({
       where: { id, storeId: ctx.storeId },
-      select: { stock: true },
+      select: { stock: true, quantityType: true, unit: true },
     });
     if (!current) throw new Error("NOT_FOUND");
-    const stockChanged = data.stock !== undefined && data.stock !== current.stock;
+
+    const merged: UpdateProductInput = {
+      ...data,
+      quantityType: data.quantityType ?? (current.quantityType as QuantityType),
+      unit: data.unit ?? current.unit,
+    };
+    const { out } = buildProductData(merged);
+    const effectiveUnit = normalizeUnit(merged.unit, normalizeQuantityType(merged.quantityType));
+
+    const dataForUpdate: Prisma.ProductUncheckedUpdateInput = {
+      ...(out as Prisma.ProductUncheckedUpdateInput),
+    } as Prisma.ProductUncheckedUpdateInput;
+
+    if (data.presentations !== undefined) {
+      const normalized = normalizePresentations(data.presentations, effectiveUnit);
+      await tx.productPresentation.deleteMany({ where: { productId: id } });
+      if (normalized.length > 0) {
+        await tx.productPresentation.createMany({
+          data: normalized.map((p, idx) => ({
+            productId: id,
+            name: p.name,
+            quantity: toDecimal(p.quantity),
+            unit: p.unit,
+            active: p.active ?? true,
+            sortOrder: p.sortOrder ?? idx,
+          })),
+        });
+      }
+    }
+
     const product = await tx.product.update({
       where: { id },
-      data: { ...data, reason: undefined } as any,
+      data: dataForUpdate,
+      include: { presentations: { orderBy: { sortOrder: "asc" } } },
     });
-    if (stockChanged) {
+
+    const newStock = decimalToNumber(product.stock);
+    const oldStock = decimalToNumber(current.stock);
+    if (data.stock !== undefined && newStock !== oldStock) {
       await tx.stockMovement.create({
         data: {
           storeId: ctx.storeId,
           productId: id,
           userId: ctx.userId,
           type: "STOCK_CORRECTION",
-          quantity: (product as any).stock - current.stock,
+          quantity: toDecimal(newStock - oldStock),
           previousStock: current.stock,
-          newStock: (product as any).stock,
+          newStock: product.stock,
           reason: data.reason?.trim() ?? null,
         },
       });
     }
-    return product as unknown as StoredProduct;
+    return mapPrismaProductToStored(product);
   });
-
-  return updated;
 }
 
 export async function deleteProduct(
@@ -707,8 +929,8 @@ export async function recordOwnerWithdrawal(
     if (!product) throw new Error("NOT_FOUND");
 
     const previousStock = product.stock;
-    const newStock = previousStock - data.quantity;
-    if (newStock < 0) throw new Error("STOCK_NEGATIVE");
+    const newStock = toDecimal(decimalToNumber(previousStock) - data.quantity);
+    if (decimalToNumber(newStock) < 0) throw new Error("STOCK_NEGATIVE");
 
     await tx.product.update({
       where: { id: product.id },
@@ -772,6 +994,9 @@ export async function createSuspendedSale(
       quantity: number;
       unitPrice: number;
       total: number;
+      presentationId?: string | null;
+      presentationName?: string | null;
+      baseQuantity?: number;
     }>;
   },
 ): Promise<StoredSuspendedSale> {
@@ -796,6 +1021,9 @@ export async function createSuspendedSale(
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           total: item.total,
+          presentationId: item.presentationId ?? null,
+          presentationName: item.presentationName ?? null,
+          baseQuantity: item.baseQuantity ?? item.quantity,
         })),
       },
     },

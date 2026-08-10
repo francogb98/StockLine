@@ -4,11 +4,25 @@ import React from "react";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Save, Loader2, Check, Keyboard, ChevronDown, ImagePlus } from "lucide-react";
+import {
+  X,
+  Save,
+  Loader2,
+  Check,
+  Keyboard,
+  ChevronDown,
+  ImagePlus,
+  Plus,
+  Trash2,
+  Power,
+  PowerOff,
+  Boxes,
+  HelpCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useData } from "@/lib/store-context";
 import { useIsMobile } from "@/components/ui/use-mobile";
-import { cn } from "@/lib/utils";
+import { cn, formatUnitLabel } from "@/lib/utils";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import {
   Command,
@@ -17,13 +31,24 @@ import {
   CommandEmpty,
   CommandItem,
 } from "@/components/ui/command";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { formatCurrency } from "@/lib/mock-data";
 import { uploadProductImage } from "@/lib/image-upload";
 import {
   ProductImageField,
   type ProductImageSelection,
 } from "@/components/products/product-image-field";
-import type { Product, Category } from "@/lib/types";
+import {
+  unitsForQuantityType,
+  type Product,
+  type Category,
+  type ProductPresentation,
+  type QuantityType,
+} from "@/lib/types";
 
 const HELP_USES_KEY = "product-dialog-help-uses";
 const HELP_COLLAPSE_THRESHOLD = 3;
@@ -38,6 +63,53 @@ function deriveMargin(price: number, cost: number): string {
   return String(roundTo2(((price - cost) / cost) * 100));
 }
 
+function newPresentationLocalId(): string {
+  return `tmp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+interface HelpTooltipProps {
+  content: React.ReactNode;
+  "aria-label": string;
+  testId: string;
+}
+
+function HelpTooltip({ content, "aria-label": ariaLabel, testId }: HelpTooltipProps) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Tooltip open={open} onOpenChange={setOpen} delayDuration={150}>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label={ariaLabel}
+          aria-expanded={open}
+          onPointerDown={(event) => {
+            event.preventDefault();
+            setOpen((prev) => !prev);
+          }}
+          onClick={(event) => {
+            event.preventDefault();
+          }}
+          className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          data-testid={testId}
+        >
+          <HelpCircle className="h-3.5 w-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        align="start"
+        className="max-w-[320px] p-0"
+        onPointerDownOutside={(event) => {
+          if (event.target === document.activeElement) return;
+        }}
+      >
+        {content}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 interface ProductDialogProps {
   open: boolean;
   onClose: () => void;
@@ -46,6 +118,14 @@ interface ProductDialogProps {
   onManageCategories?: () => void;
   canManageCategories?: boolean;
 }
+
+type PresentationDraft = {
+  key: string;
+  id?: string;
+  name: string;
+  quantity: string;
+  active: boolean;
+};
 
 export function ProductDialog({
   open,
@@ -81,7 +161,10 @@ export function ProductDialog({
     margin: "",
     stock: "",
     minStock: "",
+    quantityType: "DISCRETA" as QuantityType,
+    unit: "unit",
   });
+  const [presentations, setPresentations] = useState<PresentationDraft[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isUploading, setIsUploading] = useState(false);
   const [imageSelection, setImageSelection] = useState<ProductImageSelection>({
@@ -100,7 +183,10 @@ export function ProductDialog({
       margin: "",
       stock: "",
       minStock: "5",
+      quantityType: "DISCRETA",
+      unit: "unit",
     });
+    setPresentations([]);
     setErrors({});
     setImageSelection({ file: null, removed: false });
   }, [categories]);
@@ -118,6 +204,9 @@ export function ProductDialog({
 
   useEffect(() => {
     if (product) {
+      const qt: QuantityType =
+        product.quantityType === "CONTINUA" ? "CONTINUA" : "DISCRETA";
+      const unit = product.unit || (qt === "DISCRETA" ? "unit" : "kg");
       setFormData({
         barcode: product.barcode ?? "",
         name: product.name,
@@ -128,13 +217,24 @@ export function ProductDialog({
         margin: deriveMargin(product.price, product.cost),
         stock: product.stock.toString(),
         minStock: product.minStock.toString(),
+        quantityType: qt,
+        unit,
       });
+      setPresentations(
+        (product.presentations ?? []).map((p: ProductPresentation) => ({
+          key: p.id ?? newPresentationLocalId(),
+          id: p.id,
+          name: p.name,
+          quantity: String(p.quantity),
+          active: p.active,
+        })),
+      );
     } else {
       resetForm();
     }
     setErrors({});
     setImageSelection({ file: null, removed: false });
-  }, [product, open, categories, resetForm]);
+  }, [product, open]);
 
   useEffect(() => {
     if (open && !product && !isMobile) {
@@ -226,7 +326,7 @@ export function ProductDialog({
       return next;
     });
     if (errors.margin) {
-      setErrors((prev) => ({ ...prev, margin: "" }));
+      setErrors((prev) => ({ ...prev, [margin]: "" }));
     }
   };
 
@@ -246,6 +346,52 @@ export function ProductDialog({
     }
   };
 
+  const handleQuantityTypeChange = (value: QuantityType) => {
+    setFormData((prev) => {
+      const allowed = unitsForQuantityType(value);
+      const nextUnit = (allowed as readonly string[]).includes(prev.unit)
+        ? prev.unit
+        : allowed[0];
+      if (value === "DISCRETA" && presentations.length > 0) {
+        setPresentations([]);
+      }
+      return { ...prev, quantityType: value, unit: nextUnit };
+    });
+    if (errors.unit) setErrors((prev) => ({ ...prev, unit: "" }));
+  };
+
+  const addPresentation = () => {
+    setPresentations((prev) => [
+      ...prev,
+      {
+        key: newPresentationLocalId(),
+        name: "",
+        quantity: "",
+        active: true,
+      },
+    ]);
+  };
+
+  const updatePresentation = (
+    key: string,
+    field: "name" | "quantity",
+    value: string,
+  ) => {
+    setPresentations((prev) =>
+      prev.map((p) => (p.key === key ? { ...p, [field]: value } : p)),
+    );
+  };
+
+  const togglePresentation = (key: string) => {
+    setPresentations((prev) =>
+      prev.map((p) => (p.key === key ? { ...p, active: !p.active } : p)),
+    );
+  };
+
+  const removePresentation = (key: string) => {
+    setPresentations((prev) => prev.filter((p) => p.key !== key));
+  };
+
   const validate = () => {
     const newErrors: Record<string, string> = {};
 
@@ -258,7 +404,7 @@ export function ProductDialog({
     if (!formData.price || Number(formData.price) <= 0) {
       newErrors.price = "El precio debe ser mayor a 0";
     }
-    if (!formData.cost || Number(formData.cost) < 0) {
+    if (formData.cost === "" || Number(formData.cost) < 0) {
       newErrors.cost = "El costo no puede ser negativo";
     }
     if (formData.stock === "" || Number(formData.stock) < 0) {
@@ -267,9 +413,40 @@ export function ProductDialog({
     if (formData.minStock === "" || Number(formData.minStock) < 0) {
       newErrors.minStock = "El stock mínimo no puede ser negativo";
     }
+    if (formData.quantityType === "DISCRETA" && formData.unit !== "unit") {
+      newErrors.unit = "Un producto DISCRETO solo admite la unidad 'unit'";
+    }
+    if (formData.quantityType === "CONTINUA" && formData.unit === "unit") {
+      newErrors.unit = "Un producto continuo requiere una unidad de medida";
+    }
+
+    presentations.forEach((p, idx) => {
+      if (!p.name.trim()) {
+        newErrors[`presentation_${idx}_name`] = "Requerido";
+      }
+      const q = Number(p.quantity);
+      if (!Number.isFinite(q) || q <= 0) {
+        newErrors[`presentation_${idx}_quantity`] = "Cantidad inválida";
+      }
+    });
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const buildPresentationsPayload = () => {
+    if (formData.quantityType === "DISCRETA") return [];
+    return presentations
+      .filter((p) => p.name.trim() !== "" && Number(p.quantity) > 0)
+      .map((p, idx) => ({
+        id: p.id,
+        productId: "",
+        name: p.name.trim(),
+        quantity: Number(p.quantity),
+        unit: formData.unit,
+        active: p.active,
+        sortOrder: idx,
+      }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -287,6 +464,9 @@ export function ProductDialog({
       cost: Number(formData.cost),
       stock: Number(formData.stock),
       minStock: Number(formData.minStock),
+      quantityType: formData.quantityType,
+      unit: formData.unit,
+      presentations: buildPresentationsPayload(),
     };
 
     const { file, removed } = imageSelection;
@@ -376,6 +556,10 @@ export function ProductDialog({
     : categories;
 
   const showHelp = !isMobile && !product;
+
+  const stockStep = formData.quantityType === "CONTINUA" ? "0.001" : "1";
+  const minStockStep = formData.quantityType === "CONTINUA" ? "0.001" : "1";
+  const unitOptions = unitsForQuantityType(formData.quantityType);
 
   return (
     <AnimatePresence>
@@ -558,6 +742,8 @@ export function ProductDialog({
                     <PopoverContent
                       className="w-[--radix-popover-trigger-width] p-0"
                       align="start"
+                      style={{ zIndex: 100 }}
+                      data-testid="category-popover-content"
                     >
                       <Command>
                         <CommandInput
@@ -672,7 +858,12 @@ export function ProductDialog({
                   htmlFor="price"
                   className="block text-sm font-medium text-foreground"
                 >
-                  Precio de Venta ($) *
+                  Precio de Venta ($) *{" "}
+                  {formData.quantityType === "CONTINUA" && (
+                    <span className="text-xs font-normal text-muted-foreground">
+                      por {formatUnitLabel(formData.unit)}
+                    </span>
+                  )}
                 </label>
                 <input
                   id="price"
@@ -706,13 +897,19 @@ export function ProductDialog({
                     htmlFor="stock"
                     className="block text-sm font-medium text-foreground"
                   >
-                    Stock Actual *
+                    Stock Actual *{" "}
+                    {formData.quantityType === "CONTINUA" && (
+                      <span className="text-xs font-normal text-muted-foreground">
+                        ({formatUnitLabel(formData.unit)})
+                      </span>
+                    )}
                   </label>
                   <input
                     id="stock"
                     name="stock"
                     type="number"
                     min="0"
+                    step={stockStep}
                     value={formData.stock}
                     onChange={handleChange}
                     className={cn(
@@ -720,7 +917,7 @@ export function ProductDialog({
                       "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
                       errors.stock && "border-destructive",
                     )}
-                    placeholder="25"
+                    placeholder={formData.quantityType === "CONTINUA" ? "125" : "25"}
                   />
                   {errors.stock && (
                     <p className="mt-1 text-xs text-destructive">{errors.stock}</p>
@@ -731,7 +928,12 @@ export function ProductDialog({
                     htmlFor="minStock"
                     className="block text-sm font-medium text-foreground"
                   >
-                    Stock Mínimo *
+                    Stock Mínimo *{" "}
+                    {formData.quantityType === "CONTINUA" && (
+                      <span className="text-xs font-normal text-muted-foreground">
+                        ({formatUnitLabel(formData.unit)})
+                      </span>
+                    )}
                   </label>
                   <input
                     ref={minStockRef}
@@ -739,6 +941,7 @@ export function ProductDialog({
                     name="minStock"
                     type="number"
                     min="0"
+                    step={minStockStep}
                     value={formData.minStock}
                     onChange={handleChange}
                     className={cn(
@@ -746,7 +949,7 @@ export function ProductDialog({
                       "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
                       errors.minStock && "border-destructive",
                     )}
-                    placeholder="5"
+                    placeholder={formData.quantityType === "CONTINUA" ? "10" : "5"}
                   />
                   {errors.minStock && (
                     <p className="mt-1 text-xs text-destructive">
@@ -755,6 +958,256 @@ export function ProductDialog({
                   )}
                 </div>
               </div>
+
+              {/* Quantity type + Unit */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="block text-sm font-medium text-foreground">
+                      Tipo de cantidad
+                    </span>
+                    <HelpTooltip
+                      aria-label="Qué significa tipo de cantidad"
+                      testId="quantity-type-help"
+                      content={
+                        <div className="space-y-2 p-3 text-left">
+                          <p className="text-xs font-semibold text-foreground">
+                            Discreta vs. Continua
+                          </p>
+                          <p className="text-xs leading-relaxed">
+                            <span className="font-medium text-foreground">Discreta</span>:
+                            se vende en cantidades enteras. Ej: 1 gaseosa, 2
+                            paquetes de galletitas, 3 libros.
+                          </p>
+                          <p className="text-xs leading-relaxed">
+                            <span className="font-medium text-foreground">Continua</span>:
+                            se vende por peso, volumen o longitud, y admite
+                            decimales. Ej: 0,250 kg de queso, 1,500 L de
+                            aceite, 2,350 m de tela.
+                          </p>
+                        </div>
+                      }
+                    />
+                  </div>
+                  <div className="mt-1.5 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleQuantityTypeChange("DISCRETA")}
+                      className={cn(
+                        "flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors",
+                        formData.quantityType === "DISCRETA"
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-muted",
+                      )}
+                      data-testid="quantity-type-discreta"
+                    >
+                      Discreta
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuantityTypeChange("CONTINUA")}
+                      className={cn(
+                        "flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors",
+                        formData.quantityType === "CONTINUA"
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-muted",
+                      )}
+                      data-testid="quantity-type-continua"
+                    >
+                      Continua
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {formData.quantityType === "DISCRETA"
+                      ? "Cantidades enteras (1, 2, 3…). Ideal para unidades."
+                      : "Cantidades con decimales (0.250, 1.500…). Ideal por peso, volumen o longitud."}
+                  </p>
+                </div>
+                <div>
+                  <label
+                    htmlFor="unit"
+                    className="block text-sm font-medium text-foreground"
+                  >
+                    Unidad base
+                  </label>
+                  <select
+                    id="unit"
+                    name="unit"
+                    value={formData.unit}
+                    onChange={handleChange}
+                    className={cn(
+                      "mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm",
+                      "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
+                      errors.unit && "border-destructive",
+                    )}
+                    data-testid="unit-select"
+                  >
+                    {unitOptions.map((u) => (
+                      <option key={u} value={u}>
+                        {formatUnitLabel(u)}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    El precio y el stock se expresan en esta unidad.
+                  </p>
+                  {errors.unit && (
+                    <p className="mt-1 text-xs text-destructive">{errors.unit}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Presentations (only for CONTINUA) */}
+              {formData.quantityType === "CONTINUA" && (
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Boxes className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium text-foreground">
+                        Presentaciones
+                      </span>
+                      <HelpTooltip
+                        aria-label="Qué es una presentación"
+                        testId="presentations-help"
+                        content={
+                          <div className="space-y-2 p-3 text-left">
+                            <p className="text-xs font-semibold text-foreground">
+                              Qué es una presentación
+                            </p>
+                            <p className="text-xs leading-relaxed">
+                              Es una forma de venta predefinida para un
+                              producto continuo. Por ejemplo, un yogurt en
+                              pote de 1 kg, 500 g y 250 g.
+                            </p>
+                            <p className="text-xs leading-relaxed">
+                              Cada presentación es un múltiplo de la unidad
+                              base del producto, pero no tiene stock propio:
+                              al venderla, se descuenta del stock del
+                              producto padre.
+                            </p>
+                          </div>
+                        }
+                      />
+                      {presentations.length > 0 && (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                          {presentations.length}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={addPresentation}
+                      className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                      data-testid="add-presentation-btn"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Agregar presentación
+                    </button>
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Opcional. Las presentaciones comparten el stock del producto y
+                    siempre usan la unidad {formatUnitLabel(formData.unit)}.
+                  </p>
+                  {presentations.length === 0 ? (
+                    <div className="mt-2 rounded-md border border-dashed p-3 text-center text-xs text-muted-foreground">
+                      Sin presentaciones. El producto se venderá solo por
+                      {" "}{formatUnitLabel(formData.unit)} en cantidades libres.
+                    </div>
+                  ) : (
+                    <div className="mt-2 space-y-1.5">
+                      {presentations.map((p, idx) => {
+                        const nameErr = errors[`presentation_${idx}_name`];
+                        const qtyErr = errors[`presentation_${idx}_quantity`];
+                        return (
+                          <div
+                            key={p.key}
+                            className={cn(
+                              "flex items-start gap-2 rounded-md border bg-background p-2",
+                              !p.active && "opacity-60",
+                            )}
+                          >
+                            <div className="min-w-0 flex-1 space-y-1.5">
+                              <input
+                                type="text"
+                                value={p.name}
+                                onChange={(e) =>
+                                  updatePresentation(p.key, "name", e.target.value)
+                                }
+                                placeholder="Ej: Bolsa 25 kg"
+                                className={cn(
+                                  "h-9 w-full rounded-md border bg-background px-2 text-sm",
+                                  "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
+                                  nameErr && "border-destructive",
+                                )}
+                                data-testid={`presentation-name-${idx}`}
+                              />
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.001"
+                                  value={p.quantity}
+                                  onChange={(e) =>
+                                    updatePresentation(
+                                      p.key,
+                                      "quantity",
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder="25"
+                                  className={cn(
+                                    "h-9 w-24 rounded-md border bg-background px-2 text-sm tabular-nums",
+                                    "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
+                                    qtyErr && "border-destructive",
+                                  )}
+                                  data-testid={`presentation-quantity-${idx}`}
+                                />
+                                <span className="text-xs text-muted-foreground">
+                                  {formatUnitLabel(formData.unit)}
+                                </span>
+                              </div>
+                              {(nameErr || qtyErr) && (
+                                <p className="text-xs text-destructive">
+                                  {nameErr ?? qtyErr}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex shrink-0 flex-col items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => togglePresentation(p.key)}
+                                className={cn(
+                                  "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+                                  p.active
+                                    ? "text-emerald-600 hover:bg-emerald-50"
+                                    : "text-muted-foreground hover:bg-muted",
+                                )}
+                                title={p.active ? "Desactivar" : "Activar"}
+                                data-testid={`presentation-toggle-${idx}`}
+                              >
+                                {p.active ? (
+                                  <Power className="h-3.5 w-3.5" />
+                                ) : (
+                                  <PowerOff className="h-3.5 w-3.5" />
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removePresentation(p.key)}
+                                className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                                title="Eliminar"
+                                data-testid={`presentation-remove-${idx}`}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Product image (optional) */}
               <div>

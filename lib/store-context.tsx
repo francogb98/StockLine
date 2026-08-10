@@ -14,6 +14,7 @@ import type {
   Store,
   SubscriptionState,
   Product,
+  ProductPresentation,
   Sale,
   CartItem,
   PaymentMethod,
@@ -78,9 +79,17 @@ interface POSContextType {
   cart: CartItem[];
   reservedStock: Record<string, number>;
   getAvailableStock: (productId: string) => number;
-  addToCart: (product: Product, quantity?: number) => boolean;
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  addToCart: (
+    product: Product,
+    quantity?: number,
+    presentation?: ProductPresentation | null,
+  ) => boolean;
+  removeFromCart: (productId: string, presentationId?: string | null) => void;
+  updateQuantity: (
+    productId: string,
+    quantity: number,
+    presentationId?: string | null,
+  ) => void;
   clearCart: () => void;
   completeSale: (paymentMethod: PaymentMethod) => Promise<Sale | null>;
   suspendSale: () => Promise<boolean>;
@@ -322,6 +331,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ...p,
           price: Number(p.price),
           cost: Number(p.cost),
+          quantityType: p.quantityType ?? "DISCRETA",
+          unit: p.unit ?? "unit",
+          presentations: p.presentations ?? [],
         }));
         const normalizedSales = (salesData ?? []).map((s: any) => ({
           ...s,
@@ -370,6 +382,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               barcode: cp.barcode,
               description: cp.description,
               imageUrl: cp.imageUrl ?? null,
+              quantityType: "DISCRETA",
+              unit: "unit",
+              presentations: [],
               createdAt: new Date(cp.updatedAt),
               updatedAt: new Date(cp.updatedAt),
             }));
@@ -454,6 +469,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         ...p,
         price: Number(p.price),
         cost: Number(p.cost),
+        quantityType: p.quantityType ?? "DISCRETA",
+        unit: p.unit ?? "unit",
+        presentations: p.presentations ?? [],
       }));
       const normalizedSales = (salesData ?? []).map((s: any) => ({
         ...s,
@@ -762,6 +780,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                 quantity: i.quantity,
                 unitPrice: i.unitPrice,
                 total: i.total,
+                presentationId: i.presentationId ?? null,
+                presentationName: i.presentationName ?? null,
+                baseQuantity: i.baseQuantity,
               })),
               subtotal: sale.subtotal,
               tax: sale.tax,
@@ -799,6 +820,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                 quantity: i.quantity,
                 unitPrice: i.unitPrice,
                 total: i.total,
+                presentationId: i.presentationId ?? null,
+                presentationName: i.presentationName ?? null,
+                baseQuantity: i.baseQuantity,
               })),
               subtotal: sale.subtotal,
               tax: sale.tax,
@@ -899,6 +923,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             quantity: i.quantity,
             unitPrice: i.unitPrice,
             total: i.total,
+            presentationId: i.presentationId ?? null,
+            presentationName: i.presentationName ?? null,
+            baseQuantity: i.baseQuantity,
           })),
           subtotal: sale.subtotal,
           tax: sale.tax,
@@ -1009,8 +1036,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [products, reservedStock],
   );
 
+  const lineKey = (productId: string, presentationId: string | null | undefined) =>
+    `${productId}::${presentationId ?? ""}`;
+
   const addToCart = useCallback(
-    (product: Product, quantity: number = 1): boolean => {
+    (
+      product: Product,
+      quantity: number = 1,
+      presentation: ProductPresentation | null = null,
+    ): boolean => {
       const available = getAvailableStock(product.id);
       if (available < quantity) return false;
       setReservedStock((prev) => ({
@@ -1018,37 +1052,54 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         [product.id]: (prev[product.id] || 0) + quantity,
       }));
       setCart((prev) => {
-        const existing = prev.find((item) => item.product.id === product.id);
+        const key = lineKey(product.id, presentation?.id);
+        const existing = prev.find(
+          (item) => lineKey(item.product.id, item.presentation?.id) === key,
+        );
         if (existing) {
           return prev.map((item) =>
-            item.product.id === product.id
+            lineKey(item.product.id, item.presentation?.id) === key
               ? { ...item, quantity: item.quantity + quantity }
               : item,
           );
         }
-        return [...prev, { product, quantity }];
+        return [...prev, { product, quantity, presentation }];
       });
       return true;
     },
     [getAvailableStock],
   );
 
-  const removeFromCart = useCallback((productId: string) => {
-    setCart((prev) => prev.filter((item) => item.product.id !== productId));
-    setReservedStock((prev) => {
-      const next = { ...prev };
-      delete next[productId];
-      return next;
-    });
-  }, []);
+  const removeFromCart = useCallback(
+    (productId: string, presentationId?: string | null) => {
+      setCart((prev) =>
+        prev.filter(
+          (item) =>
+            !(
+              item.product.id === productId &&
+              (item.presentation?.id ?? null) === (presentationId ?? null)
+            ),
+        ),
+      );
+    },
+    [],
+  );
 
   const updateQuantity = useCallback(
-    (productId: string, newQuantity: number) => {
+    (
+      productId: string,
+      newQuantity: number,
+      presentationId?: string | null,
+    ) => {
       if (newQuantity <= 0) {
-        removeFromCart(productId);
+        removeFromCart(productId, presentationId);
         return;
       }
-      const currentItem = cart.find((i) => i.product.id === productId);
+      const currentItem = cart.find(
+        (i) =>
+          i.product.id === productId &&
+          (i.presentation?.id ?? null) === (presentationId ?? null),
+      );
       if (!currentItem) return;
       const delta = newQuantity - currentItem.quantity;
       if (delta > 0) {
@@ -1066,7 +1117,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
       setCart((prev) =>
         prev.map((i) =>
-          i.product.id === productId ? { ...i, quantity: newQuantity } : i,
+          i.product.id === productId &&
+          (i.presentation?.id ?? null) === (presentationId ?? null)
+            ? { ...i, quantity: newQuantity }
+            : i,
         ),
       );
     },
@@ -1079,6 +1133,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setDiscount(0);
     setReceivedAmount(0);
   }, []);
+
+  // Derive reservedStock from the cart so presentations and the "suelto" line
+  // share the same per-product reservation.
+  useEffect(() => {
+    const next: Record<string, number> = {};
+    for (const item of cart) {
+      next[item.product.id] = (next[item.product.id] || 0) + item.quantity;
+    }
+    setReservedStock(next);
+  }, [cart]);
 
   const taxConfig = getTaxConfig(store?.config);
 
@@ -1099,15 +1163,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     async (paymentMethod: PaymentMethod): Promise<Sale | null> => {
       if (cart.length === 0 || !user) return null;
 
-      const saleItems: SaleItem[] = cart.map((item, index) => ({
-        id: `item-${Date.now()}-${index}`,
-        saleId: `sale-${Date.now()}`,
-        productId: item.product.id,
-        productName: item.product.name,
-        quantity: item.quantity,
-        unitPrice: Number(item.product.price),
-        total: Number(item.product.price) * item.quantity,
-      }));
+      const saleItems: SaleItem[] = cart.map((item, index) => {
+        const presentation = item.presentation;
+        const baseQuantity = presentation
+          ? item.quantity * presentation.quantity
+          : item.quantity;
+        return {
+          id: `item-${Date.now()}-${index}`,
+          saleId: `sale-${Date.now()}`,
+          productId: item.product.id,
+          productName: item.product.name,
+          quantity: item.quantity,
+          unitPrice: Number(item.product.price),
+          total: Number(item.product.price) * item.quantity,
+          presentationId: presentation?.id ?? null,
+          presentationName: presentation?.name ?? null,
+          baseQuantity,
+        };
+      });
 
       const sale: Sale = {
         id: `sale-${Date.now()}`,
@@ -1159,6 +1232,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       quantity: item.quantity,
       unitPrice: item.product.price,
       total: item.product.price * item.quantity,
+      presentationId: item.presentation?.id ?? null,
+      presentationName: item.presentation?.name ?? null,
+      baseQuantity: item.presentation
+        ? item.quantity * item.presentation.quantity
+        : item.quantity,
     }));
 
     try {
@@ -1188,7 +1266,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       for (const item of suspendedSale.items) {
         const product = products.find((p) => p.id === item.productId);
         if (product) {
-          restoredCart.push({ product, quantity: item.quantity });
+          const presentation = item.presentationId
+            ? product.presentations?.find((p) => p.id === item.presentationId) ??
+              null
+            : null;
+          restoredCart.push({ product, quantity: item.quantity, presentation });
         }
       }
 

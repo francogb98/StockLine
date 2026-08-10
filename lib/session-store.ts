@@ -22,8 +22,23 @@ export interface StoredProduct {
   cost: number;
   stock: number;
   minStock: number;
+  quantityType: "DISCRETA" | "CONTINUA";
+  unit: string;
+  presentations?: StoredProductPresentation[];
   imageUrl?: string | null;
   cloudinaryPublicId?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface StoredProductPresentation {
+  id: string;
+  productId: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  active: boolean;
+  sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,6 +59,9 @@ export interface StoredSaleItem {
   quantity: number;
   unitPrice: number;
   total: number;
+  presentationId?: string | null;
+  presentationName?: string | null;
+  baseQuantity?: number;
 }
 
 export interface StoredSale {
@@ -96,6 +114,9 @@ export interface StoredSuspendedSaleItem {
   quantity: number;
   unitPrice: number;
   total: number;
+  presentationId?: string | null;
+  presentationName?: string | null;
+  baseQuantity?: number;
 }
 
 export interface StoredSuspendedSale {
@@ -130,7 +151,14 @@ class SessionDataStore {
 
   private seed() {
     for (const p of demoProducts) {
-      this.products.set(p.id, deepCloneDateFields(p));
+      const cloned = deepCloneDateFields(p);
+      const seeded: StoredProduct = {
+        ...cloned,
+        quantityType: p.quantityType ?? "DISCRETA",
+        unit: p.unit ?? "unit",
+        presentations: [],
+      };
+      this.products.set(seeded.id, seeded);
     }
     for (const c of demoCategories) {
       this.categories.set(c.id, {
@@ -216,6 +244,9 @@ class SessionDataStore {
     cost: number;
     stock: number;
     minStock: number;
+    quantityType?: "DISCRETA" | "CONTINUA";
+    unit?: string;
+    presentations?: StoredProductPresentation[];
     imageUrl?: string | null;
     cloudinaryPublicId?: string | null;
   }): StoredProduct {
@@ -223,6 +254,9 @@ class SessionDataStore {
     const product: StoredProduct = {
       id: generateId(),
       ...data,
+      quantityType: data.quantityType ?? "DISCRETA",
+      unit: data.unit ?? "unit",
+      presentations: data.presentations ?? [],
       createdAt: now,
       updatedAt: now,
     };

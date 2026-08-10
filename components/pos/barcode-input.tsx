@@ -28,11 +28,16 @@ export function BarcodeInput({ className }: BarcodeInputProps) {
       if (active.tagName === 'INPUT') return;
       // Don't steal focus if user is navigating via keyboard in a zone
       if (active.closest('[data-keyboard-zone]')) return;
+      // Don't steal focus when a modal dialog is open (Edit Product, etc.)
+      if (active.closest('[role="dialog"]')) return;
+      if (document.querySelector('[role="dialog"][data-state="open"]')) return;
+      // Don't steal focus when a Radix popover or tooltip portal is open
+      if (document.querySelector('[data-radix-popper-content-wrapper]')) return;
       inputRef.current.focus()
     }
-    
+
     const interval = setInterval(focusInput, 1000)
-    
+
     return () => clearInterval(interval)
   }, [])
 

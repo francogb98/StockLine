@@ -664,6 +664,7 @@ export function StockManagement() {
         onClose={() => setHistoryProduct(null)}
         productId={historyProduct?.id ?? ""}
         productName={historyProduct?.name ?? ""}
+        unit={historyProduct?.unit}
       />
 
       {adjustProduct && (

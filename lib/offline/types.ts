@@ -8,6 +8,9 @@ export interface QueuedSale {
     quantity: number;
     unitPrice: number;
     total: number;
+    presentationId?: string | null;
+    presentationName?: string | null;
+    baseQuantity?: number;
   }[];
   subtotal: number;
   tax: number;

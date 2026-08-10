@@ -229,6 +229,9 @@ export async function POST(request: Request) {
               cost: row.cost ?? 0,
               stock: row.stock ?? 0,
               minStock: row.minStock ?? 5,
+              quantityType: row.quantityType ?? undefined,
+              unit: row.unit ?? undefined,
+              presentations: [],
             });
 
             results.created++;

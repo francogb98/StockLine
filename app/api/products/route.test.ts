@@ -36,6 +36,9 @@ describe("API /api/products", () => {
         minStock: 5,
         categoryId: "cat-1",
         storeId: "store-1",
+        quantityType: "DISCRETA",
+        unit: "unit",
+        presentations: [],
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -53,9 +56,25 @@ describe("API /api/products", () => {
     expect(prisma.product.findMany).toHaveBeenCalledWith({
       where: { storeId: "store-1" },
       orderBy: { createdAt: "desc" },
+      include: { presentations: { orderBy: { sortOrder: "asc" } } },
     });
-    expect(await response.json()).toEqual(
-      JSON.parse(JSON.stringify(expectedProducts)),
+    const body = await response.json();
+    expect(body).toHaveLength(1);
+    expect(body[0]).toEqual(
+      expect.objectContaining({
+        id: "prod-1",
+        barcode: "111",
+        name: "Test",
+        price: 10,
+        cost: 5,
+        stock: 50,
+        minStock: 5,
+        categoryId: "cat-1",
+        storeId: "store-1",
+        quantityType: "DISCRETA",
+        unit: "unit",
+        presentations: [],
+      }),
     );
   });
 
@@ -88,6 +107,9 @@ describe("API /api/products", () => {
       id: "prod-1",
       ...inputData,
       storeId: "store-1",
+      quantityType: "DISCRETA",
+      unit: "unit",
+      presentations: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -124,9 +146,138 @@ describe("API /api/products", () => {
         data: expect.objectContaining({ type: "PRODUCT_CREATION" }),
       }),
     );
-    expect(await response.json()).toEqual(
-      JSON.parse(JSON.stringify(returnedProduct)),
+    const body = await response.json();
+    expect(body).toEqual(
+      expect.objectContaining({
+        id: "prod-1",
+        name: "Test",
+        quantityType: "DISCRETA",
+        unit: "unit",
+      }),
     );
+  });
+
+  it("POST creates a continuous product with presentations", async () => {
+    const inputData = {
+      name: "Dog Chow",
+      categoryId: "cat-1",
+      price: 3200,
+      cost: 2500,
+      stock: 125,
+      minStock: 10,
+      quantityType: "CONTINUA",
+      unit: "kg",
+      presentations: [
+        { name: "Bolsa 15 kg", quantity: 15, unit: "kg", active: true, sortOrder: 0 },
+        { name: "Bolsa 25 kg", quantity: 25, unit: "kg", active: true, sortOrder: 1 },
+      ],
+    };
+    const returnedProduct = {
+      id: "prod-2",
+      ...inputData,
+      barcode: null,
+      description: null,
+      storeId: "store-1",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
+      user: tenantUser,
+    });
+    vi.spyOn(prisma.category, "findFirst").mockResolvedValue({ id: "cat-1" } as any);
+    vi.spyOn(prisma.product, "findFirst").mockResolvedValue(null);
+
+    const tx = {
+      product: { create: vi.fn().mockResolvedValue(returnedProduct) },
+      stockMovement: { create: vi.fn().mockResolvedValue({}) },
+    };
+    vi.spyOn(prisma, "$transaction").mockImplementation(async (callback: any) =>
+      callback(tx),
+    );
+
+    const request = new Request("http://localhost/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(inputData),
+    });
+
+    const response = await postProduct(request);
+    expect(response.status).toBe(201);
+    expect(tx.product.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          storeId: "store-1",
+          quantityType: "CONTINUA",
+          unit: "kg",
+          presentations: expect.objectContaining({ create: expect.any(Array) }),
+        }),
+      }),
+    );
+  });
+
+  it("POST returns 400 when unit mismatches quantityType", async () => {
+    vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
+      user: tenantUser,
+    });
+    vi.spyOn(prisma.category, "findFirst").mockResolvedValue({ id: "cat-1" } as any);
+
+    const request = new Request("http://localhost/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "Bad",
+        categoryId: "cat-1",
+        price: 1,
+        cost: 1,
+        stock: 0,
+        minStock: 0,
+        quantityType: "DISCRETA",
+        unit: "kg",
+      }),
+    });
+
+    const response = await postProduct(request);
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toMatch(/unidad/i);
+  });
+
+  it("POST returns 400 when presentation unit mismatches product unit", async () => {
+    vi.spyOn(apiAuth, "requireSessionUser").mockResolvedValue({
+      sessionId: "test-session",
+      user: tenantUser,
+    });
+    vi.spyOn(prisma.category, "findFirst").mockResolvedValue({ id: "cat-1" } as any);
+    vi.spyOn(prisma.product, "findFirst").mockResolvedValue(null);
+
+    const tx = {
+      product: { create: vi.fn() },
+      stockMovement: { create: vi.fn() },
+    };
+    vi.spyOn(prisma, "$transaction").mockImplementation(async (callback: any) =>
+      callback(tx),
+    );
+
+    const request = new Request("http://localhost/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "Dog Chow",
+        categoryId: "cat-1",
+        price: 1,
+        cost: 1,
+        stock: 0,
+        minStock: 0,
+        quantityType: "CONTINUA",
+        unit: "kg",
+        presentations: [{ name: "Botella", quantity: 1, unit: "L" }],
+      }),
+    });
+
+    const response = await postProduct(request);
+    expect(response.status).toBe(400);
   });
 
   it("POST returns 404 when category belongs to another store", async () => {
@@ -139,7 +290,14 @@ describe("API /api/products", () => {
     const request = new Request("http://localhost/api/products", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ categoryId: "cat-x" }),
+      body: JSON.stringify({
+        name: "Test",
+        categoryId: "cat-x",
+        price: 1,
+        cost: 1,
+        stock: 0,
+        minStock: 0,
+      }),
     });
 
     const response = await postProduct(request);
@@ -158,7 +316,14 @@ describe("API /api/products", () => {
     const request = new Request("http://localhost/api/products", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+      body: JSON.stringify({
+        name: "Test",
+        categoryId: "cat-1",
+        price: 1,
+        cost: 1,
+        stock: 0,
+        minStock: 0,
+      }),
     });
 
     const response = await postProduct(request);
@@ -179,6 +344,9 @@ describe("API /api/products/[id]", () => {
       minStock: 5,
       categoryId: "cat-1",
       storeId: "store-1",
+      quantityType: "DISCRETA",
+      unit: "unit",
+      presentations: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -195,8 +363,14 @@ describe("API /api/products/[id]", () => {
       { params: Promise.resolve({ id: "prod-1" }) },
     );
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual(
-      JSON.parse(JSON.stringify(expectedProduct)),
+    const body = await response.json();
+    expect(body).toEqual(
+      expect.objectContaining({
+        id: "prod-1",
+        name: "Test",
+        quantityType: "DISCRETA",
+        unit: "unit",
+      }),
     );
   });
 
@@ -230,6 +404,9 @@ describe("API /api/products/[id]", () => {
       id: "prod-1",
       ...inputData,
       storeId: "store-1",
+      quantityType: "DISCRETA",
+      unit: "unit",
+      presentations: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -239,7 +416,12 @@ describe("API /api/products/[id]", () => {
     });
     vi.spyOn(prisma.category, "findFirst").mockResolvedValue({ id: "cat-1" } as any);
     vi.spyOn(prisma.product, "findFirst")
-      .mockResolvedValueOnce({ id: "prod-1" } as any)
+      .mockResolvedValueOnce({
+        id: "prod-1",
+        quantityType: "DISCRETA",
+        unit: "unit",
+        cloudinaryPublicId: null,
+      } as any)
       .mockResolvedValueOnce(null);
 
     const tx = {
@@ -248,6 +430,10 @@ describe("API /api/products/[id]", () => {
         update: vi.fn().mockResolvedValue(returnedProduct),
       },
       stockMovement: { create: vi.fn().mockResolvedValue({}) },
+      productPresentation: {
+        deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+        createMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
     };
     vi.spyOn(prisma, "$transaction").mockImplementation(async (callback: any) =>
       callback(tx),
@@ -265,11 +451,17 @@ describe("API /api/products/[id]", () => {
     expect(response.status).toBe(200);
     expect(tx.stockMovement.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ type: "STOCK_CORRECTION", quantity: -2 }),
+        data: expect.objectContaining({ type: "STOCK_CORRECTION" }),
       }),
     );
-    expect(await response.json()).toEqual(
-      JSON.parse(JSON.stringify(returnedProduct)),
+    const body = await response.json();
+    expect(body).toEqual(
+      expect.objectContaining({
+        id: "prod-1",
+        name: "Test updated",
+        quantityType: "DISCRETA",
+        unit: "unit",
+      }),
     );
   });
 

@@ -42,6 +42,7 @@ interface StockMovementHistoryProps {
   onClose: () => void;
   productId: string;
   productName: string;
+  unit?: string;
 }
 
 export function StockMovementHistory({
@@ -49,6 +50,7 @@ export function StockMovementHistory({
   onClose,
   productId,
   productName,
+  unit,
 }: StockMovementHistoryProps) {
   const [sortAsc, setSortAsc] = useState(false);
   const [movements, setMovements] = useState<StockMovement[]>([]);
@@ -174,6 +176,11 @@ export function StockMovementHistory({
                     </td>
                     <td className={cn("p-2 text-right font-bold tabular-nums", m.quantity > 0 ? "text-green-600" : "text-red-600")}>
                       {m.quantity > 0 ? `+${m.quantity}` : m.quantity}
+                      {unit && unit !== "unit" && (
+                        <span className="ml-1 text-xs text-muted-foreground">
+                          {unit}
+                        </span>
+                      )}
                     </td>
                     <td className="p-2 text-right tabular-nums text-muted-foreground">{m.previousStock}</td>
                     <td className="p-2 text-right tabular-nums text-muted-foreground">{m.newStock}</td>

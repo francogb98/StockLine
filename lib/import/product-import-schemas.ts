@@ -11,6 +11,8 @@ export const SYSTEM_FIELDS = {
   cost: "Costo",
   stock: "Stock",
   minStock: "Stock Mínimo",
+  unit: "Unidad",
+  quantityType: "Tipo de Cantidad",
 } as const;
 
 export type SystemField = keyof typeof SYSTEM_FIELDS;
@@ -25,6 +27,8 @@ export const OPTIONAL_FIELDS: SystemField[] = [
   "cost",
   "stock",
   "minStock",
+  "unit",
+  "quantityType",
 ];
 
 // ==================== Column Mapping ====================
@@ -108,6 +112,20 @@ export const COLUMN_ALIASES: Record<SystemField, string[]> = {
     "minimum",
     "reorder point",
   ],
+  unit: [
+    "unidad",
+    "unit",
+    "medida",
+    "uom",
+    "unit of measure",
+  ],
+  quantityType: [
+    "tipo",
+    "tipo cantidad",
+    "tipo de cantidad",
+    "quantity type",
+    "quantitytype",
+  ],
 };
 
 // ==================== Zod Schemas ====================
@@ -125,6 +143,8 @@ export const importMappingSchema = z.object({
   cost: z.string().nullable(),
   stock: z.string().nullable(),
   minStock: z.string().nullable(),
+  unit: z.string().nullable(),
+  quantityType: z.string().nullable(),
 });
 
 export type ImportMapping = z.infer<typeof importMappingSchema>;
@@ -144,8 +164,10 @@ export const mappedRowSchema = z.object({
   category: z.string().nullable().optional(),
   price: z.number().min(0, "El precio debe ser mayor o igual a 0").optional(),
   cost: z.number().min(0, "El costo debe ser mayor o igual a 0").optional(),
-  stock: z.number().int().min(0, "El stock debe ser un entero mayor o igual a 0").optional(),
-  minStock: z.number().int().min(0, "El stock mínimo debe ser un entero mayor o igual a 0").optional(),
+  stock: z.number().min(0, "El stock debe ser mayor o igual a 0").optional(),
+  minStock: z.number().min(0, "El stock mínimo debe ser mayor o igual a 0").optional(),
+  unit: z.string().nullable().optional(),
+  quantityType: z.enum(["DISCRETA", "CONTINUA"]).nullable().optional(),
 });
 
 export type MappedRow = z.infer<typeof mappedRowSchema>;
@@ -200,6 +222,8 @@ export function createEmptyMapping(): ImportMapping {
     cost: null,
     stock: null,
     minStock: null,
+    unit: null,
+    quantityType: null,
   };
 }
 

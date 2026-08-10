@@ -120,20 +120,46 @@ model Product {
   description String?
   categoryId  String
   category    Category @relation(fields: [categoryId], references: [id])
-  price               Decimal  @db.Decimal(12, 2)
-  cost                Decimal  @db.Decimal(12, 2)
-  stock               Int
-  minStock            Int
+  price               Decimal       @db.Decimal(12, 2)
+  cost                Decimal       @db.Decimal(12, 2)
+  stock               Decimal       @db.Decimal(12, 3)
+  minStock            Decimal       @db.Decimal(12, 3)
+  quantityType        QuantityType  @default(DISCRETA)
+  unit                String        @default("unit")
   imageUrl            String?
   cloudinaryPublicId  String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
 
   saleItems      SaleItem[]
   stockMovements StockMovement[]
   recipe         Recipe?
+  presentations  ProductPresentation[]
 
   @@map("products")
+}
+
+enum QuantityType {
+  DISCRETA
+  CONTINUA
+}
+
+model ProductPresentation {
+  id         String   @id @default(uuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name       String
+  quantity   Decimal  @db.Decimal(12, 3)
+  unit       String
+  active     Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  saleItems SaleItem[]
+
+  @@index([productId, active])
+  @@map("product_presentations")
 }
 
 model Sale {
@@ -180,17 +206,22 @@ model CashSession {
 }
 
 model SaleItem {
-  id          String  @id @default(uuid())
-  saleId      String
-  sale        Sale    @relation(fields: [saleId], references: [id])
-  productId   String
-  product     Product @relation(fields: [productId], references: [id])
-  productName String
-  quantity    Int
-  unitPrice   Decimal @db.Decimal(12, 2)
-  total       Decimal @db.Decimal(12, 2)
+  id                String              @id @default(uuid())
+  saleId            String
+  sale              Sale                @relation(fields: [saleId], references: [id])
+  productId         String
+  product           Product             @relation(fields: [productId], references: [id])
+  productName       String
+  quantity          Decimal             @db.Decimal(12, 3)
+  unitPrice         Decimal             @db.Decimal(12, 2)
+  total             Decimal             @db.Decimal(12, 2)
+  presentationId    String?
+  presentation      ProductPresentation? @relation(fields: [presentationId], references: [id])
+  presentationName  String?
+  baseQuantity      Decimal             @db.Decimal(12, 3) @default(0)
 
   @@index([saleId])
+  @@index([presentationId])
   @@map("sale_items")
 }
 
@@ -214,9 +245,9 @@ model StockMovement {
   userId        String
   user          User         @relation(fields: [userId], references: [id])
   type          MovementType
-  quantity      Int
-  previousStock Int
-  newStock      Int
+  quantity      Decimal      @db.Decimal(12, 3)
+  previousStock Decimal      @db.Decimal(12, 3)
+  newStock      Decimal      @db.Decimal(12, 3)
   referenceId   String?
   reason        String?
   createdAt     DateTime     @default(now())
@@ -249,7 +280,7 @@ model SuspendedSaleItem {
   suspendedSale   SuspendedSale @relation(fields: [suspendedSaleId], references: [id], onDelete: Cascade)
   productId       String
   productName     String
-  quantity        Int
+  quantity        Decimal       @db.Decimal(12, 3)
   unitPrice       Decimal       @db.Decimal(12, 2)
   total           Decimal       @db.Decimal(12, 2)
 

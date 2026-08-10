@@ -26,7 +26,9 @@ import {
 import { ProductDialog } from "@/components/stock/product-dialog";
 import { OwnerWithdrawalDialog } from "@/components/stock/owner-withdrawal-dialog";
 import { ProductThumbnail } from "@/components/products/product-thumbnail";
-import type { Product } from "@/lib/types";
+import { QuantityDialog } from "./quantity-dialog";
+import { PresentationDialog } from "./presentation-dialog";
+import type { Product, ProductPresentation } from "@/lib/types";
 
 const ITEMS_PER_PAGE = 20;
 
@@ -50,6 +52,10 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [withdrawalProduct, setWithdrawalProduct] = useState<Product | null>(null);
   const [withdrawalDialogOpen, setWithdrawalDialogOpen] = useState(false);
+  const [quantityDialogProduct, setQuantityDialogProduct] =
+    useState<Product | null>(null);
+  const [presentationDialogProduct, setPresentationDialogProduct] =
+    useState<Product | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -72,8 +78,52 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
   );
 
   const handleAddProduct = (product: (typeof products)[0]) => {
-    const ok = addToCart(product, 1);
-    if (!ok) toast.error("Sin stock disponible");
+    const activePresentations = (product.presentations ?? []).filter(
+      (p) => p.active,
+    );
+    if (product.quantityType === "DISCRETA") {
+      const ok = addToCart(product, 1);
+      if (!ok) toast.error("Sin stock disponible");
+      return;
+    }
+    if (activePresentations.length === 0) {
+      setQuantityDialogProduct(product);
+      return;
+    }
+    setPresentationDialogProduct(product);
+  };
+
+  const handleQuantityDialogConfirm = (product: Product, quantity: number) => {
+    const ok = addToCart(product, quantity, null);
+    if (!ok) {
+      toast.error("Sin stock disponible");
+      return;
+    }
+    setQuantityDialogProduct(null);
+  };
+
+  const handlePresentationDialogSelectPresentation = (
+    product: Product,
+    presentation: ProductPresentation,
+  ) => {
+    const ok = addToCart(product, 1, presentation);
+    if (!ok) {
+      toast.error("Sin stock disponible");
+      return;
+    }
+    setPresentationDialogProduct(null);
+  };
+
+  const handlePresentationDialogSelectFree = (
+    product: Product,
+    quantity: number,
+  ) => {
+    const ok = addToCart(product, quantity, null);
+    if (!ok) {
+      toast.error("Sin stock disponible");
+      return;
+    }
+    setPresentationDialogProduct(null);
   };
 
   const handleOpenEdit = (product: (typeof products)[0]) => {
@@ -453,6 +503,55 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
           onConfirm={handleWithdrawalConfirm}
         />
       )}
+
+      <QuantityDialog
+        open={quantityDialogProduct !== null}
+        onClose={() => setQuantityDialogProduct(null)}
+        product={
+          quantityDialogProduct ?? {
+            id: "",
+            storeId: "",
+            barcode: null,
+            name: "",
+            description: null,
+            categoryId: "",
+            price: 0,
+            cost: 0,
+            stock: 0,
+            minStock: 0,
+            quantityType: "DISCRETA",
+            unit: "unit",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }
+        }
+        onConfirm={handleQuantityDialogConfirm}
+      />
+
+      <PresentationDialog
+        open={presentationDialogProduct !== null}
+        onClose={() => setPresentationDialogProduct(null)}
+        product={
+          presentationDialogProduct ?? {
+            id: "",
+            storeId: "",
+            barcode: null,
+            name: "",
+            description: null,
+            categoryId: "",
+            price: 0,
+            cost: 0,
+            stock: 0,
+            minStock: 0,
+            quantityType: "DISCRETA",
+            unit: "unit",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }
+        }
+        onSelectFree={handlePresentationDialogSelectFree}
+        onSelectPresentation={handlePresentationDialogSelectPresentation}
+      />
     </div>
   );
 });
