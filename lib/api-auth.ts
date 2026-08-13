@@ -121,3 +121,8 @@ export async function requireAdminSessionUser(): Promise<AuthResult> {
 
   return { sessionId: auth.auth.sessionId, user: auth.auth.user };
 }
+
+// One-way re-export. lib/super-admin/guard.ts is the source of truth.
+// Do NOT add `import { requireSuperAdmin } from "./super-admin/guard"` here —
+// that would create a cycle once any super-admin route imports both.
+export { requireSuperAdmin, type SuperAdminResult } from "./super-admin/guard";

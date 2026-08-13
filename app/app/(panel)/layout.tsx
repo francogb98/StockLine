@@ -31,10 +31,14 @@ export default function PanelLayout({
   const currentPath = pathname.replace("/app", "") || "/pos";
 
   useEffect(() => {
+    if (user?.isSuperAdmin) {
+      router.replace("/super-admin");
+      return;
+    }
     if (!cashControlEnabled && pathname === "/app/cash-sessions") {
       router.replace("/app/pos");
     }
-  }, [cashControlEnabled, pathname, router]);
+  }, [user?.isSuperAdmin, cashControlEnabled, pathname, router]);
 
   useEffect(() => {
     if (isMobile) return;

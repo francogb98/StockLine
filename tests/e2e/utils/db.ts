@@ -38,6 +38,13 @@ export const E2E_SEED = {
     role: "employee",
     password: "password123",
   },
+  superAdmin: {
+    id: "user-super-admin-e2e",
+    email: "superadmin@techmart.com",
+    name: "Super Admin E2E",
+    role: "admin",
+    password: "password123",
+  },
 } as const;
 
 export async function resetTestDatabase() {
@@ -74,6 +81,7 @@ export async function resetTestDatabase() {
 
   const adminHash = await hashPassword(E2E_SEED.admin.password);
   const employeeHash = await hashPassword(E2E_SEED.employee.password);
+  const superAdminHash = await hashPassword(E2E_SEED.superAdmin.password);
 
   await prisma.user.createMany({
     data: [
@@ -92,6 +100,15 @@ export async function resetTestDatabase() {
         name: E2E_SEED.employee.name,
         role: E2E_SEED.employee.role,
         passwordHash: employeeHash,
+      },
+      {
+        id: E2E_SEED.superAdmin.id,
+        storeId: E2E_SEED.store.id,
+        email: E2E_SEED.superAdmin.email,
+        name: E2E_SEED.superAdmin.name,
+        role: E2E_SEED.superAdmin.role,
+        passwordHash: superAdminHash,
+        isSuperAdmin: true,
       },
     ],
   });

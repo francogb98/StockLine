@@ -5,6 +5,9 @@ import {
   markSubscriptionFromWebhook,
   mapMercadoPagoStatusToSubscriptionStatus,
 } from "@/lib/subscription-service";
+import { recordAuditEvent, extractAuditContext } from "@/lib/audit-service";
+import { reportError } from "@/lib/error-reporter";
+import { prisma } from "@/lib/prisma";
 
 if (
   process.env.NODE_ENV === "production" &&
@@ -140,9 +143,40 @@ export async function POST(req: NextRequest) {
       source: "webhook",
     });
 
+    const sub = await prisma.subscription.findFirst({
+      where: { mercadoPagoPreapprovalId: preapprovalId },
+      select: { storeId: true },
+    });
+
+    const { ipAddress, userAgent } = extractAuditContext(req);
+    void recordAuditEvent({
+      actorType: "WEBHOOK",
+      storeId: sub?.storeId ?? null,
+      action: "subscription.synced",
+      targetType: "Subscription",
+      targetId: preapprovalId,
+      metadata: {
+        rawMpStatus: mpSubscription.status,
+        mappedStatus,
+        preapprovalId,
+      },
+      ipAddress,
+      userAgent,
+    }).catch(() => {});
+
     return jsonResponse({ ok: true });
   } catch (error) {
     console.error("POST /api/webhooks/mercadopago", error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    void reportError({
+      source: "WEBHOOK",
+      severity: "ERROR",
+      message: err.message || "Mercado Pago webhook failed",
+      stack: err.stack,
+      method: "POST",
+      path: "/api/webhooks/mercadopago",
+      statusCode: 500,
+    }).catch(() => {});
     return errorResponse("Error procesando webhook de Mercado Pago", 500);
   }
 }

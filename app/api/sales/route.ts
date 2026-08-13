@@ -4,6 +4,7 @@ import { requireSessionUser } from "@/lib/api-auth";
 import { createSale as createSaleServer, SaleProcessingError } from "@/lib/sales-service";
 import { createSaleSchema } from "@/lib/validations";
 import { isTestUserEmail } from "@/lib/test-users";
+import { reportError } from "@/lib/error-reporter";
 import {
   findSales,
   findSale,
@@ -83,10 +84,11 @@ export async function POST(request: Request) {
     ]);
 
     if (!salesAccess.allowed) {
-      return errorResponse(
-        "Suscripción vencida. Activá un plan para volver a vender.",
-        403,
-      );
+      const message =
+        salesAccess.reason === "STORE_SUSPENDED"
+          ? "Tienda suspendida por el administrador. Contactá a soporte."
+          : "Suscripción vencida. Activá un plan para volver a vender.";
+      return errorResponse(message, 403);
     }
 
     const cashSessionId = data.cashSessionId ?? openSession?.id ?? undefined;
@@ -119,6 +121,17 @@ export async function POST(request: Request) {
     return jsonResponse(sale, 201);
   } catch (error) {
     console.error("POST /api/sales", error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    void reportError({
+      source: "API",
+      severity: "ERROR",
+      message: err.message || "POST /api/sales failed",
+      stack: err.stack,
+      storeId: undefined,
+      method: "POST",
+      path: "/api/sales",
+      statusCode: 500,
+    }).catch(() => {});
     if (error instanceof SaleProcessingError) {
       return errorResponse(error.message, error.statusCode);
     }

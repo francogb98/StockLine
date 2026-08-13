@@ -14,6 +14,7 @@ const tenantUser = {
   name: "Admin",
   role: "admin",
   storeId: "store-1",
+  isSuperAdmin: false,
 };
 
 function makeRequest(file?: File): Request {

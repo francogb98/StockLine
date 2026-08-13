@@ -11,6 +11,7 @@ const tenantAdmin = {
   name: "Admin",
   role: "admin",
   storeId: "store-1",
+  isSuperAdmin: false,
 };
 
 afterEach(() => {

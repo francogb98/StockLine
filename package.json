@@ -14,7 +14,9 @@
     "test:e2e:ui": "playwright test --ui",
     "postinstall": "prisma generate",
     "prisma:migrate": "npx prisma migrate dev --name init",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "seed:super-admin": "tsx prisma/seeds/super-admin.ts",
+    "seed:platform-store": "tsx prisma/seeds/platform-store.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

@@ -12,11 +12,13 @@ function LoginContent() {
 
   const resetSuccess = searchParams.get("reset") === "success";
 
+  const destination = user?.isSuperAdmin ? "/super-admin" : "/app";
+
   useEffect(() => {
     if (!isSessionLoading && user) {
-      router.push("/app");
+      router.push(destination);
     }
-  }, [user, isSessionLoading, router]);
+  }, [user, isSessionLoading, router, destination]);
 
   if (isSessionLoading) {
     return null;
@@ -28,7 +30,7 @@ function LoginContent() {
 
   return (
     <LoginScreen
-      onLoginSuccess={() => router.push("/app")}
+      onLoginSuccess={() => router.push(destination)}
       resetSuccess={resetSuccess}
     />
   );

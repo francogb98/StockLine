@@ -11,6 +11,7 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
+  isSuperAdmin?: boolean;
   passwordHash?: string;
   hasCompletedOnboarding?: boolean;
   createdAt: Date;
@@ -245,4 +246,75 @@ export interface POSContextType {
   clearCart: () => void;
   completeSale: (paymentMethod: PaymentMethod) => Promise<Sale | null>;
   total: number;
+}
+
+// ============================================================
+// SUPER ADMIN (Phase 2: types espejo, sin uso todavía)
+// ============================================================
+
+export type CouponDiscountType = "PERCENTAGE" | "FIXED";
+export type AuditActorType = "SUPER_ADMIN" | "STORE_USER" | "SYSTEM" | "WEBHOOK";
+export type AppErrorSource = "API" | "PRISMA" | "MERCADO_PAGO" | "WEBHOOK" | "POS" | "UNKNOWN";
+export type AppErrorSeverity = "INFO" | "WARNING" | "ERROR" | "CRITICAL";
+
+export interface Coupon {
+  id: string;
+  code: string;
+  description: string | null;
+  discountType: CouponDiscountType;
+  discountValue: number;
+  durationDays: number;
+  maxRedemptions: number | null;
+  redeemedCount: number;
+  applicablePlans: string[];
+  startsAt: Date;
+  expiresAt: Date | null;
+  isActive: boolean;
+  createdByUserId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CouponRedemption {
+  id: string;
+  couponId: string;
+  storeId: string;
+  subscriptionId: string;
+  redeemedByUserId: string | null;
+  redeemedAt: Date;
+  discountApplied: number;
+  notes: string | null;
+}
+
+export interface AuditLog {
+  id: string;
+  actorType: AuditActorType;
+  actorUserId: string | null;
+  storeId: string | null;
+  action: string;
+  targetType: string | null;
+  targetId: string | null;
+  metadata: Record<string, unknown> | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: Date;
+}
+
+export interface AppError {
+  id: string;
+  storeId: string | null;
+  source: AppErrorSource;
+  severity: AppErrorSeverity;
+  statusCode: number | null;
+  method: string | null;
+  path: string | null;
+  message: string;
+  stack: string | null;
+  fingerprint: string;
+  occurrences: number;
+  lastSeenAt: Date;
+  firstSeenAt: Date;
+  resolvedAt: Date | null;
+  resolvedByUserId: string | null;
+  metadata: Record<string, unknown> | null;
 }

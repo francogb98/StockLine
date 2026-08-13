@@ -11,6 +11,7 @@ const tenantUser = {
   name: "Admin",
   role: "admin",
   storeId: "store-1",
+  isSuperAdmin: false,
 };
 
 function createRequest(url: string): Request {

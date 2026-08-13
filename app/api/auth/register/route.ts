@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { SUBSCRIPTION_TRIAL_DAYS, addDays } from "@/lib/subscription-config";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { recordAuditEvent, extractAuditContext } from "@/lib/audit-service";
 
 const REGISTER_RATE_LIMIT = { windowMs: 60 * 60 * 1000, maxRequests: 5 };
 
@@ -87,6 +88,19 @@ export async function POST(req: NextRequest) {
         },
       });
     });
+
+    const { ipAddress, userAgent } = extractAuditContext(req);
+    void recordAuditEvent({
+      actorType: "STORE_USER",
+      actorUserId: newUser.id,
+      storeId: newUser.storeId,
+      action: "user.register",
+      targetType: "User",
+      targetId: newUser.id,
+      metadata: { email: newUser.email, storeName: storeName },
+      ipAddress,
+      userAgent,
+    }).catch(() => {});
 
     return NextResponse.json(
       { message: "Usuario y tienda creados exitosamente", user: newUser },

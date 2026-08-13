@@ -351,14 +351,35 @@ export async function enforceSalesAccess(storeId: string) {
   return enforceSubscriptionAccess(storeId, "sales");
 }
 
+export interface EnforceSubscriptionResult {
+  allowed: boolean;
+  reason?: "STORE_SUSPENDED" | "INACTIVE";
+  snapshot: SubscriptionSnapshot;
+}
+
 export async function enforceSubscriptionAccess(
   storeId: string,
   _feature?: string,
-) {
+): Promise<EnforceSubscriptionResult> {
+  const store = await prisma.store.findUnique({
+    where: { id: storeId },
+    select: { suspendedAt: true },
+  });
+
+  if (store?.suspendedAt) {
+    const snapshot = await resolveSubscriptionSnapshot(storeId);
+    return {
+      allowed: false,
+      reason: "STORE_SUSPENDED",
+      snapshot,
+    };
+  }
+
   const snapshot = await resolveSubscriptionSnapshot(storeId);
   if (snapshot.status === "past_due" || snapshot.status === "canceled") {
     return {
       allowed: false,
+      reason: "INACTIVE",
       snapshot,
     };
   }
@@ -367,6 +388,141 @@ export async function enforceSubscriptionAccess(
     allowed: true,
     snapshot,
   };
+}
+
+export class AdminSubscriptionError extends Error {
+  statusCode: number;
+  constructor(message: string, statusCode = 400) {
+    super(message);
+    this.statusCode = statusCode;
+  }
+}
+
+export interface CancelSubscriptionByAdminInput {
+  storeId: string;
+  adminUserId: string;
+  reason: string;
+  notes?: string;
+}
+
+/**
+ * IMPORTANT: does NOT cancel the preapproval in Mercado Pago.
+ * The flag cancelledByAdmin is set so UI can warn users.
+ */
+export async function cancelSubscriptionByAdmin(
+  input: CancelSubscriptionByAdminInput,
+) {
+  const sub = await prisma.subscription.findUnique({ where: { storeId: input.storeId } });
+  if (!sub) {
+    throw new AdminSubscriptionError("No subscription found for store", 404);
+  }
+
+  if (sub.cancelledByAdmin) {
+    throw new AdminSubscriptionError("La suscripción ya fue cancelada por admin", 409);
+  }
+
+  const updated = await prisma.subscription.update({
+    where: { id: sub.id },
+    data: {
+      status: "canceled",
+      previousStatus: sub.status,
+      cancelledByAdmin: true,
+      cancelledByAdminUserId: input.adminUserId,
+      adminNotes: input.notes ?? null,
+    },
+  });
+
+  invalidateSubscriptionCache(input.storeId);
+  return updated;
+}
+
+export interface ReactivateSubscriptionByAdminInput {
+  storeId: string;
+  adminUserId: string;
+  notes?: string;
+}
+
+export async function reactivateSubscriptionByAdmin(
+  input: ReactivateSubscriptionByAdminInput,
+) {
+  const sub = await prisma.subscription.findUnique({ where: { storeId: input.storeId } });
+  if (!sub) {
+    throw new AdminSubscriptionError("No subscription found for store", 404);
+  }
+
+  if (!sub.cancelledByAdmin) {
+    throw new AdminSubscriptionError("Solo se puede reactivar una suscripción cancelada por admin", 409);
+  }
+
+  const now = new Date();
+  const intervalDays = SUBSCRIPTION_PLANS[sub.plan as SubscriptionPlan].intervalDays;
+  const newPeriodEnd = addDays(now, intervalDays);
+
+  const updated = await prisma.subscription.update({
+    where: { id: sub.id },
+    data: {
+      status: "active",
+      cancelledByAdmin: false,
+      cancelledByAdminUserId: null,
+      adminNotes: input.notes ?? null,
+      previousStatus: sub.status,
+      currentPeriodStart: now,
+      currentPeriodEnd: newPeriodEnd,
+      trialEndsAt: null,
+    },
+  });
+
+  invalidateSubscriptionCache(input.storeId);
+  return updated;
+}
+
+export interface ExtendSubscriptionByAdminInput {
+  storeId: string;
+  adminUserId: string;
+  extraDays: number;
+  reason: string;
+  notes?: string;
+}
+
+export async function extendSubscriptionByAdmin(
+  input: ExtendSubscriptionByAdminInput,
+) {
+  if (!Number.isFinite(input.extraDays) || input.extraDays <= 0 || input.extraDays > 365) {
+    throw new AdminSubscriptionError("extraDays debe estar entre 1 y 365", 400);
+  }
+
+  const sub = await prisma.subscription.findUnique({ where: { storeId: input.storeId } });
+  if (!sub) {
+    throw new AdminSubscriptionError("No subscription found for store", 404);
+  }
+
+  const baseEnd =
+    sub.status === "trial" && sub.trialEndsAt && sub.trialEndsAt > new Date()
+      ? sub.trialEndsAt
+      : sub.currentPeriodEnd;
+
+  const newEnd = addDays(baseEnd, input.extraDays);
+
+  const updated = await prisma.subscription.update({
+    where: { id: sub.id },
+    data: {
+      currentPeriodEnd: newEnd,
+      adminNotes: [
+        sub.adminNotes ?? null,
+        `[+${input.extraDays}d] ${input.reason}${input.notes ? ` — ${input.notes}` : ""}`,
+      ]
+        .filter(Boolean)
+        .join("\n") || null,
+    },
+  });
+
+  invalidateSubscriptionCache(input.storeId);
+  return updated;
+}
+
+export async function forceSyncWithMp(storeId: string) {
+  invalidateSubscriptionCache(storeId);
+  return resolveSubscriptionSnapshot(storeId);
 }
 
 export async function markSubscriptionFromWebhook(input: {

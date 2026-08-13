@@ -2,6 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const SESSION_COOKIE_NAME = "session-token";
 
+// Edge runtime cannot import Prisma, so this middleware only checks cookie
+// presence. The actual Super Admin role gate lives inside each route handler
+// via requireSuperAdmin().
 const PROTECTED_API_PREFIXES = [
   "/api/categories",
   "/api/products",
@@ -14,6 +17,7 @@ const PROTECTED_API_PREFIXES = [
   "/api/onboarding",
   "/api/cash-sessions",
   "/api/stock-movements",
+  "/api/super-admin",
 ];
 
 function isProtectedApiRoute(pathname: string) {

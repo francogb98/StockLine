@@ -17,6 +17,7 @@ export interface SessionUser {
   name: string;
   role: string;
   storeId: string;
+  isSuperAdmin: boolean;
 }
 
 export interface AuthenticatedSession {
@@ -157,6 +158,7 @@ export async function getAuthenticatedSession(): Promise<AuthenticatedSession | 
           name: true,
           role: true,
           storeId: true,
+          isSuperAdmin: true,
         },
       },
     },

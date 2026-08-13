@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { hashPassword, validatePassword } from "@/lib/password-utils.server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSessionUser } from "@/lib/api-auth";
+import { recordAuditEvent, extractAuditContext } from "@/lib/audit-service";
 
 // GET - Listar todos los usuarios (solo admin)
 export async function GET() {
@@ -120,6 +121,19 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const { ipAddress, userAgent } = extractAuditContext(req);
+    void recordAuditEvent({
+      actorType: "STORE_USER",
+      actorUserId: auth.user.id,
+      storeId: auth.user.storeId,
+      action: "user.create",
+      targetType: "User",
+      targetId: newUser.id,
+      metadata: { email: newUser.email, role: newUser.role },
+      ipAddress,
+      userAgent,
+    }).catch(() => {});
+
     return NextResponse.json(
       { message: "Usuario creado exitosamente", user: newUser },
       { status: 201 },
@@ -220,6 +234,19 @@ export async function PUT(req: NextRequest) {
       },
     });
 
+    const { ipAddress, userAgent } = extractAuditContext(req);
+    void recordAuditEvent({
+      actorType: "STORE_USER",
+      actorUserId: auth.user.id,
+      storeId: auth.user.storeId,
+      action: "user.update",
+      targetType: "User",
+      targetId: updatedUser.id,
+      metadata: { updatedFields: Object.keys(updateData) },
+      ipAddress,
+      userAgent,
+    }).catch(() => {});
+
     return NextResponse.json(
       { message: "Usuario actualizado exitosamente", user: updatedUser },
       { status: 200 },
@@ -286,6 +313,18 @@ export async function DELETE(req: NextRequest) {
     await prisma.user.delete({
       where: { id },
     });
+
+    const { ipAddress, userAgent } = extractAuditContext(req);
+    void recordAuditEvent({
+      actorType: "STORE_USER",
+      actorUserId: auth.user.id,
+      storeId: auth.user.storeId,
+      action: "user.delete",
+      targetType: "User",
+      targetId: id,
+      ipAddress,
+      userAgent,
+    }).catch(() => {});
 
     return NextResponse.json(
       { message: "Usuario eliminado exitosamente" },

@@ -9,6 +9,7 @@ const tenantAdmin = {
   name: "Admin",
   role: "admin",
   storeId: "store-1",
+  isSuperAdmin: false,
 };
 
 const tenantEmployee = {
@@ -17,6 +18,7 @@ const tenantEmployee = {
   name: "Employee",
   role: "employee",
   storeId: "store-1",
+  isSuperAdmin: false,
 };
 
 afterEach(() => {

@@ -9,6 +9,7 @@ import {
 import { isTestUserEmail } from "@/lib/test-users";
 import { getOrCreateSessionStore } from "@/lib/session-store";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { recordAuditEvent, extractAuditContext } from "@/lib/audit-service";
 
 const LOGIN_RATE_LIMIT = { windowMs: 15 * 60 * 1000, maxRequests: 10 };
 
@@ -52,6 +53,14 @@ export async function POST(req: NextRequest) {
     const isValidPassword = await verifyPassword(password, user.passwordHash);
 
     if (!isValidPassword) {
+      const { ipAddress, userAgent } = extractAuditContext(req);
+      void recordAuditEvent({
+        actorType: "STORE_USER",
+        action: "user.login_failed",
+        metadata: { email, reason: "invalid_password" },
+        ipAddress,
+        userAgent,
+      }).catch(() => {});
       return NextResponse.json(
         { error: "Credenciales inválidas" },
         { status: 401 },
@@ -149,6 +158,18 @@ export async function POST(req: NextRequest) {
     }
 
     const { passwordHash, ...userWithoutPassword } = user;
+
+    const { ipAddress, userAgent } = extractAuditContext(req);
+    void recordAuditEvent({
+      actorType: "STORE_USER",
+      actorUserId: user.id,
+      storeId: user.storeId,
+      action: "user.login",
+      targetType: "User",
+      targetId: user.id,
+      ipAddress,
+      userAgent,
+    }).catch(() => {});
 
     return NextResponse.json(
       {

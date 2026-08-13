@@ -22,6 +22,7 @@ const adminUser = {
   name: "Admin",
   role: "admin",
   storeId: "store-1",
+  isSuperAdmin: false,
 };
 
 const employeeUser = {
@@ -30,6 +31,7 @@ const employeeUser = {
   name: "Employee",
   role: "employee",
   storeId: "store-1",
+  isSuperAdmin: false,
 };
 
 function createRequest(body: unknown): Request {
