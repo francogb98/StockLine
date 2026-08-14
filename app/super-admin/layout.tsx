@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import { getAuthenticatedSession } from "@/lib/auth-session";
 import { ThemeProvider } from "@/components/theme-provider";
-import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
+import { SuperAdminLogoutButton } from "@/components/super-admin/logout-button";
 
 export default async function SuperAdminLayout({
   children,
@@ -20,12 +19,7 @@ export default async function SuperAdminLayout({
       <div className="flex h-screen flex-col">
         <header className="flex items-center justify-between border-b px-6 py-3">
           <div className="font-semibold">Platform Admin</div>
-          <form action="/api/auth/logout" method="POST">
-            <Button variant="ghost" size="sm" type="submit">
-              <LogOut className="mr-2 h-4 w-4" />
-              Salir
-            </Button>
-          </form>
+          <SuperAdminLogoutButton />
         </header>
         <div className="flex flex-1">
           <aside className="w-[235px] border-r p-4">

@@ -8,6 +8,7 @@ import {
   AlertCircle,
   ShieldCheck,
   Sparkles,
+  Tag,
 } from "lucide-react";
 import { useAuth } from "@/lib/store-context";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -46,6 +47,9 @@ export function SubscriptionManagement() {
   const [isYearly, setIsYearly] = useState(false);
   const [submittingPlan, setSubmittingPlan] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoMessage, setPromoMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
   const isTestUser = user ? isTestUserEmail(user.email) : false;
   const canSubscribe = user?.role === "admin" && !isTestUser;
@@ -85,6 +89,35 @@ export function SubscriptionManagement() {
       setMessage("Error de conexión al procesar el pago.");
     } finally {
       setSubmittingPlan(null);
+    }
+  };
+
+  const handleRedeemPromo = async () => {
+    if (!promoCode.trim()) return;
+    setPromoLoading(true);
+    setPromoMessage(null);
+
+    try {
+      const res = await fetch("/api/subscription/redeem-coupon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: promoCode.trim() }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setPromoMessage({ text: data.error || "No pudimos aplicar el código. Intentá nuevamente.", type: "error" });
+        return;
+      }
+
+      setPromoMessage({ text: data.message || "Código aplicado correctamente.", type: "success" });
+      setPromoCode("");
+      await refreshSubscription();
+    } catch {
+      setPromoMessage({ text: "Error de conexión. Intentá nuevamente.", type: "error" });
+    } finally {
+      setPromoLoading(false);
     }
   };
 
@@ -166,7 +199,53 @@ export function SubscriptionManagement() {
         </div>
       </div>
 
-      {/* 2. ENCABEZADO Y TOGGLE MENSUAL / ANUAL */}
+      {/* 2. CÓDIGO PROMOCIONAL */}
+      <div className="rounded-2xl border bg-card p-6 shadow-sm">
+        <div className="flex items-center gap-2">
+          <Tag className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-sm font-semibold text-foreground">
+            ¿Tenés un código promocional?
+          </h2>
+        </div>
+        <div className="mt-3 flex flex-col sm:flex-row gap-2">
+          <input
+            type="text"
+            value={promoCode}
+            onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+            placeholder="Ingresá tu código"
+            className="h-9 flex-1 rounded-md border bg-background px-3 text-sm font-mono uppercase"
+            disabled={promoLoading}
+          />
+          <button
+            type="button"
+            onClick={handleRedeemPromo}
+            disabled={promoLoading || !promoCode.trim()}
+            className="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {promoLoading ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Canjeando...
+              </>
+            ) : (
+              "Canjear código"
+            )}
+          </button>
+        </div>
+        {promoMessage && (
+          <p
+            className={`mt-2 text-xs font-medium ${
+              promoMessage.type === "success"
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-destructive"
+            }`}
+          >
+            {promoMessage.text}
+          </p>
+        )}
+      </div>
+
+      {/* 3. ENCABEZADO Y TOGGLE MENSUAL / ANUAL */}
       <div className="text-center max-w-2xl mx-auto pt-2">
         <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight mb-2">
           Planes simples, sin sorpresas
@@ -232,7 +311,7 @@ export function SubscriptionManagement() {
         </div>
       )}
 
-      {/* 3. GRID DE CARDS DE PLANES (SIMPLE + PRO) */}
+      {/* 4. GRID DE CARDS DE PLANES (SIMPLE + PRO) */}
       <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto items-stretch">
         {/* PLAN SIMPLE */}
         <div className="bg-card rounded-2xl p-6 sm:p-8 border border-border shadow-sm flex flex-col justify-between hover:border-primary/40 transition-all">

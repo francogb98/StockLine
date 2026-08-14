@@ -85,6 +85,11 @@ async function main() {
         id: category.id,
         storeId: category.storeId,
         name: category.name,
+        normalizedName: category.name
+          .trim()
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, ""),
         description: category.description,
       },
     });

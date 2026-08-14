@@ -508,6 +508,7 @@ model IngredientStockMovement {
 enum CouponDiscountType {
   PERCENTAGE
   FIXED
+  FREE_TRIAL
 }
 
 enum AuditActorType {

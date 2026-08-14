@@ -6,6 +6,7 @@ import {
   listCoupons,
   CouponError,
 } from "@/lib/super-admin/coupons-service";
+import { generateUniqueCouponCode } from "@/lib/super-admin/coupon-code-generator";
 
 export async function GET(req: NextRequest) {
   const auth = await requireSuperAdmin();
@@ -37,11 +38,27 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const discountType = body?.discountType === "FIXED"
+      ? "FIXED"
+      : body?.discountType === "FREE_TRIAL"
+        ? "FREE_TRIAL"
+        : "PERCENTAGE";
+
+    let code = String(body?.code ?? "").trim();
+    if (!code && body?.generateCode) {
+      const durationDays = Number(body?.durationDays ?? 30);
+      code = await generateUniqueCouponCode(durationDays);
+    }
+
+    if (!code) {
+      return errorResponse("El código es requerido", 400);
+    }
+
     const coupon = await createCoupon({
-      code: String(body?.code ?? ""),
+      code,
       description: body?.description ? String(body.description) : undefined,
-      discountType: body?.discountType === "FIXED" ? "FIXED" : "PERCENTAGE",
-      discountValue: Number(body?.discountValue),
+      discountType,
+      discountValue: Number(body?.discountValue ?? 0),
       durationDays: body?.durationDays ? Number(body.durationDays) : undefined,
       maxRedemptions: body?.maxRedemptions === null ? null : body?.maxRedemptions !== undefined ? Number(body.maxRedemptions) : undefined,
       applicablePlans: Array.isArray(body?.applicablePlans) ? (body.applicablePlans as unknown[]).map(String) : [],

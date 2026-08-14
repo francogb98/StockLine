@@ -24,7 +24,7 @@ export interface CouponListItem {
   id: string;
   code: string;
   description: string | null;
-  discountType: "PERCENTAGE" | "FIXED";
+  discountType: "PERCENTAGE" | "FIXED" | "FREE_TRIAL";
   discountValue: number;
   durationDays: number;
   redeemedCount: number;
@@ -35,6 +35,8 @@ export interface CouponListItem {
   isActive: boolean;
   createdByUserId: string;
   createdAt: Date;
+  redeemedByStoreName?: string | null;
+  redeemedAt?: Date | null;
 }
 
 export interface CouponsListResult {
@@ -56,6 +58,13 @@ export async function listCoupons(filters: CouponsFilters): Promise<CouponsListR
   const [items, total] = await Promise.all([
     prisma.coupon.findMany({
       where,
+      include: {
+        redemptions: {
+          include: { store: { select: { name: true } } },
+          orderBy: { redeemedAt: "desc" },
+          take: 1,
+        },
+      },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * limit,
       take: limit,
@@ -64,7 +73,11 @@ export async function listCoupons(filters: CouponsFilters): Promise<CouponsListR
   ]);
 
   return {
-    items: items as unknown as CouponListItem[],
+    items: items.map((item) => ({
+      ...item,
+      redeemedByStoreName: item.redemptions?.[0]?.store?.name ?? null,
+      redeemedAt: item.redemptions?.[0]?.redeemedAt ?? null,
+    })) as unknown as CouponListItem[],
     total,
     page,
     limit,
@@ -78,7 +91,7 @@ export async function getCouponDetail(id: string) {
 export interface CreateCouponInput {
   code: string;
   description?: string;
-  discountType: "PERCENTAGE" | "FIXED";
+  discountType: "PERCENTAGE" | "FIXED" | "FREE_TRIAL";
   discountValue: number;
   durationDays?: number;
   maxRedemptions?: number | null;
@@ -102,15 +115,20 @@ export async function createCoupon(input: CreateCouponInput) {
   if (input.discountType === "FIXED" && input.discountValue <= 0) {
     throw new CouponError("discountValue de FIXED debe ser positivo", 400);
   }
+  if (input.discountType === "FREE_TRIAL") {
+    if (!input.durationDays || input.durationDays <= 0 || input.durationDays > 365) {
+      throw new CouponError("durationDays debe estar entre 1 y 365 para FREE_TRIAL", 400);
+    }
+  }
 
   return prisma.coupon.create({
     data: {
       code: normalizedCode,
       description: input.description ?? null,
       discountType: input.discountType,
-      discountValue: input.discountValue,
+      discountValue: input.discountType === "FREE_TRIAL" ? 0 : input.discountValue,
       durationDays: input.durationDays ?? 30,
-      maxRedemptions: input.maxRedemptions ?? null,
+      maxRedemptions: input.discountType === "FREE_TRIAL" ? 1 : (input.maxRedemptions ?? null),
       applicablePlans: input.applicablePlans,
       startsAt: input.startsAt ?? new Date(),
       expiresAt: input.expiresAt ?? null,
@@ -133,8 +151,8 @@ export async function updateCoupon(id: string, input: UpdateCouponInput) {
   if (!existing) throw new CouponError("Cupón no encontrado", 404);
 
   const hasRedemptions = (existing.redeemedCount ?? 0) > 0;
-  if (hasRedemptions && (input.discountType !== undefined || input.discountValue !== undefined)) {
-    throw new CouponError("No se puede cambiar discountType/discountValue con redenciones existentes", 409);
+  if (hasRedemptions) {
+    throw new CouponError("No se puede modificar un cupón con redenciones existentes", 409);
   }
 
   return prisma.coupon.update({
@@ -182,6 +200,8 @@ export interface ValidateAndRedeemInput {
 
 export interface ValidateAndRedeemResult {
   discountApplied: number;
+  durationDays: number;
+  couponCode: string;
   newPeriodEnd: Date;
 }
 
@@ -207,9 +227,12 @@ export async function validateAndRedeemCoupon(
 
   // Calculate discount
   let discountApplied: number;
-  if (coupon.discountType === "PERCENTAGE") {
-    discountApplied = Number((15000 * (coupon.discountValue / 100)).toFixed(2));
-    if (input.plan === "annual") discountApplied = Number((150000 * (coupon.discountValue / 100)).toFixed(2));
+  if (coupon.discountType === "FREE_TRIAL") {
+    discountApplied = 0;
+  } else if (coupon.discountType === "PERCENTAGE") {
+    const value = Number(coupon.discountValue);
+    discountApplied = Number((15000 * (value / 100)).toFixed(2));
+    if (input.plan === "annual") discountApplied = Number((150000 * (value / 100)).toFixed(2));
   } else {
     discountApplied = Number(coupon.discountValue);
   }
@@ -277,5 +300,5 @@ export async function validateAndRedeemCoupon(
 
   void updated;
   void basePeriodEnd;
-  return { discountApplied, newPeriodEnd };
+  return { discountApplied, durationDays: coupon.durationDays, couponCode: coupon.code, newPeriodEnd };
 }

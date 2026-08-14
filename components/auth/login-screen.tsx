@@ -14,7 +14,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import Link from "next/link";
 
 interface LoginScreenProps {
-  onLoginSuccess?: () => void;
+  onLoginSuccess?: (user?: any) => void;
   resetSuccess?: boolean;
 }
 
@@ -22,7 +22,7 @@ function LoginForm({
   onLoginSuccess,
   resetSuccess,
 }: {
-  onLoginSuccess?: () => void;
+  onLoginSuccess?: (user?: any) => void;
   resetSuccess?: boolean;
 }) {
   const { login, isLoading, pendingCashSession, clearPendingCashSession } =
@@ -47,7 +47,7 @@ function LoginForm({
       if (result.pendingCashSession) {
         setShowPendingSession(true);
       } else {
-        onLoginSuccess?.();
+        onLoginSuccess?.(result.user);
       }
     } else {
       setError("Credenciales inválidas");

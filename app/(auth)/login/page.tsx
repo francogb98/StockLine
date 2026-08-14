@@ -30,7 +30,10 @@ function LoginContent() {
 
   return (
     <LoginScreen
-      onLoginSuccess={() => router.push(destination)}
+      onLoginSuccess={(loggedInUser) => {
+        const dest = loggedInUser?.isSuperAdmin ? "/super-admin" : "/app";
+        router.push(dest);
+      }}
       resetSuccess={resetSuccess}
     />
   );

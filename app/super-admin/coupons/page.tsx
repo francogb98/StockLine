@@ -6,7 +6,33 @@ import { Badge } from "@/components/ui/badge";
 import { ToggleCouponButton } from "@/components/super-admin/coupon-toggle-button";
 
 interface PageProps {
-  searchParams: Promise<{ q?: string; isActive?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; isActive?: string; status?: string; page?: string }>;
+}
+
+function getCouponStatus(c: {
+  isActive: boolean;
+  redeemedCount: number;
+  maxRedemptions: number | null;
+  expiresAt: Date | null;
+}): { label: string; variant: "default" | "secondary" | "destructive" | "outline" } {
+  if (!c.isActive) return { label: "Inactivo", variant: "secondary" };
+  if (c.maxRedemptions !== null && c.redeemedCount >= c.maxRedemptions)
+    return { label: "Usado", variant: "outline" };
+  if (c.expiresAt && c.expiresAt < new Date())
+    return { label: "Vencido", variant: "destructive" };
+  return { label: "Disponible", variant: "default" };
+}
+
+function formatDiscount(c: { discountType: string; discountValue: number; durationDays: number }) {
+  if (c.discountType === "FREE_TRIAL") return `${c.durationDays} días gratis`;
+  if (c.discountType === "PERCENTAGE") return `${c.discountValue}%`;
+  return `$${c.discountValue}`;
+}
+
+function formatType(discountType: string) {
+  if (discountType === "FREE_TRIAL") return "Período gratis";
+  if (discountType === "PERCENTAGE") return "Porcentaje";
+  return "Monto fijo";
 }
 
 export default async function CouponsPage(props: PageProps) {
@@ -50,12 +76,12 @@ export default async function CouponsPage(props: PageProps) {
           <input
             name="q"
             defaultValue={params.q ?? ""}
-            placeholder="código"
+            placeholder="código o empresa"
             className="h-9 w-48 rounded-md border bg-background px-3 text-sm"
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-muted-foreground">Estado</label>
+          <label className="text-xs font-medium text-muted-foreground">Activo</label>
           <select name="isActive" defaultValue={params.isActive ?? ""} className="h-9 rounded-md border bg-background px-3 text-sm">
             <option value="">Todos</option>
             <option value="true">Activos</option>
@@ -73,11 +99,11 @@ export default async function CouponsPage(props: PageProps) {
             <tr className="text-left">
               <th className="px-3 py-2 font-medium">Código</th>
               <th className="px-3 py-2 font-medium">Tipo</th>
-              <th className="px-3 py-2 font-medium">Valor</th>
-              <th className="px-3 py-2 font-medium">Días</th>
-              <th className="px-3 py-2 font-medium">Redenciones</th>
-              <th className="px-3 py-2 font-medium">Vence</th>
+              <th className="px-3 py-2 font-medium">Beneficio</th>
+              <th className="px-3 py-2 font-medium">Vencimiento</th>
               <th className="px-3 py-2 font-medium">Estado</th>
+              <th className="px-3 py-2 font-medium">Empresa</th>
+              <th className="px-3 py-2 font-medium">Fecha de uso</th>
               <th className="px-3 py-2 font-medium">Acciones</th>
             </tr>
           </thead>
@@ -89,39 +115,38 @@ export default async function CouponsPage(props: PageProps) {
                 </td>
               </tr>
             )}
-            {result.items.map((c) => (
-              <tr key={c.id} className="border-t">
-                <td className="px-3 py-2">
-                  <Link
-                    href={`/super-admin/coupons/${c.id}`}
-                    className="font-mono font-medium text-primary underline-offset-2 hover:underline"
-                  >
-                    {c.code}
-                  </Link>
-                </td>
-                <td className="px-3 py-2 text-xs">{c.discountType}</td>
-                <td className="px-3 py-2 text-xs">
-                  {c.discountType === "PERCENTAGE" ? `${c.discountValue}%` : `$${c.discountValue}`}
-                </td>
-                <td className="px-3 py-2 text-xs">{c.durationDays}d</td>
-                <td className="px-3 py-2 text-xs">
-                  {c.redeemedCount}{c.maxRedemptions !== null ? ` / ${c.maxRedemptions}` : ""}
-                </td>
-                <td className="px-3 py-2 text-xs text-muted-foreground">
-                  {c.expiresAt ? c.expiresAt.toISOString().slice(0, 10) : "∞"}
-                </td>
-                <td className="px-3 py-2 text-xs">
-                  {c.isActive ? (
-                    <Badge variant="default">Activo</Badge>
-                  ) : (
-                    <Badge variant="secondary">Inactivo</Badge>
-                  )}
-                </td>
-                <td className="px-3 py-2 text-xs">
-                  <ToggleCouponButton id={c.id} initialActive={c.isActive} />
-                </td>
-              </tr>
-            ))}
+            {result.items.map((c) => {
+              const status = getCouponStatus(c);
+              return (
+                <tr key={c.id} className="border-t">
+                  <td className="px-3 py-2">
+                    <Link
+                      href={`/super-admin/coupons/${c.id}`}
+                      className="font-mono font-medium text-primary underline-offset-2 hover:underline"
+                    >
+                      {c.code}
+                    </Link>
+                  </td>
+                  <td className="px-3 py-2 text-xs">{formatType(c.discountType)}</td>
+                  <td className="px-3 py-2 text-xs">{formatDiscount(c)}</td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">
+                    {c.expiresAt ? c.expiresAt.toISOString().slice(0, 10) : "Sin vencimiento"}
+                  </td>
+                  <td className="px-3 py-2 text-xs">
+                    <Badge variant={status.variant}>{status.label}</Badge>
+                  </td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">
+                    {c.redeemedByStoreName ?? "—"}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">
+                    {c.redeemedAt ? c.redeemedAt.toISOString().slice(0, 10) : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-xs">
+                    <ToggleCouponButton id={c.id} initialActive={c.isActive} />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

@@ -297,8 +297,7 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
           <div
             ref={gridContainerRef}
             data-keyboard-zone="products"
-            className="grid gap-3"
-            style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))' }}
+            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"
             onKeyDown={handleGridKeyDown}
             role="grid"
             aria-label="Productos"
@@ -320,11 +319,11 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
                   data-product-name={product.name}
                   data-product-index={index}
                   className={cn(
-                    "group relative flex h-full cursor-pointer flex-col rounded-xl border p-3.5 text-left transition-all duration-200 active:scale-95",
+                    "group relative flex h-full cursor-pointer flex-col rounded-xl border border-gray-200 p-3 text-left transition-all duration-200 active:scale-95",
                     "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                     isOutOfStock
                       ? "cursor-not-allowed bg-muted/50 opacity-60"
-                      : "hover:border-primary hover:shadow-md hover:bg-accent/30",
+                      : "hover:border-blue-400 hover:shadow-md hover:bg-accent/30",
                     isFocused && "keyboard-product-focused",
                   )}
                   tabIndex={isFocused ? 0 : -1}
@@ -379,16 +378,18 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
                     </div>
                   )}
 
-                  {/* Product image (optional) */}
-                  <div className="mb-2.5 overflow-hidden rounded-lg border bg-muted/40">
-                    <div className="aspect-[4/3] w-full">
-                      <ProductThumbnail
-                        imageUrl={product.imageUrl}
-                        name={product.name}
-                        className="h-full w-full"
-                      />
+                  {/* Product image — only when imageUrl exists */}
+                  {product.imageUrl && (
+                    <div className="mb-2 overflow-hidden rounded-lg border bg-muted/40">
+                      <div className="h-28 w-full">
+                        <ProductThumbnail
+                          imageUrl={product.imageUrl}
+                          name={product.name}
+                          className="h-full w-full"
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Name — primary element */}
                   <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">
@@ -398,24 +399,24 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
                   {/* Spacer to keep price+stock at bottom */}
                   <div className="flex-1" />
 
-                  {/* Price + Stock on same line */}
+                  {/* Price + Stock badge */}
                   <div className="mt-2 flex items-center justify-between gap-1.5">
-                    <span className="text-sm font-semibold text-primary">
+                    <span className="text-sm font-bold text-blue-600">
                       {formatCurrency(product.price)}
                     </span>
                     <span
                       className={cn(
-                        "truncate text-xs",
+                        "shrink-0 rounded-full px-2 py-0.5 text-xs",
                         isOutOfStock
-                          ? "font-medium text-destructive"
+                          ? "bg-red-100 text-red-600 font-medium"
                           : isLowStock
-                            ? "font-medium text-[hsl(var(--warning))]"
-                            : "text-muted-foreground",
+                            ? "bg-amber-100 text-amber-600 font-medium"
+                            : "bg-gray-100 text-gray-500",
                       )}
                     >
                       {isOutOfStock
                         ? "Sin stock"
-                        : `Stock: ${getAvailableStock(product.id)}`}
+                        : getAvailableStock(product.id)}
                     </span>
                   </div>
                 </div>

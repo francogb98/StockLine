@@ -50,7 +50,7 @@ interface AuthContextType {
   store: Store | null;
   subscription: SubscriptionState | null;
   pendingCashSession: PendingCashSession | null;
-  login: (email: string, password: string) => Promise<{ success: boolean; pendingCashSession: PendingCashSession | null }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; pendingCashSession: PendingCashSession | null; user?: User | null }>;
   register: (
     name: string,
     email: string,
@@ -499,7 +499,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Auth Methods
   const login = useCallback(
-    async (email: string, password: string): Promise<{ success: boolean; pendingCashSession: PendingCashSession | null }> => {
+    async (email: string, password: string): Promise<{ success: boolean; pendingCashSession: PendingCashSession | null; user?: User | null }> => {
       setIsLoading(true);
 
       try {
@@ -536,7 +536,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const pending = data.pendingCashSession ?? null;
           setPendingCashSession(pending);
           setIsLoading(false);
-          return { success: true, pendingCashSession: pending };
+          return { success: true, pendingCashSession: pending, user: data.user };
         } else {
           setIsLoading(false);
           return { success: false, pendingCashSession: null };

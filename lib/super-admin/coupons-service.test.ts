@@ -149,15 +149,15 @@ describe("updateCoupon", () => {
     ).rejects.toMatchObject({ statusCode: 409 });
   });
 
-  it("allows metadata-only changes when redemptions exist", async () => {
+  it("blocks any change when redemptions exist", async () => {
     vi.mocked(prisma.coupon.findUnique).mockResolvedValue({
       id: "c-1",
       redeemedCount: 5,
     } as any);
-    vi.mocked(prisma.coupon.update).mockResolvedValue({ id: "c-1" } as any);
 
-    await updateCoupon("c-1", { isActive: false, description: "updated" });
-    expect(prisma.coupon.update).toHaveBeenCalledOnce();
+    await expect(
+      updateCoupon("c-1", { isActive: false }),
+    ).rejects.toMatchObject({ statusCode: 409 });
   });
 });
 
