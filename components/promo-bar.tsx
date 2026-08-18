@@ -34,7 +34,7 @@ export function PromoBar({
             </span>
 
             <Link
-              href="/register"
+              href="/register?promo=LAUNCH50"
               onClick={onDismiss}
               className="shrink-0 font-semibold underline-offset-2 transition-all hover:underline"
             >

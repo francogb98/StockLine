@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Check,
@@ -50,6 +50,14 @@ export function SubscriptionManagement() {
   const [promoCode, setPromoCode] = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoMessage, setPromoMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const [pendingPromo, setPendingPromo] = useState<string | null>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("pendingPromo");
+    if (stored) {
+      setPendingPromo(stored);
+    }
+  }, []);
 
   const isTestUser = user ? isTestUserEmail(user.email) : false;
   const canSubscribe = user?.role === "admin" && !isTestUser;
@@ -64,17 +72,31 @@ export function SubscriptionManagement() {
     // Formato de ID que espera tu backend (ej: "simple_monthly", "pro_annual", etc.)
     const fullPlanId = `${planKey}_${isYearly ? "annual" : "monthly"}`;
 
+    // Auto-aplicar promo pendiente si existe
+    const storedPromo = localStorage.getItem("pendingPromo");
+
     try {
+      const body: Record<string, string> = { plan: fullPlanId };
+      if (storedPromo) {
+        body.couponCode = storedPromo;
+      }
+
       const response = await fetch("/api/subscription/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: fullPlanId }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
       if (!response.ok) {
         setMessage(data?.error || "No se pudo iniciar la suscripción.");
         return;
+      }
+
+      // Limpiar promo después de aplicar exitosamente
+      if (storedPromo && data.coupon) {
+        localStorage.removeItem("pendingPromo");
+        setPendingPromo(null);
       }
 
       const redirectUrl = data.initPoint || data.sandboxInitPoint;
@@ -244,6 +266,29 @@ export function SubscriptionManagement() {
           </p>
         )}
       </div>
+
+      {/* 2.5. BANNER DE PROMO PENDIENTE */}
+      {pendingPromo && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl border border-emerald-200/80 bg-emerald-50/60 dark:bg-emerald-950/30 dark:border-emerald-800/50 p-4 shadow-sm"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40">
+              <Sparkles className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">
+                Oferta de lanzamiento activa
+              </p>
+              <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                Se aplicará automáticamente <strong>50% OFF</strong> en tus primeros 3 meses al suscribirte.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* 3. ENCABEZADO Y TOGGLE MENSUAL / ANUAL */}
       <div className="text-center max-w-2xl mx-auto pt-2">

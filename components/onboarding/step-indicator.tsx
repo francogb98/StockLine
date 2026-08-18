@@ -1,8 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
 import { Check } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 interface Step {
   label: string
@@ -15,58 +13,36 @@ interface StepIndicatorProps {
 
 export function StepIndicator({ currentStep, steps }: StepIndicatorProps) {
   return (
-    <div className="flex items-center justify-center gap-2 mb-8">
-      {steps.map((step, index) => {
-        const isCompleted = index < currentStep
-        const isCurrent = index === currentStep
+    <div className="flex items-center justify-between mb-8 px-2 relative">
+      {steps.map((step, idx) => {
+        const num = idx + 1
+        const isDone = currentStep > num
+        const isCurrent = currentStep === num
 
         return (
-          <div key={index} className="flex items-center">
-            <div className="flex flex-col items-center gap-2">
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: index * 0.1 }}
-                className={cn(
-                  'w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300',
-                  isCompleted && 'bg-success text-success-foreground',
-                  isCurrent && 'bg-primary text-primary-foreground ring-4 ring-primary/20',
-                  !isCompleted && !isCurrent && 'bg-muted text-muted-foreground'
-                )}
-              >
-                {isCompleted ? (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                  >
-                    <Check className="w-5 h-5" />
-                  </motion.div>
-                ) : (
-                  index + 1
-                )}
-              </motion.div>
-              <span
-                className={cn(
-                  'text-xs font-medium transition-colors hidden sm:block',
-                  isCurrent ? 'text-foreground' : 'text-muted-foreground'
-                )}
-              >
-                {step.label}
-              </span>
+          <div key={step.label} className="flex flex-col items-center gap-1.5 z-10">
+            <div
+              className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                isDone
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
+                  : isCurrent
+                    ? 'bg-blue-600 text-white ring-4 ring-blue-100 scale-105'
+                    : 'bg-slate-100 text-slate-400'
+              }`}
+            >
+              {isDone ? <Check className="w-4 h-4 stroke-[3]" /> : num}
             </div>
-
-            {index < steps.length - 1 && (
-              <div
-                className={cn(
-                  'w-12 sm:w-20 h-0.5 mx-2 sm:mx-4 transition-colors duration-300',
-                  isCompleted ? 'bg-success' : 'bg-muted'
-                )}
-              />
-            )}
+            <span
+              className={`text-[11px] font-medium hidden sm:block ${
+                isCurrent ? 'text-slate-900 font-semibold' : 'text-slate-400'
+              }`}
+            >
+              {step.label}
+            </span>
           </div>
         )
       })}
+      <div className="absolute top-4 left-6 right-6 h-[2px] bg-slate-100 -z-0" />
     </div>
   )
 }

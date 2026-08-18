@@ -11,6 +11,7 @@ export interface OnboardingProduct {
 
 export interface OnboardingState {
   currentStep: number
+  storeName: string
   categories: { id: string; name: string; isCustom: boolean }[]
   products: OnboardingProduct[]
 }
@@ -18,14 +19,10 @@ export interface OnboardingState {
 export const SUGGESTED_CATEGORIES = [
   'Bebidas',
   'Alimentos',
+  'Golosinas',
   'Limpieza',
-  'Electrónica',
-  'Ferretería',
-  'Indumentaria',
-  'Perfumería',
-  'Librería',
-  'Mascotas',
-  'Hogar',
+  'Fiambres & Lácteos',
+  'Panadería',
 ]
 
 export const EXAMPLE_PRODUCTS: Omit<OnboardingProduct, 'id'>[] = [
@@ -35,6 +32,8 @@ export const EXAMPLE_PRODUCTS: Omit<OnboardingProduct, 'id'>[] = [
   { name: 'Galletitas Oreo', categoryId: 'alimentos', price: '2500', cost: '1800', stock: '40', minStock: '15', barcode: '' },
   { name: 'Arroz 1kg', categoryId: 'alimentos', price: '1800', cost: '1200', stock: '60', minStock: '20', barcode: '' },
   { name: 'Azúcar 1kg', categoryId: 'alimentos', price: '1200', cost: '800', stock: '45', minStock: '15', barcode: '' },
+  { name: 'Yerba Mate 500g', categoryId: 'alimentos', price: '3200', cost: '2200', stock: '35', minStock: '10', barcode: '' },
+  { name: 'Aceite de Girasol 1L', categoryId: 'alimentos', price: '2800', cost: '1900', stock: '20', minStock: '8', barcode: '' },
 ]
 
 export function createEmptyProduct(): OnboardingProduct {

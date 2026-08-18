@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useCallback } from "react";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   User,
@@ -32,6 +32,7 @@ interface RegisterScreenProps {
 export function RegisterScreen({ onBack }: RegisterScreenProps) {
   const { login } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -47,6 +48,13 @@ export function RegisterScreen({ onBack }: RegisterScreenProps) {
   const progressRef = useRef<{ timer: ReturnType<typeof setTimeout> | null }>({
     timer: null,
   });
+
+  useEffect(() => {
+    const promo = searchParams.get("promo");
+    if (promo) {
+      localStorage.setItem("pendingPromo", promo);
+    }
+  }, [searchParams]);
 
   const clearProgressTimer = useCallback(() => {
     if (progressRef.current.timer) {

@@ -11,7 +11,7 @@ import { AssistantProvider } from "@/components/mobile-assistant/context";
 import { FloatingAssistant } from "@/components/mobile-assistant/floating-assistant";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, isSessionLoading } = useAuth();
+  const { user, store, isSessionLoading } = useAuth();
   const { refreshData } = useData();
   const router = useRouter();
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
@@ -78,6 +78,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (showOnboarding) {
     return (
       <OnboardingWizard
+        initialStoreName={store?.name || ''}
         onComplete={async () => {
           setIsOnboardingTransition(true);
           await refreshData();

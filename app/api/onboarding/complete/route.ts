@@ -13,6 +13,7 @@ export async function POST(req: Request) {
     const authTime = Date.now() - authStart;
 
     const data = await req.json();
+    const storeName: string | undefined = data.storeName;
     const categories: { name: string; description?: string }[] = data.categories ?? [];
     const products: {
       name: string;
@@ -114,6 +115,14 @@ export async function POST(req: Request) {
           await tx.product.createMany({ data: productsToCreate });
         }
         const insertTime = Date.now() - insertStart;
+
+        // --- Store name update ---
+        if (storeName && storeName.trim()) {
+          await tx.store.update({
+            where: { id: auth.user.storeId },
+            data: { name: storeName.trim() },
+          });
+        }
 
         // --- User update: mark onboarding complete ---
         const userStart = Date.now();

@@ -1,12 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, X, Tag } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
+import { Tag, Check, Plus, ArrowRight } from 'lucide-react'
 import { SUGGESTED_CATEGORIES } from '@/lib/types/onboarding'
 
 interface Category {
@@ -19,13 +14,23 @@ interface CategoryStepProps {
   categories: Category[]
   onCategoriesChange: (categories: Category[]) => void
   onNext: () => void
+  onBack: () => void
 }
 
-export function CategoryStep({ categories, onCategoriesChange, onNext }: CategoryStepProps) {
-  const [customCategory, setCustomCategory] = useState('')
-  const [showCustomInput, setShowCustomInput] = useState(false)
+export function CategoryStep({ categories, onCategoriesChange, onNext, onBack }: CategoryStepProps) {
+  const [nuevaCategoria, setNuevaCategoria] = useState('')
 
-  const toggleSuggestedCategory = (name: string) => {
+  const allCategories = [
+    ...SUGGESTED_CATEGORIES.map((name) => ({
+      name,
+      isSelected: categories.some((c) => c.name.toLowerCase() === name.toLowerCase()),
+    })),
+    ...categories
+      .filter((c) => c.isCustom)
+      .map((c) => ({ name: c.name, isSelected: true })),
+  ]
+
+  const toggleCategoria = (name: string) => {
     const exists = categories.find((c) => c.name.toLowerCase() === name.toLowerCase())
     if (exists) {
       onCategoriesChange(categories.filter((c) => c.id !== exists.id))
@@ -34,151 +39,86 @@ export function CategoryStep({ categories, onCategoriesChange, onNext }: Categor
     }
   }
 
-  const addCustomCategory = () => {
-    if (customCategory.trim() && !categories.find((c) => c.name.toLowerCase() === customCategory.toLowerCase())) {
-      onCategoriesChange([...categories, { id: crypto.randomUUID(), name: customCategory.trim(), isCustom: true }])
-      setCustomCategory('')
-      setShowCustomInput(false)
+  const handleAgregarCategoria = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!nuevaCategoria.trim()) return
+    const catLimpia = nuevaCategoria.trim()
+    if (!categories.some((c) => c.name.toLowerCase() === catLimpia.toLowerCase())) {
+      onCategoriesChange([...categories, { id: crypto.randomUUID(), name: catLimpia, isCustom: true }])
     }
+    setNuevaCategoria('')
   }
-
-  const removeCategory = (id: string) => {
-    onCategoriesChange(categories.filter((c) => c.id !== id))
-  }
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      addCustomCategory()
-    }
-  }
-
-  const isSelected = (name: string) => categories.some((c) => c.name.toLowerCase() === name.toLowerCase())
-  const canContinue = categories.length > 0
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="space-y-8"
-    >
-      <div className="text-center space-y-3">
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-          className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4"
-        >
-          <Tag className="w-8 h-8 text-primary" />
-        </motion.div>
-        <h2 className="text-2xl sm:text-3xl font-semibold text-foreground text-balance">
-          Creá tus categorías
+    <div className="space-y-6 animate-fadeIn">
+      <div className="text-center space-y-1.5">
+        <h2 className="text-2xl font-bold text-slate-900">
+          Elegí tus categorías
         </h2>
-        <p className="text-muted-foreground max-w-md mx-auto text-balance">
-          Las categorías te ayudan a organizar tus productos y encontrarlos más rápido.
+        <p className="text-slate-500 text-sm">
+          Seleccioná las categorías con las que trabajás o agregá las tuyas propias.
         </p>
       </div>
 
-      <div className="space-y-6">
-        <div>
-          <p className="text-sm font-medium text-foreground mb-3">Categorías sugeridas</p>
-          <div className="flex flex-wrap gap-2">
-            {SUGGESTED_CATEGORIES.map((name, index) => (
-              <motion.button
-                key={name}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.03 }}
-                onClick={() => toggleSuggestedCategory(name)}
-                className={cn(
-                  'px-4 py-2 rounded-full text-sm font-medium transition-all duration-200',
-                  'border hover:shadow-sm',
-                  isSelected(name)
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-card text-foreground border-border hover:border-primary/50'
-                )}
-              >
-                {name}
-              </motion.button>
-            ))}
-          </div>
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-2 max-h-44 overflow-y-auto pr-1">
+          {allCategories.map((cat) => (
+            <button
+              key={cat.name}
+              type="button"
+              onClick={() => toggleCategoria(cat.name)}
+              className={`px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 border transition-all cursor-pointer ${
+                cat.isSelected
+                  ? 'bg-blue-50 border-blue-500 text-blue-700 ring-1 ring-blue-500/20'
+                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <Tag className={`w-3.5 h-3.5 ${cat.isSelected ? 'text-blue-600' : 'text-slate-400'}`} />
+              <span>{cat.name}</span>
+              {cat.isSelected ? (
+                <Check className="w-3.5 h-3.5 text-blue-600 stroke-[3] ml-1" />
+              ) : (
+                <Plus className="w-3.5 h-3.5 text-slate-400 ml-1" />
+              )}
+            </button>
+          ))}
         </div>
 
-        <div className="border-t border-border pt-6">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium text-foreground">Categorías personalizadas</p>
-            {!showCustomInput && (
-              <Button variant="ghost" size="sm" onClick={() => setShowCustomInput(true)} className="text-primary hover:text-primary/80">
-                <Plus className="w-4 h-4 mr-1" />
-                Agregar
-              </Button>
-            )}
-          </div>
-
-          <AnimatePresence>
-            {showCustomInput && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="flex gap-2 mb-4"
-              >
-                <Input
-                  placeholder="Nombre de la categoría"
-                  value={customCategory}
-                  onChange={(e) => setCustomCategory(e.target.value)}
-                  onKeyDown={handleKeyPress}
-                  autoFocus
-                  className="flex-1"
-                />
-                <Button onClick={addCustomCategory} disabled={!customCategory.trim()}>
-                  Agregar
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setShowCustomInput(false)
-                    setCustomCategory('')
-                  }}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {categories.filter((c) => c.isCustom).length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {categories.filter((c) => c.isCustom).map((category) => (
-                <motion.div
-                  key={category.id}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                >
-                  <Badge variant="secondary" className="pl-3 pr-1 py-1.5 gap-1">
-                    {category.name}
-                    <button
-                      onClick={() => removeCategory(category.id)}
-                      className="ml-1 hover:bg-muted rounded-full p-0.5"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </Badge>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </div>
+        <form onSubmit={handleAgregarCategoria} className="flex gap-2 pt-1">
+          <input
+            type="text"
+            value={nuevaCategoria}
+            onChange={(e) => setNuevaCategoria(e.target.value)}
+            placeholder="Agregar nueva categoría personalizada..."
+            className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-600"
+          />
+          <button
+            type="submit"
+            disabled={!nuevaCategoria.trim()}
+            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 disabled:opacity-40 text-white rounded-xl text-xs font-semibold flex items-center gap-1 transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Agregar</span>
+          </button>
+        </form>
       </div>
 
-      <div className="flex justify-end pt-4">
-        <Button onClick={onNext} disabled={!canContinue} size="lg">
-          Continuar
-        </Button>
+      <div className="flex gap-3 pt-2">
+        <button
+          onClick={onBack}
+          className="w-1/3 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-2xl transition-all"
+        >
+          Volver
+        </button>
+        <button
+          disabled={categories.length === 0}
+          onClick={onNext}
+          className="w-2/3 py-3.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-semibold rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25 transition-all"
+        >
+          <span>Siguiente ({categories.length})</span>
+          <ArrowRight className="w-4 h-4" />
+        </button>
       </div>
-    </motion.div>
+    </div>
   )
 }

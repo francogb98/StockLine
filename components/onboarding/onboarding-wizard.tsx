@@ -1,37 +1,37 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
-import { BrandLogo } from '@/components/brand-logo'
-import { Button } from '@/components/ui/button'
 import { LoadingScreen } from '@/components/ui/loading-screen'
 import { StepIndicator } from './step-indicator'
+import { CompanyStep } from './company-step'
 import { CategoryStep } from './category-step'
 import { ProductStep } from './product-step'
 import { CompletionStep } from './completion-step'
 import { type OnboardingProduct, createEmptyProduct } from '@/lib/types/onboarding'
 
 const STEPS = [
+  { label: 'Empresa' },
   { label: 'Categorías' },
   { label: 'Productos' },
   { label: 'Finalizar' },
 ]
 
 interface OnboardingWizardProps {
+  initialStoreName?: string
   onComplete: () => void
   onDismiss?: () => void
 }
 
-export function OnboardingWizard({ onComplete, onDismiss }: OnboardingWizardProps) {
-  const [currentStep, setCurrentStep] = useState(0)
+export function OnboardingWizard({ initialStoreName = '', onComplete, onDismiss }: OnboardingWizardProps) {
+  const [currentStep, setCurrentStep] = useState(1)
+  const [storeName, setStoreName] = useState(initialStoreName)
   const [categories, setCategories] = useState<{ id: string; name: string; isCustom: boolean }[]>([])
   const [products, setProducts] = useState<OnboardingProduct[]>([createEmptyProduct()])
-  const [isExiting, setIsExiting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
 
-  const saveState = useCallback(async (step: number, cats: typeof categories, prods: OnboardingProduct[]) => {
+  const saveState = useCallback(async (step: number, name: string, cats: typeof categories, prods: OnboardingProduct[]) => {
     setIsSaving(true)
     try {
       await fetch('/api/onboarding/state', {
@@ -39,7 +39,7 @@ export function OnboardingWizard({ onComplete, onDismiss }: OnboardingWizardProp
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           currentStep: step,
-          draftOnboardingState: { categories: cats, products: prods },
+          draftOnboardingState: { storeName: name, categories: cats, products: prods },
         }),
       })
     } catch (error) {
@@ -56,10 +56,15 @@ export function OnboardingWizard({ onComplete, onDismiss }: OnboardingWizardProp
         if (res.ok) {
           const data = await res.json()
           if (data.draftOnboardingState) {
-            const restored = data.draftOnboardingState as { categories: typeof categories; products: OnboardingProduct[] }
+            const restored = data.draftOnboardingState as {
+              storeName?: string
+              categories: typeof categories
+              products: OnboardingProduct[]
+            }
+            if (restored.storeName) setStoreName(restored.storeName)
             setCategories(restored.categories || [])
             setProducts(restored.products?.length > 0 ? restored.products : [createEmptyProduct()])
-            setCurrentStep(data.currentStep ?? 0)
+            setCurrentStep(data.currentStep ?? 1)
           }
         }
       } catch (error) {
@@ -73,24 +78,23 @@ export function OnboardingWizard({ onComplete, onDismiss }: OnboardingWizardProp
 
   useEffect(() => {
     if (!isLoading) {
-      saveState(currentStep, categories, products)
+      saveState(currentStep, storeName, categories, products)
     }
-  }, [currentStep, categories, products, isLoading, saveState])
+  }, [currentStep, storeName, categories, products, isLoading, saveState])
 
   const handleNext = () => {
-    if (currentStep < STEPS.length - 1) {
+    if (currentStep < STEPS.length) {
       setCurrentStep(currentStep + 1)
     }
   }
 
   const handleBack = () => {
-    if (currentStep > 0) {
+    if (currentStep > 1) {
       setCurrentStep(currentStep - 1)
     }
   }
 
   const handleComplete = async () => {
-    setIsExiting(true)
     setIsSaving(true)
     try {
       const validProducts = products.filter(
@@ -106,6 +110,7 @@ export function OnboardingWizard({ onComplete, onDismiss }: OnboardingWizardProp
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          storeName,
           categories: categories.map((c) => ({ name: c.name })),
           products: validProducts.map((p) => ({
             name: p.name,
@@ -132,7 +137,6 @@ export function OnboardingWizard({ onComplete, onDismiss }: OnboardingWizardProp
           `Onboarding complete failed: ${res.status} ${res.statusText}`,
           errData || text,
         )
-        setIsExiting(false)
         setIsSaving(false)
         return
       }
@@ -142,126 +146,90 @@ export function OnboardingWizard({ onComplete, onDismiss }: OnboardingWizardProp
       }, 300)
     } catch (error) {
       console.error('Error completing onboarding:', error)
-      setIsExiting(false)
       setIsSaving(false)
     }
   }
 
-  const handleAddMoreProducts = () => {
-    setCurrentStep(1)
-  }
-
   const handleDismiss = () => {
     if (onDismiss) {
-      setIsExiting(true)
-      setTimeout(() => {
-        onDismiss()
-      }, 300)
+      onDismiss()
     }
   }
 
   if (isLoading) {
-    return <LoadingScreen messages={["Cargando configuración guardada..."]} />
+    return <LoadingScreen messages={['Cargando configuración guardada...']} />
   }
 
   return (
-    <AnimatePresence>
-      {!isExiting && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm"
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-card border border-border rounded-2xl shadow-2xl"
-          >
-            <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b border-border px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <BrandLogo showText={false} className="h-7 w-7" />
-                  <div>
-                    <h1 className="font-semibold text-foreground">StockLine</h1>
-                    <p className="text-xs text-muted-foreground">
-                      Configuración inicial
-                    </p>
-                  </div>
-                </div>
-                {onDismiss && currentStep < 2 && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleDismiss}
-                    disabled={isSaving}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="w-5 h-5" />
-                  </Button>
-                )}
-              </div>
+    <div className="min-h-screen bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center p-4 relative font-sans">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-xl w-full p-6 sm:p-8 border border-slate-100 relative overflow-hidden transition-all">
+        <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 bg-gradient-to-tr from-blue-600 to-blue-500 rounded-xl flex items-center justify-center text-white font-bold shadow-md shadow-blue-500/20">
+              S
             </div>
-
-            <div className="p-6 sm:p-8">
-              {currentStep === 0 && (
-                <div className="text-center mb-8">
-                  <motion.h2
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-xl sm:text-2xl font-semibold text-foreground mb-2"
-                  >
-                    Bienvenido a tu tienda
-                  </motion.h2>
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.1 }}
-                    className="text-muted-foreground"
-                  >
-                    Vamos a configurar tu catálogo para que puedas comenzar a
-                    vender y controlar tu stock.
-                  </motion.p>
-                </div>
-              )}
-
-              <StepIndicator currentStep={currentStep} steps={STEPS} />
-
-              <AnimatePresence mode="wait">
-                {currentStep === 0 && (
-                  <CategoryStep
-                    key="categories"
-                    categories={categories}
-                    onCategoriesChange={setCategories}
-                    onNext={handleNext}
-                  />
-                )}
-                {currentStep === 1 && (
-                  <ProductStep
-                    key="products"
-                    categories={categories}
-                    products={products}
-                    onProductsChange={setProducts}
-                    onNext={handleNext}
-                    onBack={handleBack}
-                  />
-                )}
-                {currentStep === 2 && (
-                  <CompletionStep
-                    key="completion"
-                    categories={categories}
-                    products={products}
-                    onGoToPanel={handleComplete}
-                    onAddMoreProducts={handleAddMoreProducts}
-                  />
-                )}
-              </AnimatePresence>
+            <div>
+              <h1 className="font-bold text-slate-800 text-base leading-none">StockLine</h1>
+              <span className="text-[11px] text-slate-400 font-medium">Configuración inicial</span>
             </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          </div>
+          <div className="flex items-center gap-2">
+            {isSaving && (
+              <span className="text-[10px] text-slate-400 font-medium">Guardando...</span>
+            )}
+            <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+              Paso {currentStep} de 4
+            </span>
+            {onDismiss && currentStep < 4 && (
+              <button
+                onClick={handleDismiss}
+                disabled={isSaving}
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <StepIndicator currentStep={currentStep} steps={STEPS} />
+
+        {currentStep === 1 && (
+          <CompanyStep
+            storeName={storeName}
+            onStoreNameChange={setStoreName}
+            onNext={handleNext}
+          />
+        )}
+
+        {currentStep === 2 && (
+          <CategoryStep
+            categories={categories}
+            onCategoriesChange={setCategories}
+            onNext={handleNext}
+            onBack={handleBack}
+          />
+        )}
+
+        {currentStep === 3 && (
+          <ProductStep
+            categories={categories}
+            products={products}
+            onProductsChange={setProducts}
+            onNext={handleNext}
+            onBack={handleBack}
+          />
+        )}
+
+        {currentStep === 4 && (
+          <CompletionStep
+            storeName={storeName}
+            categories={categories}
+            products={products}
+            onGoToPanel={handleComplete}
+          />
+        )}
+      </div>
+    </div>
   )
 }
