@@ -13,6 +13,7 @@ import { LowStockProductsView } from './views/low-stock-products-view'
 import { MakeReturnView } from './views/make-return-view'
 import { DevolucionesHomeView } from './views/devoluciones-home-view'
 import { HowReturnWorksView } from './views/how-return-works-view'
+import { SearchProductView } from './views/search-product-view'
 import type { AssistantView } from './types'
 
 export const VIEW_LABELS: Record<AssistantView, string> = {
@@ -26,7 +27,7 @@ export const VIEW_LABELS: Record<AssistantView, string> = {
   'devoluciones-home': 'Devoluciones',
   'make-return': 'Hacer devolución',
   'how-return-works': 'Cómo funciona',
-  'suggestion-form': 'Sugerencia',
+  'search-product': 'Buscar producto',
 }
 
 const VIEW_COMPONENTS: Record<string, React.ComponentType> = {
@@ -40,6 +41,7 @@ const VIEW_COMPONENTS: Record<string, React.ComponentType> = {
   'devoluciones-home': DevolucionesHomeView,
   'make-return': MakeReturnView,
   'how-return-works': HowReturnWorksView,
+  'search-product': SearchProductView,
 }
 
 export function AssistantContent() {

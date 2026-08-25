@@ -122,21 +122,46 @@ model Category {
   normalizedName String  @default("")
   description    String?
 
-  products Product[]
+  products         Product[]
+  globalProducts   GlobalProduct[]
 
   @@unique([storeId, normalizedName])
   @@map("categories")
+}
+
+model GlobalProduct {
+  id                 String    @id @default(uuid())
+  name               String
+  brand              String?
+  barcode            String?   @unique
+  presentation       String?
+  unit               String?
+  categoryId         String?
+  category           Category? @relation(fields: [categoryId], references: [id])
+  imageUrl           String?
+  cloudinaryPublicId String?
+  normalizedKey      String    @unique
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  products Product[]
+
+  @@index([barcode])
+  @@index([normalizedKey])
+  @@map("global_products")
 }
 
 model Product {
   id          String   @id @default(uuid())
   storeId     String
   store       Store    @relation(fields: [storeId], references: [id])
-  barcode     String?  @unique
+  barcode     String?
   name        String
   description String?
   categoryId  String
   category    Category @relation(fields: [categoryId], references: [id])
+  globalProductId     String?
+  globalProduct       GlobalProduct? @relation(fields: [globalProductId], references: [id])
   price               Decimal       @db.Decimal(12, 2)
   cost                Decimal       @db.Decimal(12, 2)
   stock               Decimal       @db.Decimal(12, 3)
@@ -154,6 +179,8 @@ model Product {
   recipe           Recipe?
   presentations    ProductPresentation[]
 
+  @@index([storeId, barcode])
+  @@index([globalProductId])
   @@map("products")
 }
 

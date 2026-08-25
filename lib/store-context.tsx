@@ -58,10 +58,12 @@ interface AuthContextType {
     role: UserRole,
   ) => Promise<boolean>;
   logout: () => Promise<void>;
+  loginAsDemo: () => Promise<void>;
   refreshSubscription: () => Promise<void>;
   clearPendingCashSession: () => void;
   isLoading: boolean;
   isSessionLoading: boolean;
+  isDemo: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -174,6 +176,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     useState<PendingCashSession | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSessionLoading, setIsSessionLoading] = useState(!useMockData);
+  const [isDemo, setIsDemo] = useState(false);
 
   // Data State
   const [products, setProducts] = useState<Product[]>(
@@ -209,6 +212,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setDiscount(0);
     setDiscountType("fixed");
     setReceivedAmount(0);
+    setIsDemo(false);
     if (!useMockData) {
       setProducts([]);
       setCategories([]);
@@ -637,6 +641,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       document.documentElement.classList.remove("dark", "light");
     }
   }, [clearUserData]);
+
+  const loginAsDemo = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/demo-login", { method: "POST" });
+      if (!res.ok) {
+        console.error("demo-login failed:", res.status);
+        return;
+      }
+      const data = await res.json();
+      setUser(data.user);
+      if (data.user?.store) {
+        setStore(data.user.store);
+      }
+    } catch (error) {
+      console.error("demo-login error:", error);
+    }
+    setProducts(demoProducts);
+    setCategories(demoCategories);
+    setSales(demoSales);
+    setIsSessionLoading(false);
+    setIsDataLoading(false);
+    setIsDataError(false);
+    setIsDemo(true);
+  }, []);
 
   // Data Methods
   const addProduct = useCallback(
@@ -1212,14 +1240,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // Notify the cash indicator before the background request resolves.
       window.dispatchEvent(new CustomEvent("sale-processing", { detail: { sale } }));
 
-      // Sync with server in background (non-blocking)
-      addSale(sale, true).catch((error) => {
-        console.error("Background sale sync failed:", error);
-      });
+      // In demo mode, don't persist to server
+      if (!isDemo) {
+        // Sync with server in background (non-blocking)
+        addSale(sale, true).catch((error) => {
+          console.error("Background sale sync failed:", error);
+        });
+      }
 
       return sale;
     },
-    [cart, user, store, subtotal, tax, total, addSale, clearCart],
+    [cart, user, store, subtotal, tax, total, addSale, clearCart, isDemo],
   );
 
   // Suspended Sales Methods
@@ -1318,10 +1349,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
+        loginAsDemo,
         refreshSubscription,
         clearPendingCashSession,
         isLoading,
         isSessionLoading,
+        isDemo,
       }}
     >
       <DataContext.Provider

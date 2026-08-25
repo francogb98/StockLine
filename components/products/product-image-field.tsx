@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ImagePlus, Trash2, X, Undo2 } from "lucide-react";
+import { ImagePlus, Trash2, X, Undo2, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fileToDataUrl } from "@/lib/image-utils";
 import { validateImageFile } from "@/lib/validations";
@@ -10,6 +10,7 @@ import { ProductThumbnail } from "./product-thumbnail";
 export interface ProductImageSelection {
   file: File | null;
   removed: boolean;
+  searchResultUrl?: string | null;
 }
 
 interface ProductImageFieldProps {
@@ -17,6 +18,7 @@ interface ProductImageFieldProps {
   productName?: string;
   selection: ProductImageSelection;
   onSelectionChange: (selection: ProductImageSelection) => void;
+  onSearchInternet?: () => void;
   disabled?: boolean;
 }
 
@@ -25,6 +27,7 @@ export function ProductImageField({
   productName,
   selection,
   onSelectionChange,
+  onSearchInternet,
   disabled = false,
 }: ProductImageFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -55,7 +58,7 @@ export function ProductImageField({
       const dataUrl = await fileToDataUrl(file);
       setPreviewUrl(dataUrl);
       setError(null);
-      onSelectionChange({ file, removed: false });
+      onSelectionChange({ file, removed: false, searchResultUrl: null });
     } catch {
       setPreviewUrl(null);
       setError("No se pudo leer la imagen.");
@@ -65,21 +68,23 @@ export function ProductImageField({
   const clearSelection = () => {
     setPreviewUrl(null);
     setError(null);
-    onSelectionChange({ file: null, removed: false });
+    onSelectionChange({ file: null, removed: false, searchResultUrl: null });
   };
 
   const removeExistingImage = () => {
     setPreviewUrl(null);
     setError(null);
-    onSelectionChange({ file: null, removed: true });
+    onSelectionChange({ file: null, removed: true, searchResultUrl: null });
   };
 
   const undoRemoval = () => {
     setError(null);
-    onSelectionChange({ file: null, removed: false });
+    onSelectionChange({ file: null, removed: false, searchResultUrl: null });
   };
 
   const hasNewSelection = selection.file !== null;
+  const hasSearchResult = !!selection.searchResultUrl;
+  const displayUrl = previewUrl || selection.searchResultUrl;
 
   return (
     <div className="rounded-md border border-dashed p-3">
@@ -117,6 +122,29 @@ export function ProductImageField({
             </button>
           </div>
         </div>
+      ) : hasSearchResult && displayUrl ? (
+        <div className="flex items-center gap-3">
+          <img
+            src={displayUrl}
+            alt="Imagen encontrada"
+            className="h-16 w-16 shrink-0 rounded-md border object-cover"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-foreground">Imagen de Internet</p>
+            <button
+              type="button"
+              onClick={clearSelection}
+              disabled={disabled}
+              className={cn(
+                "mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-destructive",
+                "hover:underline disabled:cursor-not-allowed disabled:opacity-50",
+              )}
+            >
+              <X className="h-3.5 w-3.5" />
+              Quitar selección
+            </button>
+          </div>
+        </div>
       ) : selection.removed ? (
         <div className="flex items-center gap-3">
           <ProductThumbnail className="h-16 w-16 shrink-0 rounded-md border" />
@@ -140,6 +168,20 @@ export function ProductImageField({
                 <ImagePlus className="h-3.5 w-3.5" />
                 Seleccionar imagen
               </button>
+              {onSearchInternet && (
+                <button
+                  type="button"
+                  onClick={onSearchInternet}
+                  disabled={disabled}
+                  className={cn(
+                    "inline-flex items-center gap-1 text-xs font-medium text-primary",
+                    "hover:underline disabled:cursor-not-allowed disabled:opacity-50",
+                  )}
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  Buscar en Internet
+                </button>
+              )}
               <button
                 type="button"
                 onClick={undoRemoval}
@@ -179,6 +221,20 @@ export function ProductImageField({
                 <ImagePlus className="h-3.5 w-3.5" />
                 Cambiar imagen
               </button>
+              {onSearchInternet && (
+                <button
+                  type="button"
+                  onClick={onSearchInternet}
+                  disabled={disabled}
+                  className={cn(
+                    "inline-flex items-center gap-1 text-xs font-medium text-primary",
+                    "hover:underline disabled:cursor-not-allowed disabled:opacity-50",
+                  )}
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  Buscar en Internet
+                </button>
+              )}
               <button
                 type="button"
                 onClick={removeExistingImage}
@@ -195,20 +251,38 @@ export function ProductImageField({
           </div>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={openFilePicker}
-          disabled={disabled}
-          className={cn(
-            "flex w-full flex-col items-center justify-center gap-1 rounded-md border border-dashed px-3 py-5 text-center",
-            "transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50",
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={openFilePicker}
+            disabled={disabled}
+            className={cn(
+              "flex flex-1 flex-col items-center justify-center gap-1 rounded-md border border-dashed px-3 py-5 text-center",
+              "transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50",
+            )}
+          >
+            <ImagePlus className="h-5 w-5 text-muted-foreground" />
+            <span className="text-sm font-medium text-foreground">
+              Subir imagen
+            </span>
+          </button>
+          {onSearchInternet && (
+            <button
+              type="button"
+              onClick={onSearchInternet}
+              disabled={disabled}
+              className={cn(
+                "flex flex-1 flex-col items-center justify-center gap-1 rounded-md border border-dashed px-3 py-5 text-center",
+                "transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50",
+              )}
+            >
+              <Globe className="h-5 w-5 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">
+                Buscar en Internet
+              </span>
+            </button>
           )}
-        >
-          <ImagePlus className="h-5 w-5 text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground">
-            Seleccionar imagen
-          </span>
-        </button>
+        </div>
       )}
 
       {error && <p className="mt-2 text-xs text-destructive">{error}</p>}

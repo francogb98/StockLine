@@ -42,6 +42,7 @@ import {
   ProductImageField,
   type ProductImageSelection,
 } from "@/components/products/product-image-field";
+import { ImageSearchDialog } from "@/components/products/image-search-dialog";
 import {
   unitsForQuantityType,
   type Product,
@@ -171,6 +172,7 @@ export function ProductDialog({
     file: null,
     removed: false,
   });
+  const [imageSearchOpen, setImageSearchOpen] = useState(false);
 
   const resetForm = useCallback(() => {
     setFormData({
@@ -222,7 +224,7 @@ export function ProductDialog({
       });
       setPresentations(
         (product.presentations ?? []).map((p: ProductPresentation) => ({
-          key: p.id ?? newPresentationLocalId(),
+          key: p.id || newPresentationLocalId(),
           id: p.id,
           name: p.name,
           quantity: String(p.quantity),
@@ -408,7 +410,7 @@ export function ProductDialog({
       newErrors.cost = "El costo no puede ser negativo";
     }
     if (formData.stock === "" || Number(formData.stock) < 0) {
-      newErrors.stock = "El stock no puede ser negativo";
+      newErrors.stock = formData.stock === "" ? "Ingresá el stock inicial" : "El stock no puede ser negativo";
     }
     if (formData.minStock === "" || Number(formData.minStock) < 0) {
       newErrors.minStock = "El stock mínimo no puede ser negativo";
@@ -469,7 +471,7 @@ export function ProductDialog({
       presentations: buildPresentationsPayload(),
     };
 
-    const { file, removed } = imageSelection;
+    const { file, removed, searchResultUrl } = imageSelection;
     const currentImageUrl = product?.imageUrl ?? null;
     const currentPublicId = product?.cloudinaryPublicId ?? null;
 
@@ -492,6 +494,11 @@ export function ProductDialog({
       } finally {
         setIsUploading(false);
       }
+    } else if (searchResultUrl) {
+      // Image was already downloaded and uploaded to Cloudinary by the search dialog
+      imageUrl = searchResultUrl;
+      // We don't have the cloudinaryPublicId from the download endpoint response
+      // It will be set when the product is created/updated
     }
 
     if (removed) {
@@ -500,7 +507,7 @@ export function ProductDialog({
     }
 
     if (product) {
-      const imageChanged = Boolean(file) || removed;
+      const imageChanged = Boolean(file) || removed || Boolean(searchResultUrl);
       updateProduct(product.id, {
         ...productData,
         imageUrl,
@@ -783,6 +790,104 @@ export function ProductDialog({
                 )}
               </div>
 
+              {/* Quantity type + Unit */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="block text-sm font-medium text-foreground">
+                      Tipo de cantidad
+                    </span>
+                    <HelpTooltip
+                      aria-label="Qué significa tipo de cantidad"
+                      testId="quantity-type-help"
+                      content={
+                        <div className="space-y-2 p-3 text-left">
+                          <p className="text-xs font-semibold text-foreground">
+                            Discreta vs. Continua
+                          </p>
+                          <p className="text-xs leading-relaxed">
+                            <span className="font-medium text-foreground">Discreta</span>:
+                            se vende en cantidades enteras. Ej: 1 gaseosa, 2
+                            paquetes de galletitas, 3 libros.
+                          </p>
+                          <p className="text-xs leading-relaxed">
+                            <span className="font-medium text-foreground">Continua</span>:
+                            se vende por peso, volumen o longitud, y admite
+                            decimales. Ej: 0,250 kg de queso, 1,500 L de
+                            aceite, 2,350 m de tela.
+                          </p>
+                        </div>
+                      }
+                    />
+                  </div>
+                  <div className="mt-1.5 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleQuantityTypeChange("DISCRETA")}
+                      className={cn(
+                        "flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors",
+                        formData.quantityType === "DISCRETA"
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-muted",
+                      )}
+                      data-testid="quantity-type-discreta"
+                    >
+                      Discreta
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuantityTypeChange("CONTINUA")}
+                      className={cn(
+                        "flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors",
+                        formData.quantityType === "CONTINUA"
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-muted",
+                      )}
+                      data-testid="quantity-type-continua"
+                    >
+                      Continua
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {formData.quantityType === "DISCRETA"
+                      ? "Cantidades enteras (1, 2, 3…). Ideal para unidades."
+                      : "Cantidades con decimales (0.250, 1.500…). Ideal por peso, volumen o longitud."}
+                  </p>
+                </div>
+                <div>
+                  <label
+                    htmlFor="unit"
+                    className="block text-sm font-medium text-foreground"
+                  >
+                    Unidad base
+                  </label>
+                  <select
+                    id="unit"
+                    name="unit"
+                    value={formData.unit}
+                    onChange={handleChange}
+                    className={cn(
+                      "mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm",
+                      "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
+                      errors.unit && "border-destructive",
+                    )}
+                    data-testid="unit-select"
+                  >
+                    {unitOptions.map((u) => (
+                      <option key={u} value={u}>
+                        {formatUnitLabel(u)}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    El precio y el stock se expresan en esta unidad.
+                  </p>
+                  {errors.unit && (
+                    <p className="mt-1 text-xs text-destructive">{errors.unit}</p>
+                  )}
+                </div>
+              </div>
+
               {/* Cost and Margin */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -959,104 +1064,6 @@ export function ProductDialog({
                 </div>
               </div>
 
-              {/* Quantity type + Unit */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="block text-sm font-medium text-foreground">
-                      Tipo de cantidad
-                    </span>
-                    <HelpTooltip
-                      aria-label="Qué significa tipo de cantidad"
-                      testId="quantity-type-help"
-                      content={
-                        <div className="space-y-2 p-3 text-left">
-                          <p className="text-xs font-semibold text-foreground">
-                            Discreta vs. Continua
-                          </p>
-                          <p className="text-xs leading-relaxed">
-                            <span className="font-medium text-foreground">Discreta</span>:
-                            se vende en cantidades enteras. Ej: 1 gaseosa, 2
-                            paquetes de galletitas, 3 libros.
-                          </p>
-                          <p className="text-xs leading-relaxed">
-                            <span className="font-medium text-foreground">Continua</span>:
-                            se vende por peso, volumen o longitud, y admite
-                            decimales. Ej: 0,250 kg de queso, 1,500 L de
-                            aceite, 2,350 m de tela.
-                          </p>
-                        </div>
-                      }
-                    />
-                  </div>
-                  <div className="mt-1.5 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleQuantityTypeChange("DISCRETA")}
-                      className={cn(
-                        "flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors",
-                        formData.quantityType === "DISCRETA"
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:bg-muted",
-                      )}
-                      data-testid="quantity-type-discreta"
-                    >
-                      Discreta
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleQuantityTypeChange("CONTINUA")}
-                      className={cn(
-                        "flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors",
-                        formData.quantityType === "CONTINUA"
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:bg-muted",
-                      )}
-                      data-testid="quantity-type-continua"
-                    >
-                      Continua
-                    </button>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {formData.quantityType === "DISCRETA"
-                      ? "Cantidades enteras (1, 2, 3…). Ideal para unidades."
-                      : "Cantidades con decimales (0.250, 1.500…). Ideal por peso, volumen o longitud."}
-                  </p>
-                </div>
-                <div>
-                  <label
-                    htmlFor="unit"
-                    className="block text-sm font-medium text-foreground"
-                  >
-                    Unidad base
-                  </label>
-                  <select
-                    id="unit"
-                    name="unit"
-                    value={formData.unit}
-                    onChange={handleChange}
-                    className={cn(
-                      "mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm",
-                      "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
-                      errors.unit && "border-destructive",
-                    )}
-                    data-testid="unit-select"
-                  >
-                    {unitOptions.map((u) => (
-                      <option key={u} value={u}>
-                        {formatUnitLabel(u)}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    El precio y el stock se expresan en esta unidad.
-                  </p>
-                  {errors.unit && (
-                    <p className="mt-1 text-xs text-destructive">{errors.unit}</p>
-                  )}
-                </div>
-              </div>
-
               {/* Presentations (only for CONTINUA) */}
               {formData.quantityType === "CONTINUA" && (
                 <div>
@@ -1218,7 +1225,7 @@ export function ProductDialog({
                   </label>
                 </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Opcional. Puedes agregar una imagen ahora o más adelante.
+                  Opcional. Podés subir una imagen o buscar en Internet.
                 </p>
                 <div className="mt-2">
                   <ProductImageField
@@ -1227,6 +1234,7 @@ export function ProductDialog({
                     productName={product?.name}
                     selection={imageSelection}
                     onSelectionChange={setImageSelection}
+                    onSearchInternet={() => setImageSearchOpen(true)}
                     disabled={isUploading}
                   />
                 </div>
@@ -1320,6 +1328,20 @@ export function ProductDialog({
           </motion.div>
         </div>
       )}
+
+      {/* Image Search Dialog */}
+      <ImageSearchDialog
+        open={imageSearchOpen}
+        onClose={() => setImageSearchOpen(false)}
+        onSelect={(imageUrl) => {
+          setImageSelection({
+            file: null,
+            removed: false,
+            searchResultUrl: imageUrl,
+          });
+        }}
+        initialQuery={formData.name}
+      />
     </AnimatePresence>
   );
 }

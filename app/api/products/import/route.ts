@@ -1,5 +1,6 @@
 import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { requireAdminSessionUser } from "@/lib/api-auth";
+import { isDemoSession } from "@/lib/auth-session";
 import type { ImportOptions, MappedRow } from "@/lib/import/product-import-schemas";
 import {
   findCategories,
@@ -29,6 +30,10 @@ export async function POST(request: Request) {
     const auth = await requireAdminSessionUser();
     if ("response" in auth) {
       return auth.response;
+    }
+
+    if (await isDemoSession()) {
+      return errorResponse("No se pueden importar productos en modo demo", 403);
     }
 
     const body: ImportRequest = await request.json();

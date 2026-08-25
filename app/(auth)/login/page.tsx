@@ -8,7 +8,7 @@ import { LoginScreen } from "@/components/auth/login-screen";
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, isSessionLoading } = useAuth();
+  const { user, isSessionLoading, loginAsDemo } = useAuth();
 
   const resetSuccess = searchParams.get("reset") === "success";
 
@@ -33,6 +33,10 @@ function LoginContent() {
       onLoginSuccess={(loggedInUser) => {
         const dest = loggedInUser?.isSuperAdmin ? "/super-admin" : "/app";
         router.push(dest);
+      }}
+      onDemoLogin={async () => {
+        await loginAsDemo();
+        router.push("/app");
       }}
       resetSuccess={resetSuccess}
     />

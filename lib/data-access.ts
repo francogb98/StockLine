@@ -73,6 +73,9 @@ function mapPrismaProductToStored(p: any): StoredProduct {
     name: p.name,
     description: p.description ?? null,
     categoryId: p.categoryId,
+    globalProductId: p.globalProductId ?? null,
+    globalProductImageUrl: p.globalProduct?.imageUrl ?? null,
+    globalProductCloudinaryPublicId: p.globalProduct?.cloudinaryPublicId ?? null,
     price: decimalToNumber(p.price),
     cost: decimalToNumber(p.cost),
     stock: decimalToNumber(p.stock),
@@ -126,6 +129,7 @@ function buildProductData(data: any) {
   if (data.name !== undefined) out.name = data.name;
   if (data.description !== undefined) out.description = data.description ?? null;
   if (data.categoryId !== undefined) out.categoryId = data.categoryId;
+  if (data.globalProductId !== undefined) out.globalProductId = data.globalProductId ?? null;
   if (data.barcode !== undefined) out.barcode = data.barcode ?? null;
   if (data.imageUrl !== undefined) out.imageUrl = data.imageUrl ?? null;
   if (data.cloudinaryPublicId !== undefined)
@@ -138,7 +142,10 @@ export async function findProducts(ctx: DataContext): Promise<StoredProduct[]> {
   const products = await prisma.product.findMany({
     where: { storeId: ctx.storeId },
     orderBy: { createdAt: "desc" },
-    include: { presentations: { orderBy: { sortOrder: "asc" } } },
+    include: {
+      presentations: { orderBy: { sortOrder: "asc" } },
+      globalProduct: { select: { id: true, imageUrl: true, cloudinaryPublicId: true } },
+    },
   });
   return products.map(mapPrismaProductToStored);
 }
@@ -150,7 +157,10 @@ export async function findProduct(
   if (isTest(ctx)) return store(ctx).getProduct(id, ctx.storeId);
   const product = await prisma.product.findFirst({
     where: { id, storeId: ctx.storeId },
-    include: { presentations: { orderBy: { sortOrder: "asc" } } },
+    include: {
+      presentations: { orderBy: { sortOrder: "asc" } },
+      globalProduct: { select: { id: true, imageUrl: true, cloudinaryPublicId: true } },
+    },
   });
   return product ? mapPrismaProductToStored(product) : null;
 }
@@ -165,7 +175,10 @@ export async function findProductByBarcode(
   if (excludeId) where.NOT = { id: excludeId };
   const product = await prisma.product.findFirst({
     where,
-    include: { presentations: { orderBy: { sortOrder: "asc" } } },
+    include: {
+      presentations: { orderBy: { sortOrder: "asc" } },
+      globalProduct: { select: { id: true, imageUrl: true, cloudinaryPublicId: true } },
+    },
   });
   return product ? mapPrismaProductToStored(product) : null;
 }
@@ -175,6 +188,7 @@ export type CreateProductInput = {
   name: string;
   description: string | null;
   categoryId: string;
+  globalProductId?: string | null;
   price: number;
   cost: number;
   stock: number;
@@ -191,6 +205,7 @@ export type UpdateProductInput = Partial<{
   name: string;
   description: string | null;
   categoryId: string;
+  globalProductId: string | null;
   price: number;
   cost: number;
   stock: number;
@@ -405,8 +420,15 @@ export async function deleteProduct(
   id: string,
 ): Promise<boolean> {
   if (isTest(ctx)) return store(ctx).deleteProduct(id);
-  await prisma.product.delete({ where: { id } });
-  return true;
+  try {
+    const result = await prisma.product.deleteMany({ where: { id, storeId: ctx.storeId } });
+    return result.count > 0;
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+      throw new Error("PRODUCT_HAS_TRANSACTIONS");
+    }
+    throw error;
+  }
 }
 
 // ---- Categories ----
@@ -463,8 +485,13 @@ export async function updateCategory(
   data: Partial<StoredCategory>,
 ): Promise<StoredCategory | null> {
   if (isTest(ctx)) return store(ctx).updateCategory(id, data);
+  const existing = await prisma.category.findFirst({
+    where: { id, storeId: ctx.storeId },
+    select: { id: true },
+  });
+  if (!existing) return null;
   return prisma.category.update({
-    where: { id },
+    where: { id: existing.id },
     data,
   }) as unknown as StoredCategory;
 }
@@ -474,8 +501,8 @@ export async function deleteCategory(
   id: string,
 ): Promise<boolean> {
   if (isTest(ctx)) return store(ctx).deleteCategory(id);
-  await prisma.category.delete({ where: { id } });
-  return true;
+  const result = await prisma.category.deleteMany({ where: { id, storeId: ctx.storeId } });
+  return result.count > 0;
 }
 
 export async function countProductsInCategory(
@@ -860,29 +887,42 @@ export async function adjustStock(
     };
   }
 
-  const [updated] = await prisma.$transaction([
-    prisma.product.update({
-      where: { id: data.productId },
+  const result = await prisma.$transaction(async (tx) => {
+    const product = await tx.product.findFirst({
+      where: { id: data.productId, storeId: ctx.storeId },
+      select: { id: true, stock: true },
+    });
+    if (!product) throw new Error("NOT_FOUND");
+
+    const previousStock = decimalToNumber(product.stock);
+    const newStock = previousStock + data.quantity;
+    if (newStock < 0) throw new Error("STOCK_NEGATIVE");
+
+    const updated = await tx.product.update({
+      where: { id: product.id },
       data: { stock: { increment: data.quantity } },
-    }),
-    prisma.stockMovement.create({
+    });
+
+    await tx.stockMovement.create({
       data: {
         storeId: ctx.storeId,
         productId: data.productId,
         userId: ctx.userId,
         type: "MANUAL_ADJUSTMENT",
         quantity: data.quantity,
-        previousStock: 0,
-        newStock: 0,
+        previousStock,
+        newStock,
         reason: data.reason.trim(),
       },
-    }),
-  ]);
+    });
+
+    return { id: updated.id, previousStock, newStock };
+  });
 
   return {
-    productId: updated.id,
-    previousStock: 0,
-    newStock: 0,
+    productId: result.id,
+    previousStock: result.previousStock,
+    newStock: result.newStock,
     quantity: data.quantity,
     reason: data.reason.trim(),
   };
@@ -952,8 +992,8 @@ export async function recordOwnerWithdrawal(
 
     return {
       productId: product.id,
-      previousStock,
-      newStock,
+      previousStock: decimalToNumber(previousStock),
+      newStock: decimalToNumber(newStock),
       quantity: -data.quantity,
       reason: trimmedReason,
     };
@@ -1036,6 +1076,173 @@ export async function deleteSuspendedSale(
   id: string,
 ): Promise<boolean> {
   if (isTest(ctx)) return store(ctx).deleteSuspendedSale(id);
-  await prisma.suspendedSale.delete({ where: { id } });
+  const result = await prisma.suspendedSale.deleteMany({ where: { id, storeId: ctx.storeId } });
+  return result.count > 0;
+}
+
+// ---- Global Products ----
+
+export function generateNormalizedKey(data: {
+  name: string;
+  brand?: string | null;
+  presentation?: string | null;
+  unit?: string | null;
+}): string {
+  const parts = [
+    data.name.trim().toLowerCase(),
+    data.brand?.trim().toLowerCase() || "",
+    data.presentation?.trim().toLowerCase() || "",
+    data.unit?.trim().toLowerCase() || "",
+  ].filter(Boolean);
+  return parts.join("|");
+}
+
+export async function findGlobalProductByBarcode(
+  barcode: string,
+): Promise<GlobalProductRecord | null> {
+  if (!barcode) return null;
+  const gp = await prisma.globalProduct.findUnique({
+    where: { barcode },
+    include: { _count: { select: { products: true } } },
+  });
+  return gp ? mapGlobalProduct(gp) : null;
+}
+
+export async function findGlobalProductByKey(
+  normalizedKey: string,
+): Promise<GlobalProductRecord | null> {
+  const gp = await prisma.globalProduct.findUnique({
+    where: { normalizedKey },
+    include: { _count: { select: { products: true } } },
+  });
+  return gp ? mapGlobalProduct(gp) : null;
+}
+
+export async function findGlobalProduct(
+  id: string,
+): Promise<GlobalProductRecord | null> {
+  const gp = await prisma.globalProduct.findUnique({
+    where: { id },
+    include: { _count: { select: { products: true } } },
+  });
+  return gp ? mapGlobalProduct(gp) : null;
+}
+
+export type GlobalProductRecord = {
+  id: string;
+  name: string;
+  brand: string | null;
+  barcode: string | null;
+  presentation: string | null;
+  unit: string | null;
+  categoryId: string | null;
+  imageUrl: string | null;
+  cloudinaryPublicId: string | null;
+  normalizedKey: string;
+  productCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+function mapGlobalProduct(gp: any): GlobalProductRecord {
+  return {
+    id: gp.id,
+    name: gp.name,
+    brand: gp.brand ?? null,
+    barcode: gp.barcode ?? null,
+    presentation: gp.presentation ?? null,
+    unit: gp.unit ?? null,
+    categoryId: gp.categoryId ?? null,
+    imageUrl: gp.imageUrl ?? null,
+    cloudinaryPublicId: gp.cloudinaryPublicId ?? null,
+    normalizedKey: gp.normalizedKey,
+    productCount: gp._count?.products ?? 0,
+    createdAt: gp.createdAt,
+    updatedAt: gp.updatedAt,
+  };
+}
+
+export type CreateGlobalProductInput = {
+  name: string;
+  brand?: string | null;
+  barcode?: string | null;
+  presentation?: string | null;
+  unit?: string | null;
+  categoryId?: string | null;
+  imageUrl?: string | null;
+  cloudinaryPublicId?: string | null;
+};
+
+export async function createGlobalProduct(
+  data: CreateGlobalProductInput,
+): Promise<GlobalProductRecord> {
+  const normalizedKey = generateNormalizedKey({
+    name: data.name,
+    brand: data.brand,
+    presentation: data.presentation,
+    unit: data.unit,
+  });
+
+  const gp = await prisma.globalProduct.create({
+    data: {
+      name: data.name.trim(),
+      brand: data.brand?.trim() || null,
+      barcode: data.barcode?.trim() || null,
+      presentation: data.presentation?.trim() || null,
+      unit: data.unit?.trim() || null,
+      categoryId: data.categoryId || null,
+      imageUrl: data.imageUrl || null,
+      cloudinaryPublicId: data.cloudinaryPublicId || null,
+      normalizedKey,
+    },
+    include: { _count: { select: { products: true } } },
+  });
+  return mapGlobalProduct(gp);
+}
+
+export async function findOrCreateGlobalProduct(data: {
+  name: string;
+  brand?: string | null;
+  barcode?: string | null;
+  presentation?: string | null;
+  unit?: string | null;
+  categoryId?: string | null;
+  imageUrl?: string | null;
+  cloudinaryPublicId?: string | null;
+}): Promise<GlobalProductRecord> {
+  // Priority 1: match by barcode
+  if (data.barcode) {
+    const existing = await findGlobalProductByBarcode(data.barcode);
+    if (existing) return existing;
+  }
+
+  // Priority 2: match by normalized key
+  const key = generateNormalizedKey({
+    name: data.name,
+    brand: data.brand,
+    presentation: data.presentation,
+    unit: data.unit,
+  });
+  const existingByKey = await findGlobalProductByKey(key);
+  if (existingByKey) return existingByKey;
+
+  // Not found: create new
+  return createGlobalProduct(data);
+}
+
+export async function deleteGlobalProductIfUnused(
+  globalProductId: string,
+): Promise<boolean> {
+  const count = await prisma.product.count({
+    where: { globalProductId },
+  });
+  if (count > 0) return false;
+
+  const gp = await prisma.globalProduct.findUnique({
+    where: { id: globalProductId },
+  });
+  if (!gp) return false;
+
+  await prisma.globalProduct.delete({ where: { id: globalProductId } });
   return true;
 }

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { jsonResponse } from "@/lib/api-helpers";
+import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { requireSuperAdmin } from "@/lib/api-auth";
 import { queryAudit } from "@/lib/audit-service";
 import type { AuditActorType } from "@/lib/types";
@@ -31,29 +31,34 @@ function parseInt32(raw: string | null, fallback: number) {
 }
 
 export async function GET(req: NextRequest) {
-  const auth = await requireSuperAdmin();
-  if ("response" in auth) return auth.response;
+  try {
+    const auth = await requireSuperAdmin();
+    if ("response" in auth) return auth.response;
 
-  const url = new URL(req.url);
-  const actorType = parseActorType(url.searchParams.get("actorType"));
-  const action = url.searchParams.get("action") ?? undefined;
-  const storeId = url.searchParams.get("storeId") ?? undefined;
-  const actorUserId = url.searchParams.get("actorUserId") ?? undefined;
-  const from = parseDate(url.searchParams.get("from"));
-  const to = parseDate(url.searchParams.get("to"));
-  const page = parseInt32(url.searchParams.get("page"), 1);
-  const limit = parseInt32(url.searchParams.get("limit"), 50);
+    const url = new URL(req.url);
+    const actorType = parseActorType(url.searchParams.get("actorType"));
+    const action = url.searchParams.get("action") ?? undefined;
+    const storeId = url.searchParams.get("storeId") ?? undefined;
+    const actorUserId = url.searchParams.get("actorUserId") ?? undefined;
+    const from = parseDate(url.searchParams.get("from"));
+    const to = parseDate(url.searchParams.get("to"));
+    const page = parseInt32(url.searchParams.get("page"), 1);
+    const limit = parseInt32(url.searchParams.get("limit"), 50);
 
-  const result = await queryAudit({
-    actorType,
-    action,
-    storeId,
-    actorUserId,
-    from,
-    to,
-    page,
-    limit,
-  });
+    const result = await queryAudit({
+      actorType,
+      action,
+      storeId,
+      actorUserId,
+      from,
+      to,
+      page,
+      limit,
+    });
 
-  return jsonResponse(result, 200);
+    return jsonResponse(result, 200);
+  } catch (error) {
+    console.error("GET /api/super-admin/audit", error);
+    return errorResponse("Error interno del servidor", 500);
+  }
 }

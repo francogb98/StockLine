@@ -75,6 +75,7 @@ export const createProductSchema = z.object({
   name: z.string().min(1, "El nombre es requerido").max(200, "El nombre es demasiado largo"),
   description: z.string().nullable().optional(),
   categoryId: z.string().min(1, "La categoría es requerida"),
+  globalProductId: z.string().nullable().optional(),
   price: z.number().nonnegative("El precio no puede ser negativo"),
   cost: z.number().nonnegative("El costo no puede ser negativo"),
   stock: z.number().min(0, "El stock no puede ser negativo"),

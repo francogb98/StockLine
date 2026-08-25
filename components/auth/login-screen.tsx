@@ -15,14 +15,17 @@ import Link from "next/link";
 
 interface LoginScreenProps {
   onLoginSuccess?: (user?: any) => void;
+  onDemoLogin?: () => void;
   resetSuccess?: boolean;
 }
 
 function LoginForm({
   onLoginSuccess,
+  onDemoLogin,
   resetSuccess,
 }: {
   onLoginSuccess?: (user?: any) => void;
+  onDemoLogin?: () => void;
   resetSuccess?: boolean;
 }) {
   const { login, isLoading, pendingCashSession, clearPendingCashSession } =
@@ -103,7 +106,7 @@ function LoginForm({
             "hover:border-border/80",
             "transition-all duration-300 ease-[cubic-bezier(0.25\,0.1\,0.25\,1)]",
           )}
-          placeholder="admin@techmart.com"
+          placeholder="admin@kioscocarlos.com"
           autoComplete="email"
         />
       </div>
@@ -210,26 +213,6 @@ function LoginForm({
         </Link>
       </motion.p>
 
-      <div className="rounded-xl bg-muted/20 p-3">
-        <p className="mb-1.5 text-[11px] font-medium text-muted-foreground/50">
-          Credenciales de prueba:
-        </p>
-        <div className="space-y-0.5 text-[11px] text-muted-foreground/50">
-          <p>
-            <strong className="text-foreground/50">Admin:</strong>{" "}
-            admin@techmart.com
-          </p>
-          <p>
-            <strong className="text-foreground/50">Empleado:</strong>{" "}
-            empleado@techmart.com
-          </p>
-          <p>
-            <strong className="text-foreground/50">Contraseña:</strong>{" "}
-            password123
-          </p>
-        </div>
-      </div>
-
       {pendingCashSession && (
         <PendingCashSessionDialog
           open={showPendingSession}
@@ -242,7 +225,11 @@ function LoginForm({
   );
 }
 
-export function LoginScreen({ onLoginSuccess, resetSuccess }: LoginScreenProps) {
+export function LoginScreen({
+  onLoginSuccess,
+  onDemoLogin,
+  resetSuccess,
+}: LoginScreenProps) {
   return (
     <AuthLayout
       left={<AuthHeroShowcase />}
@@ -298,6 +285,7 @@ export function LoginScreen({ onLoginSuccess, resetSuccess }: LoginScreenProps) 
             <AuthCard>
               <LoginForm
                 onLoginSuccess={onLoginSuccess}
+                onDemoLogin={onDemoLogin}
                 resetSuccess={resetSuccess}
               />
             </AuthCard>

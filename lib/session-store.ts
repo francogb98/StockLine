@@ -18,6 +18,9 @@ export interface StoredProduct {
   name: string;
   description: string | null;
   categoryId: string;
+  globalProductId?: string | null;
+  globalProductImageUrl?: string | null;
+  globalProductCloudinaryPublicId?: string | null;
   price: number;
   cost: number;
   stock: number;

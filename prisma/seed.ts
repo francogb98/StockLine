@@ -109,6 +109,8 @@ async function main() {
         cost: product.cost,
         stock: product.stock,
         minStock: product.minStock,
+        imageUrl: product.imageUrl ?? null,
+        cloudinaryPublicId: product.cloudinaryPublicId ?? null,
         createdAt: product.createdAt,
         updatedAt: product.updatedAt,
       },

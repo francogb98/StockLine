@@ -6,9 +6,7 @@ import {
   Banknote,
   CreditCard,
   ArrowRightLeft,
-  Check,
   Loader2,
-  PauseCircle,
   Wallet,
   Coins,
 } from "lucide-react";
@@ -61,7 +59,6 @@ export function PaymentPanel({ onSaleComplete }: PaymentPanelProps) {
     null,
   );
   const [isProcessing, setIsProcessing] = useState(false);
-  const [lastSale, setLastSale] = useState<Sale | null>(null);
 
   const completeSaleRef = useRef(completeSale);
   const clearCartRef = useRef(clearCart);
@@ -112,10 +109,12 @@ export function PaymentPanel({ onSaleComplete }: PaymentPanelProps) {
       const sale = await completeSaleRef.current(selectedMethod);
 
       if (sale) {
-        setLastSale(sale);
         onSaleComplete?.(sale);
 
-        setTimeout(() => setLastSale(null), 3000);
+        toast.success("Venta completada", {
+          description: `Total: ${formatCurrency(sale.total)}`,
+          duration: 2000,
+        });
       } else {
         toast.error(
           "No se pudo completar la venta. Verificá el stock disponible.",
@@ -183,19 +182,6 @@ export function PaymentPanel({ onSaleComplete }: PaymentPanelProps) {
 
   return (
     <div className="space-y-2 px-3 py-2.5">
-      {/* Success notification */}
-      {lastSale && (
-        <div className="flex items-center gap-2 rounded-lg bg-[hsl(var(--success))] px-3 py-2 text-[hsl(var(--success-foreground))] animate-in fade-in slide-in-from-top-1 duration-200">
-          <Check className="h-4 w-4 shrink-0" />
-          <div>
-            <p className="text-sm font-semibold">Venta completada</p>
-            <p className="text-xs opacity-90">
-              Total: {formatCurrency(lastSale.total)}
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Subscription past-due warning */}
       {isPastDue ? (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">

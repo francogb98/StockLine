@@ -1,5 +1,6 @@
 import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { requireAdminSessionUser, requireSessionUser } from "@/lib/api-auth";
+import { isDemoSession } from "@/lib/auth-session";
 import {
   findCategories,
   findCategory,
@@ -47,6 +48,10 @@ export async function POST(req: Request) {
     const auth = await requireAdminSessionUser();
     if ("response" in auth) return auth.response;
 
+    if (await isDemoSession()) {
+      return errorResponse("No se pueden crear categorías en modo demo", 403);
+    }
+
     const ctx = {
       storeId: auth.user.storeId,
       sessionId: auth.sessionId,
@@ -87,6 +92,10 @@ export async function PUT(req: Request) {
   try {
     const auth = await requireAdminSessionUser();
     if ("response" in auth) return auth.response;
+
+    if (await isDemoSession()) {
+      return errorResponse("No se pueden editar categorías en modo demo", 403);
+    }
 
     const ctx = {
       storeId: auth.user.storeId,
@@ -131,6 +140,10 @@ export async function DELETE(req: Request) {
   try {
     const auth = await requireAdminSessionUser();
     if ("response" in auth) return auth.response;
+
+    if (await isDemoSession()) {
+      return errorResponse("No se pueden eliminar categorías en modo demo", 403);
+    }
 
     const ctx = {
       storeId: auth.user.storeId,

@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
     ).trim();
 
     console.info(
-      `[Subscription] webhook received type=${body?.type ?? "n/a"} topic=${body?.topic ?? "n/a"} action=${body?.action ?? "n/a"} preapprovalId=${preapprovalId || "missing"} (source=webhook) payload=${JSON.stringify(body)}`,
+      `[Subscription] webhook received type=${body?.type ?? "n/a"} topic=${body?.topic ?? "n/a"} action=${body?.action ?? "n/a"} preapprovalId=${preapprovalId || "missing"} (source=webhook)`,
     );
 
     if (!isSubscriptionEvent(body)) {
@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
     );
 
     console.info(
-      `[Subscription] mp preapproval fetched preapprovalId=${preapprovalId} rawStatus="${mpSubscription.status}" mappedStatus="${mappedStatus}" frequencyType=${mpSubscription.frequencyType ?? "n/a"} dateCreated=${mpSubscription.dateCreated?.toISOString() ?? "n/a"} nextPaymentDate=${mpSubscription.nextPaymentDate?.toISOString() ?? "n/a"} fullPayload=${JSON.stringify(mpSubscription)} (source=webhook)`,
+      `[Subscription] mp preapproval fetched preapprovalId=${preapprovalId} rawStatus="${mpSubscription.status}" mappedStatus="${mappedStatus}" frequencyType=${mpSubscription.frequencyType ?? "n/a"} (source=webhook)`,
     );
 
     await markSubscriptionFromWebhook({

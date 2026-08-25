@@ -6,10 +6,12 @@ import { Wallet, DollarSign, Unlock, Lock, ShoppingCart, ArrowRight } from 'luci
 import { staggerContainer } from '../animation-variants'
 import { useData, useAuth } from '@/lib/store-context'
 import { useAssistant } from '../context'
+import { useCashSession } from '@/components/cash/cash-session-provider'
 
 export function CashStatusView() {
   const { sales } = useData()
   const { navigateTo, close } = useAssistant()
+  const { session, loading } = useCashSession()
 
   const todaySales = useMemo(
     () => sales.filter((s) => {
@@ -30,6 +32,8 @@ export function CashStatusView() {
   const formatCurrency = (n: number) =>
     new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(n)
 
+  const isOpen = session !== null
+
   return (
     <motion.div
       variants={staggerContainer}
@@ -48,47 +52,70 @@ export function CashStatusView() {
           </div>
         </div>
 
-        <div className="mb-4 flex items-center gap-2 rounded-xl bg-emerald-500/10 px-4 py-2.5">
-          <Unlock className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-          <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-            Caja abierta
-          </span>
-        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <p className="text-sm text-muted-foreground">Cargando estado de caja...</p>
+          </div>
+        ) : (
+          <>
+            <div className={`mb-4 flex items-center gap-2 rounded-xl px-4 py-2.5 ${
+              isOpen
+                ? 'bg-emerald-500/10'
+                : 'bg-amber-500/10'
+            }`}>
+              {isOpen ? (
+                <>
+                  <Unlock className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                    Caja abierta
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Lock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                    Caja cerrada
+                  </span>
+                </>
+              )}
+            </div>
 
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-2.5">
-            <span className="text-sm text-muted-foreground">Ventas registradas</span>
-            <span className="text-sm font-bold tabular-nums text-foreground">{todaySales.length}</span>
-          </div>
-          <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-2.5">
-            <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <DollarSign className="h-3.5 w-3.5 text-emerald-500" />
-              Efectivo
-            </span>
-            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(cashTotal)}</span>
-          </div>
-          <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-2.5">
-            <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Wallet className="h-3.5 w-3.5 text-blue-500" />
-              Tarjeta
-            </span>
-            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(cardTotal)}</span>
-          </div>
-          <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-2.5">
-            <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <ShoppingCart className="h-3.5 w-3.5 text-purple-500" />
-              Transferencia
-            </span>
-            <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(transferTotal)}</span>
-          </div>
-        </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-2.5">
+                <span className="text-sm text-muted-foreground">Ventas registradas</span>
+                <span className="text-sm font-bold tabular-nums text-foreground">{todaySales.length}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-2.5">
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <DollarSign className="h-3.5 w-3.5 text-emerald-500" />
+                  Efectivo
+                </span>
+                <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(cashTotal)}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-2.5">
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Wallet className="h-3.5 w-3.5 text-blue-500" />
+                  Tarjeta
+                </span>
+                <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(cardTotal)}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-2.5">
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <ShoppingCart className="h-3.5 w-3.5 text-purple-500" />
+                  Transferencia
+                </span>
+                <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(transferTotal)}</span>
+              </div>
+            </div>
 
-        <div className="mt-3 border-t pt-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-bold text-card-foreground">Total general</span>
-            <span className="text-lg font-bold tabular-nums text-foreground">{formatCurrency(total)}</span>
-          </div>
-        </div>
+            <div className="mt-3 border-t pt-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-card-foreground">Total general</span>
+                <span className="text-lg font-bold tabular-nums text-foreground">{formatCurrency(total)}</span>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       <motion.button

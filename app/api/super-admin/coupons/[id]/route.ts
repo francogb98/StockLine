@@ -8,13 +8,18 @@ import {
 } from "@/lib/super-admin/coupons-service";
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const auth = await requireSuperAdmin();
-  if ("response" in auth) return auth.response;
+  try {
+    const auth = await requireSuperAdmin();
+    if ("response" in auth) return auth.response;
 
-  const { id } = await ctx.params;
-  const coupon = await getCouponDetail(id);
-  if (!coupon) return errorResponse("Cupón no encontrado", 404);
-  return jsonResponse(coupon, 200);
+    const { id } = await ctx.params;
+    const coupon = await getCouponDetail(id);
+    if (!coupon) return errorResponse("Cupón no encontrado", 404);
+    return jsonResponse(coupon, 200);
+  } catch (error) {
+    console.error("GET /api/super-admin/coupons/[id]", error);
+    return errorResponse("Error interno del servidor", 500);
+  }
 }
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {

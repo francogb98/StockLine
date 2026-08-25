@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { isTestUserEmail } from "@/lib/test-users";
+import { demoUsers } from "@/lib/mock-data";
 import {
   getOrCreateSessionStore,
   destroySessionStore,
@@ -26,7 +27,13 @@ export interface AuthenticatedSession {
 }
 
 const SESSION_COOKIE_NAME = "session-token";
+const DEMO_SESSION_COOKIE = "demo-session";
 const SESSION_TTL_SECONDS = 60 * 60 * 6; // 6 hours
+
+export async function isDemoSession(): Promise<boolean> {
+  const cookieStore = await cookies();
+  return !!cookieStore.get(DEMO_SESSION_COOKIE)?.value;
+}
 
 function getTokenHash(token: string) {
   return createHash("sha256").update(token).digest("hex");
@@ -113,6 +120,17 @@ export async function invalidateSessionToken(token: string) {
 }
 
 export async function invalidateCurrentSession() {
+  const cookieStore = await cookies();
+
+  // Clear demo session cookie if present
+  const demoCookie = cookieStore.get(DEMO_SESSION_COOKIE);
+  if (demoCookie?.value) {
+    destroySessionStore(demoCookie.value);
+    cookieStore.delete(DEMO_SESSION_COOKIE);
+    await clearSessionCookie();
+    return;
+  }
+
   const token = await getSessionTokenFromCookie();
   if (!token) {
     await clearSessionCookie();
@@ -135,6 +153,27 @@ export async function getAuthenticatedSession(): Promise<AuthenticatedSession | 
       select: { id: true },
     });
     cleanupExpiredSessionStores(new Set(activeSessions.map((s) => s.id)));
+  }
+
+  const cookieStore = await cookies();
+
+  // Check for demo session first
+  const demoCookie = cookieStore.get(DEMO_SESSION_COOKIE);
+  if (demoCookie?.value) {
+    const demoUser = demoUsers[0];
+    // Ensure session store is initialized
+    getOrCreateSessionStore(demoCookie.value);
+    return {
+      sessionId: demoCookie.value,
+      user: {
+        id: demoUser.id,
+        email: demoUser.email,
+        name: demoUser.name,
+        role: demoUser.role,
+        storeId: demoUser.storeId,
+        isSuperAdmin: false,
+      },
+    };
   }
 
   const token = await getSessionTokenFromCookie();

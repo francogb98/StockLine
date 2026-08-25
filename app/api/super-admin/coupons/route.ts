@@ -9,21 +9,26 @@ import {
 import { generateUniqueCouponCode } from "@/lib/super-admin/coupon-code-generator";
 
 export async function GET(req: NextRequest) {
-  const auth = await requireSuperAdmin();
-  if ("response" in auth) return auth.response;
+  try {
+    const auth = await requireSuperAdmin();
+    if ("response" in auth) return auth.response;
 
-  const url = new URL(req.url);
-  const q = url.searchParams.get("q") ?? undefined;
-  const isActiveRaw = url.searchParams.get("isActive");
-  const isActive = isActiveRaw === "true" ? true : isActiveRaw === "false" ? false : undefined;
+    const url = new URL(req.url);
+    const q = url.searchParams.get("q") ?? undefined;
+    const isActiveRaw = url.searchParams.get("isActive");
+    const isActive = isActiveRaw === "true" ? true : isActiveRaw === "false" ? false : undefined;
 
-  const pageRaw = url.searchParams.get("page");
-  const limitRaw = url.searchParams.get("limit");
-  const page = pageRaw && Number.isFinite(Number.parseInt(pageRaw, 10)) ? Number.parseInt(pageRaw, 10) : undefined;
-  const limit = limitRaw && Number.isFinite(Number.parseInt(limitRaw, 10)) ? Number.parseInt(limitRaw, 10) : undefined;
+    const pageRaw = url.searchParams.get("page");
+    const limitRaw = url.searchParams.get("limit");
+    const page = pageRaw && Number.isFinite(Number.parseInt(pageRaw, 10)) ? Number.parseInt(pageRaw, 10) : undefined;
+    const limit = limitRaw && Number.isFinite(Number.parseInt(limitRaw, 10)) ? Number.parseInt(limitRaw, 10) : undefined;
 
-  const result = await listCoupons({ q, isActive, page, limit });
-  return jsonResponse(result, 200);
+    const result = await listCoupons({ q, isActive, page, limit });
+    return jsonResponse(result, 200);
+  } catch (error) {
+    console.error("GET /api/super-admin/coupons", error);
+    return errorResponse("Error interno del servidor", 500);
+  }
 }
 
 export async function POST(req: NextRequest) {

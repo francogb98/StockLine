@@ -135,28 +135,8 @@ export async function POST(req: Request) {
           },
         });
         const userTime = Date.now() - userStart;
-
-        const totalTime = Date.now() - t0;
-        console.log(
-          "Onboarding transaction completed",
-          JSON.stringify({
-            categories: categories.length,
-            productsCreated: productsToCreate.length,
-            productsSkipped: products.length - productsToCreate.length,
-            catTime,
-            prodResolveTime,
-            insertTime,
-            userTime,
-            totalTime,
-          }),
-        );
       },
       { timeout: 15_000 },
-    );
-
-    console.log(
-      "Onboarding request total:",
-      JSON.stringify({ authTime, total: Date.now() - requestStart }),
     );
 
     return jsonResponse({ success: true });

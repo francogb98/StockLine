@@ -5,6 +5,8 @@ import { motion } from 'framer-motion'
 import { PackagePlus, Check, Hash, Barcode, ChevronDown } from 'lucide-react'
 import { staggerContainer } from '../animation-variants'
 import { useData } from '@/lib/store-context'
+import { unitsForQuantityType, type QuantityType } from '@/lib/types'
+import { formatUnitLabel } from '@/lib/utils'
 
 const inputClass =
   'w-full rounded-xl border bg-background py-2.5 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/40 focus:border-primary/30 focus:ring-1 focus:ring-primary/20'
@@ -21,6 +23,8 @@ export function AddProductView() {
   const [cost, setCost] = useState('')
   const [stock, setStock] = useState('')
   const [minStock, setMinStock] = useState('')
+  const [quantityType, setQuantityType] = useState<QuantityType>('DISCRETA')
+  const [unit, setUnit] = useState<string>('unit')
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
   const [showCategoryPicker, setShowCategoryPicker] = useState(false)
@@ -30,10 +34,22 @@ export function AddProductView() {
     [categories, categoryId],
   )
 
+  const unitOptions = unitsForQuantityType(quantityType)
+
   const resetForm = () => {
     setName(''); setBarcode(''); setCategoryId('')
     setPrice(''); setCost(''); setStock(''); setMinStock('')
+    setQuantityType('DISCRETA')
+    setUnit('unit')
     setError('')
+  }
+
+  const handleQuantityTypeChange = (value: QuantityType) => {
+    setQuantityType(value)
+    const allowed = unitsForQuantityType(value)
+    if (!allowed.includes(unit as never)) {
+      setUnit(allowed[0])
+    }
   }
 
   const handleSubmit = () => {
@@ -42,8 +58,8 @@ export function AddProductView() {
 
     const priceNum = parseFloat(price.replace(',', '.'))
     const costNum = parseFloat(cost.replace(',', '.')) || 0
-    const stockNum = parseInt(stock) || 0
-    const minStockNum = parseInt(minStock) || 0
+    const stockNum = parseFloat(stock.replace(',', '.')) || 0
+    const minStockNum = parseFloat(minStock.replace(',', '.')) || 0
 
     if (isNaN(priceNum) || priceNum < 0) { setError('Ingresá un precio válido'); return }
 
@@ -56,7 +72,10 @@ export function AddProductView() {
       cost: costNum,
       stock: stockNum,
       minStock: minStockNum,
-    })
+      quantityType,
+      unit,
+      presentations: [],
+    } as never)
 
     setDone(true)
     setTimeout(() => { setDone(false); resetForm() }, 2000)
@@ -160,6 +179,51 @@ export function AddProductView() {
             )}
           </div>
 
+          {/* Quantity type + Unit */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Tipo de cantidad</label>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => handleQuantityTypeChange('DISCRETA')}
+                  className={`flex-1 rounded-lg border px-2 py-2 text-xs font-medium transition-colors ${
+                    quantityType === 'DISCRETA'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  Discreta
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuantityTypeChange('CONTINUA')}
+                  className={`flex-1 rounded-lg border px-2 py-2 text-xs font-medium transition-colors ${
+                    quantityType === 'CONTINUA'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  Continua
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className={labelClass}>Unidad base</label>
+              <select
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                className={inputClass}
+              >
+                {unitOptions.map((u) => (
+                  <option key={u} value={u}>
+                    {formatUnitLabel(u)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>Precio venta</label>
@@ -193,25 +257,29 @@ export function AddProductView() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelClass}>Stock inicial</label>
+              <label className={labelClass}>
+                Stock inicial {quantityType === 'CONTINUA' && `(${formatUnitLabel(unit)})`}
+              </label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={stock}
                 onChange={(e) => setStock(e.target.value)}
-                placeholder="0"
+                placeholder={quantityType === 'CONTINUA' ? '0,000' : '0'}
                 className={inputClass}
-                min={0}
               />
             </div>
             <div>
-              <label className={labelClass}>Stock mínimo</label>
+              <label className={labelClass}>
+                Stock mínimo {quantityType === 'CONTINUA' && `(${formatUnitLabel(unit)})`}
+              </label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={minStock}
                 onChange={(e) => setMinStock(e.target.value)}
-                placeholder="0"
+                placeholder={quantityType === 'CONTINUA' ? '0,000' : '0'}
                 className={inputClass}
-                min={0}
               />
             </div>
           </div>

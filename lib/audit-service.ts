@@ -99,8 +99,8 @@ export async function getCompanyTimeline(filters: CompanyTimelineFilters) {
   });
 }
 
-export function extractAuditContext(req: Request | { headers: Headers | { get(name: string): string | null } }) {
-  const headers = "headers" in req ? req.headers : (req as unknown as { headers: Headers });
+export function extractAuditContext(req: Request | { headers: { get(name: string): string | null } }) {
+  const headers = req.headers;
   const ipAddress =
     headers.get("x-forwarded-for") ??
     headers.get("x-real-ip") ??

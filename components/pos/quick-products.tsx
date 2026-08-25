@@ -42,7 +42,7 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
   _props,
   ref,
 ) {
-  const { user, isSessionLoading } = useAuth();
+  const { user, isSessionLoading, isDemo } = useAuth();
   const { products, categories, isDataLoading, recordOwnerWithdrawal } = useData();
   const { addToCart, getAvailableStock } = usePOS();
   const [search, setSearch] = useState("");
@@ -353,26 +353,30 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="min-w-[120px]">
-                          <DropdownMenuItem
-                            className="gap-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenEdit(product);
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="gap-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenWithdrawal(product);
-                            }}
-                          >
-                            <PackageMinus className="h-4 w-4" />
-                            Retiro de dueño
-                          </DropdownMenuItem>
+                          {!isDemo && (
+                            <>
+                              <DropdownMenuItem
+                                className="gap-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenEdit(product);
+                                }}
+                              >
+                                <Pencil className="h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="gap-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenWithdrawal(product);
+                                }}
+                              >
+                                <PackageMinus className="h-4 w-4" />
+                                Retiro de dueño
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>

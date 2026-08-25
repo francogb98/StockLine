@@ -92,6 +92,7 @@ const VIEW_LABELS_MAP: Record<string, string> = {
   'devoluciones-home': 'Devoluciones',
   'make-return': 'Hacer devolución',
   'how-return-works': 'Cómo funciona la devolución',
+  'search-product': 'Buscar producto',
 }
 
 function getLabelForView(view: AssistantView): string {

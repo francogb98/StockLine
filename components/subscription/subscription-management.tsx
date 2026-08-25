@@ -62,6 +62,20 @@ export function SubscriptionManagement() {
   const isTestUser = user ? isTestUserEmail(user.email) : false;
   const canSubscribe = user?.role === "admin" && !isTestUser;
 
+  // Precios base
+  const prices = {
+    simple: { monthly: 10000, yearly: 100000 },
+    pro: { monthly: 15000, yearly: 150000 },
+  };
+
+  // Calcular precio con promo (solo aplica a mensual)
+  const hasPromo = !!pendingPromo && !isYearly;
+  const getDiscountedPrice = (base: number) => Math.round(base * 0.5);
+  const getDisplayPrice = (plan: "simple" | "pro") => {
+    const base = isYearly ? prices[plan].yearly : prices[plan].monthly;
+    return hasPromo ? getDiscountedPrice(base) : base;
+  };
+
   // Lógica para enviar el plan seleccionado a tu API
   const handleSubscribe = async (planKey: string) => {
     if (!canSubscribe) return;
@@ -384,13 +398,24 @@ export function SubscriptionManagement() {
                     transition={{ duration: 0.18 }}
                     className="text-4xl font-extrabold text-foreground inline-block"
                   >
-                    {formatArs(isYearly ? 100000 : 10000)}
+                    {formatArs(getDisplayPrice("simple"))}
                   </motion.span>
                 </AnimatePresence>
                 <span className="text-muted-foreground text-sm font-medium">
                   {isYearly ? "/ año" : "/ mes"}
                 </span>
+                {hasPromo && (
+                  <span className="ml-2 text-lg text-muted-foreground line-through">
+                    {formatArs(prices.simple.monthly)}
+                  </span>
+                )}
               </div>
+
+              {hasPromo && (
+                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-1">
+                  50% OFF por 3 meses — después {formatArs(prices.simple.monthly)}/mes
+                </p>
+              )}
 
               <AnimatePresence>
                 {isYearly && (
@@ -477,13 +502,24 @@ export function SubscriptionManagement() {
                     transition={{ duration: 0.18 }}
                     className="text-4xl font-extrabold text-foreground inline-block"
                   >
-                    {formatArs(isYearly ? 150000 : 15000)}
+                    {formatArs(getDisplayPrice("pro"))}
                   </motion.span>
                 </AnimatePresence>
                 <span className="text-muted-foreground text-sm font-medium">
                   {isYearly ? "/ año" : "/ mes"}
                 </span>
+                {hasPromo && (
+                  <span className="ml-2 text-lg text-muted-foreground line-through">
+                    {formatArs(prices.pro.monthly)}
+                  </span>
+                )}
               </div>
+
+              {hasPromo && (
+                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-1">
+                  50% OFF por 3 meses — después {formatArs(prices.pro.monthly)}/mes
+                </p>
+              )}
 
               <AnimatePresence>
                 {isYearly && (

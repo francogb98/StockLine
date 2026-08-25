@@ -17,7 +17,7 @@ import FAQSection from "./FAQSection";
 import FinalCTA from "./FinalCTA";
 
 export default function LandingPage() {
-  const { user, isSessionLoading } = useAuth();
+  const { user, isSessionLoading, loginAsDemo } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -98,12 +98,6 @@ export default function LandingPage() {
                 >
                   Comenzar gratis
                   <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-                <Link
-                  href="/login"
-                  className="inline-flex h-11 items-center rounded-lg border border-border bg-card px-6 text-sm font-medium transition-all duration-200 hover:bg-muted active:scale-[0.98]"
-                >
-                  Ver demo
                 </Link>
               </div>
             </FadeUp>

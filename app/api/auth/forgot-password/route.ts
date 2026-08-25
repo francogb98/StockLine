@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       try {
         await sendPasswordResetEmail({ to: user.email, resetUrl });
       } catch (error) {
-        console.error("Error enviando email de recuperación:", error, { resetUrl });
+        console.error("Error enviando email de recuperación:", error);
       }
     }
 

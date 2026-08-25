@@ -16,10 +16,10 @@ export function validatePassword(password: string): {
     return { isValid: false, error: "La contraseña es requerida" };
   }
 
-  if (password.length < 6) {
+  if (password.length < 8) {
     return {
       isValid: false,
-      error: "La contraseña debe tener al menos 6 caracteres",
+      error: "La contraseña debe tener al menos 8 caracteres",
     };
   }
 

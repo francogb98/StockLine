@@ -105,8 +105,8 @@ export function RegisterScreen({ onBack }: RegisterScreenProps) {
       return;
     }
 
-    if (password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres");
+    if (password.length < 8) {
+      setError("La contraseña debe tener al menos 8 caracteres");
       return;
     }
 
@@ -253,7 +253,7 @@ export function RegisterScreen({ onBack }: RegisterScreenProps) {
       Icon: Building,
       value: storeName,
       onChange: setStoreName,
-      placeholder: "TechMart Argentina",
+      placeholder: "Kiosco Don Carlos",
       autoComplete: "organization-name",
     },
     {

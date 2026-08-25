@@ -1,10 +1,13 @@
 import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { requireSessionUser } from "@/lib/api-auth";
+import { isDemoSession } from "@/lib/auth-session";
 import {
   findProducts,
   findProductByBarcode,
   findCategory,
   createProduct,
+  findOrCreateGlobalProduct,
+  findGlobalProduct,
 } from "@/lib/data-access";
 import { createProductSchema } from "@/lib/validations";
 import { assertValidUnitForQuantityType, normalizeQuantityType, normalizeUnit } from "@/lib/decimal";
@@ -33,6 +36,10 @@ export async function POST(request: Request) {
   try {
     const auth = await requireSessionUser();
     if ("response" in auth) return auth.response;
+
+    if (await isDemoSession()) {
+      return errorResponse("No se pueden crear productos en modo demo", 403);
+    }
 
     const ctx = {
       storeId: auth.user.storeId,
@@ -97,11 +104,34 @@ export async function POST(request: Request) {
       );
     }
 
+    // Resolve globalProductId
+    let globalProductId: string | null = data.globalProductId ?? null;
+
+    if (globalProductId) {
+      // Verify the provided globalProductId exists
+      const existing = await findGlobalProduct(globalProductId);
+      if (!existing) {
+        return errorResponse("El producto global especificado no existe", 404);
+      }
+    } else {
+      // Find or create global product based on barcode/name
+      const globalProduct = await findOrCreateGlobalProduct({
+        name: data.name,
+        barcode,
+        unit,
+        categoryId: data.categoryId,
+        imageUrl: data.imageUrl ?? null,
+        cloudinaryPublicId: data.cloudinaryPublicId ?? null,
+      });
+      globalProductId = globalProduct.id;
+    }
+
     const product = await createProduct(ctx, {
       barcode,
       name: data.name,
       description: data.description ?? null,
       categoryId: data.categoryId,
+      globalProductId,
       price: data.price,
       cost: data.cost,
       stock: data.stock,

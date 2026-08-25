@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { getMercadoPagoPreapproval } from "@/lib/mercadopago";
 import {
   SUBSCRIPTION_PLANS,
@@ -215,7 +216,20 @@ export async function getOrCreateSubscription(
     return existing;
   }
 
-  return createTrialSubscription(storeId, now);
+  try {
+    return await createTrialSubscription(storeId, now);
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const retry = await prisma.subscription.findUnique({
+        where: { storeId },
+      });
+      if (retry) return retry;
+    }
+    throw error;
+  }
 }
 
 export async function resolveSubscriptionSnapshot(

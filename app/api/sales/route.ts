@@ -76,7 +76,7 @@ export async function POST(request: Request) {
 
     const [salesAccess, openSession] = await Promise.all([
       isTestUser
-        ? Promise.resolve({ allowed: true })
+        ? Promise.resolve({ allowed: true, reason: undefined, snapshot: undefined } as const)
         : enforceSubscriptionAccess(auth.user.storeId, "sales"),
       data.cashSessionId
         ? null

@@ -16,6 +16,7 @@ import {
   Send,
   ArrowRight,
   Package,
+  Search,
 } from 'lucide-react'
 import {
   Command,
@@ -32,6 +33,7 @@ import { scaleIn, staggerContainer, fadeIn } from './animation-variants'
 const HOME_ACTIONS: AssistantCardAction[] = [
   { id: 'devoluciones-home', label: 'Devoluciones', description: 'Devolver o ver cómo hacerlo', icon: Undo2 },
   { id: 'add-product', label: 'Agregar producto', description: 'Crear nuevo', icon: PackagePlus },
+  { id: 'search-product', label: 'Buscar producto', description: 'Ver detalle o editar', icon: Search },
   { id: 'add-stock', label: 'Agregar stock', description: 'Sumar unidades', icon: Package },
   { id: 'change-price', label: 'Cambiar precio', description: 'Actualizar precio', icon: DollarSign },
   { id: 'today-sales', label: 'Ventas de hoy', description: 'Resumen del día', icon: BarChart3 },

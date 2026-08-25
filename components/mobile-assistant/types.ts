@@ -9,7 +9,7 @@ export type AssistantView =
   | 'devoluciones-home'
   | 'make-return'
   | 'how-return-works'
-  | 'suggestion-form'
+  | 'search-product'
 
 export interface AssistantCardAction {
   id: AssistantView

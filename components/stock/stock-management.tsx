@@ -43,11 +43,12 @@ type StockFilter = "all" | "low" | "out";
 const ITEMS_PER_PAGE = 20;
 
 export function StockManagement() {
-  const { user } = useAuth();
+  const { user, isDemo } = useAuth();
   const {
     products,
     categories: contextCategories,
     deleteProduct,
+    recordOwnerWithdrawal,
     isDataLoading,
     isDataError,
     refreshData,
@@ -216,7 +217,7 @@ export function StockManagement() {
             </p>
           </div>
           <div className="flex items-center gap-1.5">
-            {user?.role === "admin" && (
+            {user?.role === "admin" && !isDemo && (
               <>
                 <button
                   onClick={() => setImportSheetOpen(true)}
@@ -243,18 +244,20 @@ export function StockManagement() {
                 </button>
               </>
             )}
-            <button
-              onClick={() => setDialogOpen(true)}
-              data-testid="open-product-dialog-btn"
-              className={cn(
-                "flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors",
-                "hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-              )}
-              type="button"
-            >
-              <Plus className="h-4 w-4" />
-              Nuevo Producto
-            </button>
+            {!isDemo && (
+              <button
+                onClick={() => setDialogOpen(true)}
+                data-testid="open-product-dialog-btn"
+                className={cn(
+                  "flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors",
+                  "hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                )}
+                type="button"
+              >
+                <Plus className="h-4 w-4" />
+                Nuevo Producto
+              </button>
+            )}
           </div>
         </div>
 
@@ -536,28 +539,32 @@ export function StockManagement() {
                             </button>
                           </>
                         )}
-                        <button
-                          onClick={() => handleEdit(product)}
-                          className={cn(
-                            "flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors",
-                            "hover:bg-muted hover:text-foreground",
-                          )}
-                          title="Editar"
-                          type="button"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(product)}
-                          className={cn(
-                            "flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors",
-                            "hover:bg-destructive/10 hover:text-destructive",
-                          )}
-                          title="Eliminar"
-                          type="button"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        {!isDemo && (
+                          <>
+                            <button
+                              onClick={() => handleEdit(product)}
+                              className={cn(
+                                "flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors",
+                                "hover:bg-muted hover:text-foreground",
+                              )}
+                              title="Editar"
+                              type="button"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(product)}
+                              className={cn(
+                                "flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors",
+                                "hover:bg-destructive/10 hover:text-destructive",
+                              )}
+                              title="Eliminar"
+                              type="button"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -680,7 +687,9 @@ export function StockManagement() {
           open={withdrawalProduct !== null}
           onClose={() => setWithdrawalProduct(null)}
           product={withdrawalProduct}
-          onSuccess={refreshData}
+          onConfirm={(quantity, reason) =>
+            recordOwnerWithdrawal(withdrawalProduct.id, quantity, reason)
+          }
         />
       )}
 

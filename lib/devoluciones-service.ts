@@ -435,13 +435,14 @@ async function createDevolucionInPrisma(
       const stockMovementsToCreate: Prisma.StockMovementCreateManyInput[] = [];
       for (const d of resolved) {
         if (d.disposicion === "REINGRESAR_STOCK") {
+          const stockDelta = d.newStock - d.previousStock;
           await tx.product.update({
             where: { id: d.productId },
-            data: { stock: toDecimal(d.newStock) },
+            data: { stock: { increment: toDecimal(stockDelta) } },
           });
           const perUnitBase =
             Number(d.cantidad) > 0
-              ? (d.newStock - d.previousStock) / Number(d.cantidad)
+              ? stockDelta / Number(d.cantidad)
               : 0;
           const baseReturned = Number(d.cantidad) * perUnitBase;
           stockMovementsToCreate.push({

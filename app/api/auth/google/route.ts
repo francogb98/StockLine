@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { randomBytes } from "node:crypto";
 import {
   createSession,
   setSessionCookie,
@@ -32,7 +33,8 @@ export async function POST(req: NextRequest) {
     }
 
     const userInfoRes = await fetch(
-      `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${accessToken}`,
+      `https://www.googleapis.com/oauth2/v3/userinfo`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
     );
 
     if (!userInfoRes.ok) {
@@ -42,13 +44,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const userInfo: { email: string; name: string; picture?: string } =
+    const userInfo: { email: string; name: string; picture?: string; sub?: string } =
       await userInfoRes.json();
 
     if (!userInfo.email) {
       return NextResponse.json(
         { error: "No se pudo obtener el email de la cuenta de Google" },
         { status: 400 },
+      );
+    }
+
+    if (!userInfo.sub) {
+      return NextResponse.json(
+        { error: "Token de Google inválido: falta identificador de usuario" },
+        { status: 401 },
       );
     }
 
@@ -98,7 +107,7 @@ export async function POST(req: NextRequest) {
           email: userInfo.email,
           name: userInfo.name || userInfo.email.split("@")[0],
           role: "admin",
-          passwordHash: "",
+          passwordHash: `google-oauth-${randomBytes(32).toString("hex")}`,
           storeId: store.id,
         },
         include: { store: true },

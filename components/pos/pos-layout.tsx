@@ -11,13 +11,14 @@ import { KeyboardHelpBar } from "./keyboard-help-bar";
 import { KeyboardHelpModal } from "./keyboard-help-modal";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 import { MobilePOS } from "./mobile-pos";
-import { usePOS } from "@/lib/store-context";
+import { usePOS, useAuth } from "@/lib/store-context";
 import type { Sale } from "@/lib/types";
 
 export function POSLayout() {
   const isMobile = useIsMobile();
 
   const { cart } = usePOS();
+  const { isDemo } = useAuth();
   const quickProductsRef = useRef<QuickProductsHandle>(null);
 
   const handleFocusSearch = useCallback(() => {
@@ -75,6 +76,12 @@ export function POSLayout() {
         <MobilePOS onSaleComplete={handleSaleComplete} />
       ) : (
         <div className="flex h-full flex-col">
+          {isDemo && (
+            <div className="flex items-center justify-center gap-2 bg-amber-500/10 border-b border-amber-500/20 px-4 py-1.5 text-xs text-amber-700">
+              <span className="font-semibold">Modo Demo</span>
+              <span className="text-amber-600/80">— Los cambios no se guardan</span>
+            </div>
+          )}
           <main className="flex min-h-0 flex-1 overflow-hidden gap-1.5 p-1.5">
             {/* Products column — takes remaining space */}
             <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border">
@@ -102,7 +109,7 @@ export function POSLayout() {
 
           <footer className="flex h-8 shrink-0 items-center justify-between border-t bg-muted/50 px-4 text-xs text-muted-foreground">
             <KeyboardHelpBar />
-            <span>v1.0.0 - Demo Mode</span>
+            {isDemo && <span>v1.0.0 - Demo Mode</span>}
           </footer>
         </div>
       )}
