@@ -18,11 +18,22 @@ import {
   PowerOff,
   Boxes,
   HelpCircle,
+  Copy,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useData } from "@/lib/store-context";
 import { useIsMobile } from "@/components/ui/use-mobile";
 import { cn, formatUnitLabel } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import {
   Command,
@@ -118,6 +129,7 @@ interface ProductDialogProps {
   categories?: Category[];
   onManageCategories?: () => void;
   canManageCategories?: boolean;
+  onDelete?: (productId: string) => void;
 }
 
 type PresentationDraft = {
@@ -135,6 +147,7 @@ export function ProductDialog({
   categories: categoriesProp,
   onManageCategories,
   canManageCategories = false,
+  onDelete,
 }: ProductDialogProps) {
   const {
     categories: contextCategories,
@@ -173,6 +186,7 @@ export function ProductDialog({
     removed: false,
   });
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const resetForm = useCallback(() => {
     setFormData({
@@ -526,6 +540,73 @@ export function ProductDialog({
     }
   };
 
+  const handleSubmitAndDuplicate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+
+    setIsSubmitting(true);
+
+    const productData = {
+      barcode: formData.barcode.trim() || null,
+      name: formData.name.trim(),
+      description: formData.description.trim() || null,
+      categoryId: formData.categoryId,
+      price: Number(formData.price),
+      cost: Number(formData.cost),
+      stock: Number(formData.stock),
+      minStock: Number(formData.minStock),
+      quantityType: formData.quantityType,
+      unit: formData.unit,
+      presentations: buildPresentationsPayload(),
+    };
+
+    const { file, removed, searchResultUrl } = imageSelection;
+
+    let imageUrl: string | null = null;
+    let cloudinaryPublicId: string | null = null;
+
+    if (file) {
+      setIsUploading(true);
+      try {
+        const uploaded = await uploadProductImage(file);
+        imageUrl = uploaded.imageUrl;
+        cloudinaryPublicId = uploaded.cloudinaryPublicId;
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Error al subir la imagen",
+        );
+        setIsUploading(false);
+        setIsSubmitting(false);
+        return;
+      } finally {
+        setIsUploading(false);
+      }
+    } else if (searchResultUrl) {
+      imageUrl = searchResultUrl;
+    }
+
+    if (removed) {
+      imageUrl = null;
+      cloudinaryPublicId = null;
+    }
+
+    addProduct({ ...productData, imageUrl, cloudinaryPublicId });
+    setIsSubmitting(false);
+    toast.success("Producto creado. Datos copiados para el siguiente.");
+
+    // Keep most data, clear only unique fields
+    setFormData((prev) => ({
+      ...prev,
+      barcode: "",
+      stock: "",
+    }));
+    setErrors({});
+    setImageSelection({ file: null, removed: false });
+
+    const timer = setTimeout(() => barcodeRef.current?.focus(), 50);
+    return () => clearTimeout(timer);
+  };
+
   const handleFormKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && e.target === minStockRef.current) {
       e.preventDefault();
@@ -576,6 +657,7 @@ export function ProductDialog({
           role="presentation"
         >
           <motion.div
+            key="product-dialog-backdrop"
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={onClose}
             initial={{ opacity: 0 }}
@@ -586,6 +668,7 @@ export function ProductDialog({
           />
 
           <motion.div
+            key="product-dialog-content"
             role="dialog"
             aria-modal="true"
             aria-labelledby="product-dialog-title"
@@ -610,14 +693,27 @@ export function ProductDialog({
                 : "Cargá un producto nuevo en tu catálogo."}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            type="button"
-            aria-label="Cerrar"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            {product && onDelete && (
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmOpen(true)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-destructive transition-colors hover:bg-destructive/10 focus:outline-none focus:ring-2 focus:ring-destructive/40"
+                aria-label="Eliminar producto"
+                data-testid="delete-product-btn"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              type="button"
+              aria-label="Cerrar"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {/* Scrollable content */}
@@ -1295,6 +1391,31 @@ export function ProductDialog({
               >
                 Cancelar
               </button>
+              {!product && (
+                <button
+                  type="button"
+                  onClick={handleSubmitAndDuplicate}
+                  disabled={isSubmitting || isUploading}
+                  data-testid="save-and-duplicate-btn"
+                  className={cn(
+                    "flex h-10 items-center justify-center gap-2 rounded-md border border-primary px-4 text-sm font-semibold text-primary transition-colors",
+                    "hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                    "disabled:cursor-not-allowed disabled:opacity-50",
+                  )}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4" />
+                      Guardar y Duplicar
+                    </>
+                  )}
+                </button>
+              )}
               <button
                 type="submit"
                 data-testid="submit-product-btn"
@@ -1342,6 +1463,32 @@ export function ProductDialog({
         }}
         initialQuery={formData.name}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se va a eliminar <strong className="text-foreground">{product?.name}</strong>. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (product && onDelete) {
+                  onDelete(product.id);
+                  onClose();
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AnimatePresence>
   );
 }

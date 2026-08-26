@@ -41,7 +41,7 @@ export default function LandingPage() {
 
       {/* ─── Hero ─── */}
       <section
-        className="relative mx-auto max-w-6xl px-4 pt-28 pb-12 md:pt-32 md:pb-16 lg:pt-36 lg:pb-16"
+        className="relative mx-auto max-w-6xl px-4 pt-20 pb-12 md:pt-28 md:pb-16 lg:pt-32 lg:pb-16"
         style={{
           minHeight: promoVisible
             ? "calc(100vh - 6.25rem)"
@@ -93,7 +93,7 @@ export default function LandingPage() {
             <FadeUp delay={0.4} y={20}>
               <div className="mt-5 flex flex-wrap gap-3">
                 <Link
-                  href="/register"
+                  href="/register?promo=LAUNCH50"
                   className="inline-flex h-11 items-center rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground shadow-sm transition-all duration-200 hover:brightness-90 hover:shadow-md active:scale-[0.98]"
                 >
                   Comenzar gratis
@@ -103,10 +103,16 @@ export default function LandingPage() {
             </FadeUp>
 
             <FadeUp delay={0.46} y={12}>
-              <p className="mt-3 text-xs text-muted-foreground/70">
-                Sin tarjeta de crédito • Cancelá cuando quieras • Activación
-                inmediata
-              </p>
+              <div className="mt-3 flex flex-col gap-2">
+                <div className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 md:hidden">
+                  <span>🎁</span>
+                  <span>Oferta de lanzamiento — 15 días gratis + 50% OFF en los primeros 3 meses</span>
+                </div>
+                <p className="text-xs text-muted-foreground/70">
+                  Sin tarjeta de crédito • Cancelá cuando quieras • Activación
+                  inmediata
+                </p>
+              </div>
             </FadeUp>
           </div>
 

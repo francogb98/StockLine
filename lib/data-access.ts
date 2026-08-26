@@ -85,6 +85,10 @@ function mapPrismaProductToStored(p: any): StoredProduct {
     presentations,
     imageUrl: p.imageUrl !== undefined ? p.imageUrl : null,
     cloudinaryPublicId: p.cloudinaryPublicId !== undefined ? p.cloudinaryPublicId : null,
+    status: p.status ?? "ACTIVE",
+    mergedIntoId: p.mergedIntoId ?? null,
+    mergedAt: p.mergedAt ?? null,
+    mergedByUserId: p.mergedByUserId ?? null,
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
   };
@@ -140,7 +144,7 @@ function buildProductData(data: any) {
 export async function findProducts(ctx: DataContext): Promise<StoredProduct[]> {
   if (isTest(ctx)) return store(ctx).getProducts(ctx.storeId);
   const products = await prisma.product.findMany({
-    where: { storeId: ctx.storeId },
+    where: { storeId: ctx.storeId, status: "ACTIVE" },
     orderBy: { createdAt: "desc" },
     include: {
       presentations: { orderBy: { sortOrder: "asc" } },
@@ -171,7 +175,7 @@ export async function findProductByBarcode(
   excludeId?: string,
 ): Promise<StoredProduct | null> {
   if (isTest(ctx)) return store(ctx).getProductByBarcode(barcode, ctx.storeId);
-  const where: any = { barcode, storeId: ctx.storeId };
+  const where: any = { barcode, storeId: ctx.storeId, status: "ACTIVE" };
   if (excludeId) where.NOT = { id: excludeId };
   const product = await prisma.product.findFirst({
     where,

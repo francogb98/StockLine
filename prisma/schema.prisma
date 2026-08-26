@@ -151,6 +151,11 @@ model GlobalProduct {
   @@map("global_products")
 }
 
+enum ProductStatus {
+  ACTIVE
+  MERGED
+}
+
 model Product {
   id          String   @id @default(uuid())
   storeId     String
@@ -170,6 +175,12 @@ model Product {
   unit                String        @default("unit")
   imageUrl            String?
   cloudinaryPublicId  String?
+  status              ProductStatus @default(ACTIVE)
+  mergedIntoId        String?
+  mergedInto          Product?      @relation("ProductMerge", fields: [mergedIntoId], references: [id])
+  mergedChildren      Product[]     @relation("ProductMerge")
+  mergedAt            DateTime?
+  mergedByUserId      String?
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
@@ -180,7 +191,9 @@ model Product {
   presentations    ProductPresentation[]
 
   @@index([storeId, barcode])
+  @@index([storeId, status])
   @@index([globalProductId])
+  @@index([mergedIntoId])
   @@map("products")
 }
 
@@ -283,6 +296,8 @@ enum MovementType {
   CANCELLATION
   OWNER_WITHDRAWAL
   CUSTOMER_RETURN
+  MERGE_IN
+  MERGE_OUT
 }
 
 model StockMovement {

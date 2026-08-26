@@ -27,6 +27,16 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ProductDialog } from "./product-dialog";
 import { CategoryDialog } from "./category-dialog";
 import { StockMovementHistory } from "./stock-movement-history";
@@ -67,20 +77,11 @@ export function StockManagement() {
   const [withdrawalProduct, setWithdrawalProduct] = useState<Product | null>(null);
   const [importSheetOpen, setImportSheetOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [deleteConfirmProduct, setDeleteConfirmProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     setCategories(contextCategories);
   }, [contextCategories]);
-
-  useEffect(() => {
-    const handleOpenProductDialog = () => {
-      setEditingProduct(null);
-      setDialogOpen(true);
-    };
-    window.addEventListener("open-product-dialog", handleOpenProductDialog);
-    return () =>
-      window.removeEventListener("open-product-dialog", handleOpenProductDialog);
-  }, []);
 
   useEffect(() => {
     if (
@@ -175,8 +176,13 @@ export function StockManagement() {
   };
 
   const handleDelete = (product: Product) => {
-    if (window.confirm(`¿Eliminar "${product.name}"?`)) {
-      deleteProduct(product.id);
+    setDeleteConfirmProduct(product);
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirmProduct) {
+      deleteProduct(deleteConfirmProduct.id);
+      setDeleteConfirmProduct(null);
     }
   };
 
@@ -656,6 +662,10 @@ export function StockManagement() {
         categories={categories}
         onManageCategories={() => setCategoryDialogOpen(true)}
         canManageCategories={user?.role === "admin"}
+        onDelete={(productId) => {
+          const product = products.find((p) => p.id === productId);
+          if (product) setDeleteConfirmProduct(product);
+        }}
       />
 
       <CategoryDialog
@@ -700,6 +710,32 @@ export function StockManagement() {
           refreshData();
         }}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={deleteConfirmProduct !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteConfirmProduct(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se va a eliminar <strong className="text-foreground">{deleteConfirmProduct?.name}</strong>. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

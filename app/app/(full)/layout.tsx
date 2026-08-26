@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/store-context";
 import { useCashControl } from "@/lib/cash-control-context";
 import { getNavigationForRole } from "@/lib/module-registry";
-import { CashSessionProvider } from "@/components/cash/cash-session-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppHeader } from "@/components/app-header";
+import { GlobalProductDialog } from "@/components/global-product-dialog";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { MobileLayout } from "@/components/mobile-layout";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -41,14 +41,13 @@ export default function FullLayout({
           </main>
         </div>
       </div>
+      <GlobalProductDialog />
     </>
   );
 
   return (
-    <CashSessionProvider>
-      <TooltipProvider delayDuration={300}>
-        {isMobile ? <MobileLayout>{children}</MobileLayout> : desktop}
-      </TooltipProvider>
-    </CashSessionProvider>
+    <TooltipProvider delayDuration={300}>
+      {isMobile ? <MobileLayout>{children}</MobileLayout> : desktop}
+    </TooltipProvider>
   );
 }

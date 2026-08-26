@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { usePOS } from "@/lib/store-context";
 import { formatCurrency } from "@/lib/mock-data";
 import { cn, formatQuantityForCart } from "@/lib/utils";
+import { ProductThumbnail } from "@/components/products/product-thumbnail";
 import { useCartNavigation } from "@/hooks/use-cart-navigation";
 import { toast } from "sonner";
 
@@ -29,7 +30,9 @@ export function CartPanel() {
   const [showDiscountInput, setShowDiscountInput] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [isSuspending, setIsSuspending] = useState(false);
+  const [editingQuantityId, setEditingQuantityId] = useState<string | null>(null);
   const prevCartLength = useRef(cart.length);
+  const quantityInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
 
   useEffect(() => {
     if (cart.length > prevCartLength.current) {
@@ -86,6 +89,31 @@ export function CartPanel() {
     }
   }, [cart.length, isSuspending, suspendSale, totalQty]);
 
+  const handleCardClick = useCallback((lineKey: string, e: React.MouseEvent) => {
+    // Don't select if clicking on buttons
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('input')) return;
+    
+    const input = quantityInputRefs.current.get(lineKey);
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  }, []);
+
+  const handleQuantityChange = useCallback((productId: string, presentationId: string | undefined, value: string, step: number) => {
+    const numValue = parseFloat(value);
+    if (isNaN(numValue) || numValue < step) return;
+    
+    const availableStock = getAvailableStock(productId);
+    const maxQuantity = availableStock + (cart.find(i => i.product.id === productId)?.quantity ?? 0);
+    
+    const clampedValue = Math.min(numValue, maxQuantity);
+    const roundedValue = Number(clampedValue.toFixed(3));
+    
+    updateQuantity(productId, roundedValue, presentationId);
+  }, [cart, getAvailableStock, updateQuantity]);
+
   if (cart.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 bg-transparent p-6 text-muted-foreground">
@@ -131,6 +159,7 @@ export function CartPanel() {
                 key={lineKey}
                 data-cart-index={index}
                 tabIndex={isFocused ? 0 : -1}
+                onClick={(e) => handleCardClick(lineKey, e)}
                 initial={{ opacity: 0, x: 20, height: 0 }}
                 animate={{
                   opacity: 1,
@@ -143,11 +172,16 @@ export function CartPanel() {
                 exit={{ opacity: 0, x: -20, height: 0 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
                 className={cn(
-                  "flex items-center gap-2 border-b px-3 py-2",
+                  "flex items-center gap-2 border-b px-3 py-2 cursor-pointer",
                   "hover:bg-muted/30",
                   isFocused && "keyboard-cart-focused",
                 )}
               >
+                <ProductThumbnail
+                  imageUrl={item.product.imageUrl}
+                  name={item.product.name}
+                  className="h-9 w-9 shrink-0 rounded-md border"
+                />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-foreground">
                     {item.product.name}
@@ -167,7 +201,8 @@ export function CartPanel() {
 
                 <div className="flex items-center gap-1">
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       const next = Math.max(
                         step,
                         Number((item.quantity - step).toFixed(3)),
@@ -186,21 +221,42 @@ export function CartPanel() {
                   >
                     <Minus className="h-3 w-3" />
                   </button>
-                  <span className="w-12 text-center text-sm font-semibold tabular-nums">
-                    {formatQuantityForCart(
-                      item.quantity,
-                      item.product.unit,
-                      item.product.quantityType,
+                  <input
+                    ref={(el) => {
+                      if (el) {
+                        quantityInputRefs.current.set(lineKey, el);
+                      } else {
+                        quantityInputRefs.current.delete(lineKey);
+                      }
+                    }}
+                    type="number"
+                    min={step}
+                    step={step}
+                    value={item.quantity}
+                    onChange={(e) => handleQuantityChange(item.product.id, item.presentation?.id, e.target.value, step)}
+                    onFocus={(e) => e.target.select()}
+                    onBlur={() => setEditingQuantityId(null)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className={cn(
+                      "w-12 h-7 text-center text-sm font-semibold tabular-nums rounded-md border bg-background",
+                      "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
+                      "[-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
                     )}
-                  </span>
+                  />
                   <button
-                    onClick={() =>
+                    onClick={(e) => {
+                      e.stopPropagation();
                       updateQuantity(
                         item.product.id,
                         Number((item.quantity + step).toFixed(3)),
                         item.presentation?.id,
-                      )
-                    }
+                      );
+                    }}
                     disabled={getAvailableStock(item.product.id) <= 0}
                     className={cn(
                       "flex h-7 w-7 items-center justify-center rounded-md border transition-colors duration-150",
@@ -219,14 +275,15 @@ export function CartPanel() {
                   transition={{ duration: 0.3 }}
                 >
                   <p className="text-sm font-semibold tabular-nums text-foreground">
-                    {formatCurrency(item.product.price * item.quantity)}
+                    {formatCurrency(item.product.price * item.quantity * (item.presentation?.quantity ?? 1))}
                   </p>
                 </motion.div>
 
                 <button
-                  onClick={() =>
-                    removeFromCart(item.product.id, item.presentation?.id)
-                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeFromCart(item.product.id, item.presentation?.id);
+                  }}
                   className={cn(
                     "flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150",
                     "hover:bg-destructive/10 hover:text-destructive focus:outline-none focus:ring-2 focus:ring-destructive",

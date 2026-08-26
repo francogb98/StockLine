@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Bell } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useAuth } from "@/lib/store-context";
+import { useCashControl } from "@/lib/cash-control-context";
+import { useAssistant } from "@/components/mobile-assistant/context";
 import { MobileCashIndicator } from "@/components/cash/mobile-cash-indicator";
+import { DailySalesBanner } from "@/components/daily-sales-banner";
 
 interface MobileHeaderProps {
   onHeightChange?: (height: number) => void;
@@ -11,6 +14,8 @@ interface MobileHeaderProps {
 
 export function MobileHeader({ onHeightChange }: MobileHeaderProps) {
   const { store } = useAuth();
+  const { cashControlEnabled } = useCashControl();
+  const { open, navigateTo } = useAssistant();
   const headerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -27,7 +32,7 @@ export function MobileHeader({ onHeightChange }: MobileHeaderProps) {
   return (
     <header
       ref={headerRef}
-      className="fixed top-0 z-40 w-full bg-primary shadow-sm"
+      className="fixed top-0 z-40 w-full bg-primary"
     >
       {/* Fila superior: Perfil + Notificaciones */}
       <div className="flex h-[52px] items-center justify-between px-4">
@@ -43,15 +48,16 @@ export function MobileHeader({ onHeightChange }: MobileHeaderProps) {
         <button
           type="button"
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
-          aria-label="Notificaciones"
+          aria-label="Agregar producto"
+          onClick={() => { open(); navigateTo('add-product'); }}
         >
-          <Bell className="h-4 w-4" />
+          <Plus className="h-4 w-4" />
         </button>
       </div>
 
-      {/* Fila inferior: Indicador de caja */}
-      <div className="flex items-center justify-center border-t border-white/10 bg-primary/95 px-4 py-1.5">
-        <MobileCashIndicator />
+      {/* Fila inferior: Indicador de caja o ventas del día */}
+      <div className="flex items-center justify-center border-t border-white/10 bg-primary px-4 py-1.5">
+        {cashControlEnabled ? <MobileCashIndicator /> : <DailySalesBanner variant="mobile" />}
       </div>
     </header>
   );

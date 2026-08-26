@@ -306,62 +306,86 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setIsDataLoading(true);
       setIsDataError(false);
       try {
-        const [productsRes, categoriesRes, salesRes] = await Promise.all([
+        const [productsRes, categoriesRes, salesRes] = await Promise.allSettled([
           fetch("/api/products"),
           fetch("/api/categories"),
           fetch("/api/sales"),
         ]);
 
-        if (!productsRes.ok || !categoriesRes.ok || !salesRes.ok) {
-          // Do not force mock fallback for auth errors on protected endpoints.
-          if (
-            productsRes.status === 401 ||
-            categoriesRes.status === 401 ||
-            salesRes.status === 401
-          ) {
-            setIsDataLoading(false);
-            return;
-          }
-          throw new Error("Error fetching data from API");
+        const isRejected = (r: PromiseSettledResult<Response>) => r.status === "rejected";
+        const getRes = (r: PromiseSettledResult<Response>) =>
+          r.status === "fulfilled" ? r.value : null;
+
+        if (isRejected(productsRes) && isRejected(categoriesRes) && isRejected(salesRes)) {
+          throw new Error("Todas las APIs fallaron");
         }
 
+        const pRes = getRes(productsRes);
+        const cRes = getRes(categoriesRes);
+        const sRes = getRes(salesRes);
+
+        if (pRes?.status === 401 || cRes?.status === 401 || sRes?.status === 401) {
+          setIsDataLoading(false);
+          return;
+        }
+
+        const failedEndpoints: string[] = [];
+        if (productsRes.status === "rejected" || (pRes && !pRes.ok)) failedEndpoints.push("productos");
+        if (categoriesRes.status === "rejected" || (cRes && !cRes.ok)) failedEndpoints.push("categorías");
+        if (salesRes.status === "rejected" || (sRes && !sRes.ok)) failedEndpoints.push("ventas");
+
+        if (failedEndpoints.length > 0) {
+          console.warn(`APIs con error: ${failedEndpoints.join(", ")}`);
+        }
+
+        const settleJson = async (res: Response | null): Promise<any> => {
+          if (!res || !res.ok) return null;
+          try { return await res.json(); } catch { return null; }
+        };
+
         const [productsData, categoriesData, salesData] = await Promise.all([
-          productsRes.json(),
-          categoriesRes.json(),
-          salesRes.json(),
+          settleJson(pRes),
+          settleJson(cRes),
+          settleJson(sRes),
         ]);
 
-        const normalizedProducts = (productsData ?? []).map((p: any) => ({
-          ...p,
-          price: Number(p.price),
-          cost: Number(p.cost),
-          quantityType: p.quantityType ?? "DISCRETA",
-          unit: p.unit ?? "unit",
-          presentations: p.presentations ?? [],
-        }));
-        const normalizedSales = (salesData ?? []).map((s: any) => ({
-          ...s,
-          subtotal: Number(s.subtotal),
-          tax: Number(s.tax),
-          total: Number(s.total),
-          items: (s.items ?? []).map((i: any) => ({
-            ...i,
-            quantity: Number(i.quantity),
-            unitPrice: Number(i.unitPrice),
-            total: Number(i.total),
-          })),
-        }));
+        if (productsData) {
+          const normalizedProducts = (productsData ?? []).map((p: any) => ({
+            ...p,
+            price: Number(p.price),
+            cost: Number(p.cost),
+            quantityType: p.quantityType ?? "DISCRETA",
+            unit: p.unit ?? "unit",
+            presentations: p.presentations ?? [],
+          }));
+          setProducts(normalizedProducts);
+          cacheProducts(normalizedProducts).catch((err) => {
+            console.error("Failed to cache products to IDB:", err);
+          });
+        }
 
-        setProducts(normalizedProducts);
-        setCategories(categoriesData);
-        setSales(normalizedSales);
+        if (categoriesData) {
+          setCategories(categoriesData);
+        }
 
-        // Cache products to IDB for offline fallback (non-blocking)
-        cacheProducts(normalizedProducts).catch((err) => {
-          console.error("Failed to cache products to IDB:", err);
-        });
+        if (salesData) {
+          const normalizedSales = (salesData ?? []).map((s: any) => ({
+            ...s,
+            subtotal: Number(s.subtotal),
+            tax: Number(s.tax),
+            total: Number(s.total),
+            items: (s.items ?? []).map((i: any) => ({
+              ...i,
+              quantity: Number(i.quantity),
+              unitPrice: Number(i.unitPrice),
+              total: Number(i.total),
+            })),
+          }));
+          setSales(normalizedSales);
+        }
 
-        // Record connection for grace period
+        setIsDataError(failedEndpoints.length > 0 && !productsData);
+
         recordConnection().catch(() => {});
       } catch (error) {
         console.error(
@@ -369,11 +393,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           error,
         );
 
-        // Attempt to load products from IDB cache before falling back to mock data
         try {
           const cachedProducts = await getCachedProducts();
           if (cachedProducts.length > 0) {
-            // Convert CachedProduct back to Product shape for the UI
             const fallbackProducts: Product[] = cachedProducts.map((cp) => ({
               id: cp.id,
               storeId: cp.storeId,
@@ -397,14 +419,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             setCategories(demoCategories);
             setSales(demoSales);
           } else {
-            // No cache available — fall back to mock data
             setIsDataError(true);
             setProducts(demoProducts);
             setCategories(demoCategories);
             setSales(demoSales);
           }
         } catch {
-          // IDB read also failed — fall back to mock data
           setIsDataError(true);
           setProducts(demoProducts);
           setCategories(demoCategories);
@@ -902,6 +922,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const saved = await res.json();
       const normalizedSaved = {
         ...saved,
+        subtotal: Number(saved.subtotal),
+        tax: Number(saved.tax),
+        total: Number(saved.total),
         items: Array.isArray(saved?.items)
           ? saved.items.map((i: any) => ({
               ...i,
@@ -1067,17 +1090,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const lineKey = (productId: string, presentationId: string | null | undefined) =>
     `${productId}::${presentationId ?? ""}`;
 
+  const baseQty = (item: { quantity: number; presentation?: ProductPresentation | null }) =>
+    item.quantity * (item.presentation?.quantity ?? 1);
+
   const addToCart = useCallback(
     (
       product: Product,
       quantity: number = 1,
       presentation: ProductPresentation | null = null,
     ): boolean => {
+      const bq = quantity * (presentation?.quantity ?? 1);
       const available = getAvailableStock(product.id);
-      if (available < quantity) return false;
+      if (available < bq) return false;
       setReservedStock((prev) => ({
         ...prev,
-        [product.id]: (prev[product.id] || 0) + quantity,
+        [product.id]: (prev[product.id] || 0) + bq,
       }));
       setCart((prev) => {
         const key = lineKey(product.id, presentation?.id);
@@ -1129,18 +1156,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           (i.presentation?.id ?? null) === (presentationId ?? null),
       );
       if (!currentItem) return;
+      const presMultiplier = currentItem.presentation?.quantity ?? 1;
       const delta = newQuantity - currentItem.quantity;
-      if (delta > 0) {
+      const deltaBq = delta * presMultiplier;
+      if (deltaBq > 0) {
         const available = getAvailableStock(productId);
-        if (available < delta) return;
+        if (available < deltaBq) return;
         setReservedStock((r) => ({
           ...r,
-          [productId]: (r[productId] || 0) + delta,
+          [productId]: (r[productId] || 0) + deltaBq,
         }));
-      } else if (delta < 0) {
+      } else if (deltaBq < 0) {
         setReservedStock((r) => ({
           ...r,
-          [productId]: Math.max(0, (r[productId] || 0) + delta),
+          [productId]: Math.max(0, (r[productId] || 0) + deltaBq),
         }));
       }
       setCart((prev) =>
@@ -1167,7 +1196,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const next: Record<string, number> = {};
     for (const item of cart) {
-      next[item.product.id] = (next[item.product.id] || 0) + item.quantity;
+      next[item.product.id] = (next[item.product.id] || 0) + baseQty(item);
     }
     setReservedStock(next);
   }, [cart]);
@@ -1175,7 +1204,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const taxConfig = getTaxConfig(store?.config);
 
   const subtotal = cart.reduce(
-    (sum, item) => sum + item.product.price * item.quantity,
+    (sum, item) => sum + item.product.price * baseQty(item),
     0,
   );
 
@@ -1203,7 +1232,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           productName: item.product.name,
           quantity: item.quantity,
           unitPrice: Number(item.product.price),
-          total: Number(item.product.price) * item.quantity,
+          total: Number(item.product.price) * baseQuantity,
           presentationId: presentation?.id ?? null,
           presentationName: presentation?.name ?? null,
           baseQuantity,
@@ -1230,7 +1259,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setProducts((prev) =>
           prev.map((p) =>
             p.id === item.productId
-              ? { ...p, stock: Math.max(0, p.stock - item.quantity) }
+              ? { ...p, stock: Math.max(0, p.stock - (item.baseQuantity ?? item.quantity)) }
               : p,
           ),
         );
@@ -1257,18 +1286,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const suspendSale = useCallback(async (): Promise<boolean> => {
     if (cart.length === 0 || !user) return false;
 
-    const saleItems = cart.map((item) => ({
-      productId: item.product.id,
-      productName: item.product.name,
-      quantity: item.quantity,
-      unitPrice: item.product.price,
-      total: item.product.price * item.quantity,
-      presentationId: item.presentation?.id ?? null,
-      presentationName: item.presentation?.name ?? null,
-      baseQuantity: item.presentation
+    const saleItems = cart.map((item) => {
+      const bq = item.presentation
         ? item.quantity * item.presentation.quantity
-        : item.quantity,
-    }));
+        : item.quantity;
+      return {
+        productId: item.product.id,
+        productName: item.product.name,
+        quantity: item.quantity,
+        unitPrice: item.product.price,
+        total: item.product.price * bq,
+        presentationId: item.presentation?.id ?? null,
+        presentationName: item.presentation?.name ?? null,
+        baseQuantity: bq,
+      };
+    });
 
     try {
       const res = await fetch("/api/suspended-sales", {

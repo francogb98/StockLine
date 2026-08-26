@@ -7,6 +7,7 @@ import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { SyncProvider } from "@/components/offline/sync-provider";
 import { PendingCashSessionWatcher } from "@/components/cash/pending-cash-session-watcher";
+import { CashSessionProvider } from "@/components/cash/cash-session-provider";
 import { AssistantProvider } from "@/components/mobile-assistant/context";
 import { FloatingAssistant } from "@/components/mobile-assistant/floating-assistant";
 
@@ -93,10 +94,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <>
       <PendingCashSessionWatcher />
       <SyncProvider>
-        <AssistantProvider>
-          {children}
-          <FloatingAssistant />
-        </AssistantProvider>
+        <CashSessionProvider>
+          <AssistantProvider>
+            {children}
+            <FloatingAssistant />
+          </AssistantProvider>
+        </CashSessionProvider>
       </SyncProvider>
     </>
   );

@@ -27,6 +27,7 @@ import {
   CommandList,
 } from '@/components/ui/command'
 import { useAssistant } from './context'
+import { useCashControl } from '@/lib/cash-control-context'
 import type { AssistantCardAction, AssistantView } from './types'
 import { scaleIn, staggerContainer, fadeIn } from './animation-variants'
 
@@ -42,13 +43,14 @@ const HOME_ACTIONS: AssistantCardAction[] = [
 ]
 
 interface QuickActionsViewProps {
+  actions: AssistantCardAction[]
   onSelect: (view: AssistantView) => void
 }
 
-function QuickActionsView({ onSelect }: QuickActionsViewProps) {
+function QuickActionsView({ actions, onSelect }: QuickActionsViewProps) {
   return (
     <CommandGroup heading="Acciones rápidas">
-      {HOME_ACTIONS.map((action) => {
+      {actions.map((action) => {
         const Icon = action.icon
         return (
           <CommandItem
@@ -121,7 +123,12 @@ function RecentChip({ label, onClick }: RecentChipProps) {
 export function AssistantHome() {
   const { navigateTo, state, stockAlert, isUnseenAlert } = useAssistant()
   const { recentActions } = state
+  const { cashControlEnabled } = useCashControl()
   const [showSuggestion, setShowSuggestion] = useState(false)
+
+  const actions = cashControlEnabled
+    ? HOME_ACTIONS
+    : HOME_ACTIONS.filter((a) => a.id !== 'cash-status')
 
   const hasStockIssues =
     stockAlert !== null && (stockAlert.outOfStock > 0 || stockAlert.lowStock > 0)
@@ -172,7 +179,7 @@ export function AssistantHome() {
               </CommandGroup>
             )}
 
-            <QuickActionsView onSelect={handleSelect} />
+            <QuickActionsView actions={actions} onSelect={handleSelect} />
           </CommandList>
         </Command>
       </motion.div>

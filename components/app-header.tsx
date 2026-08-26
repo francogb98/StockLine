@@ -8,7 +8,7 @@ import { useCashControl } from "@/lib/cash-control-context";
 import { getNavigationForRole } from "@/lib/module-registry";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/mock-data";
-import { LogOut, Menu, X } from "lucide-react";
+import { LogOut, Menu, Plus, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +19,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { SubscriptionStatusBadge } from "@/components/subscription/subscription-status-badge";
 import { useCashSession } from "@/components/cash/cash-session-provider";
 import { CloseCashDialog } from "@/components/cash/close-cash-dialog";
+import { DailySalesBanner } from "@/components/daily-sales-banner";
 
 export function AppHeader() {
   const { user, logout } = useAuth();
@@ -66,8 +67,20 @@ export function AppHeader() {
           )}
         </button>
 
+        <button
+          type="button"
+          className="hidden h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 md:flex"
+          aria-label="Crear producto"
+          onClick={() =>
+            window.dispatchEvent(new CustomEvent("open-product-dialog"))
+          }
+        >
+          <Plus className="h-4 w-4" />
+          <span>Nuevo Producto</span>
+        </button>
+
         <div className="flex flex-1 items-center justify-end gap-3">
-          {cashControlEnabled && (
+          {cashControlEnabled ? (
             <div
               className={cn(
                 "flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
@@ -111,6 +124,8 @@ export function AppHeader() {
                 </span>
               )}
             </div>
+          ) : (
+            <DailySalesBanner variant="desktop" />
           )}
 
           <div className="hidden items-center gap-2 md:flex">

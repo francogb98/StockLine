@@ -36,7 +36,7 @@ export function LandingNavbar({ promoVisible }: { promoVisible?: boolean }) {
         scrolled
           ? "border-b border-border/40 bg-background/80 backdrop-blur-xl"
           : "border-transparent bg-transparent"
-      } ${promoVisible ? "top-11" : "top-0"}`}
+      }       ${promoVisible ? "md:top-11" : "top-0"}`}
     >
       <nav className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
         <BrandLogo className="h-7" />
@@ -86,13 +86,13 @@ export function LandingNavbar({ promoVisible }: { promoVisible?: boolean }) {
             className="overflow-hidden border-t border-border/40 bg-background shadow-lg md:hidden"
           >
             <div className="space-y-1.5 px-4 py-4">
-              <MobileNavLink href="#como-funciona" onClick={() => setMobileMenuOpen(false)}>
+              <MobileNavLink href="#como-funciona" onClose={() => setMobileMenuOpen(false)}>
                 Cómo funciona
               </MobileNavLink>
-              <MobileNavLink href="#funcionalidades" onClick={() => setMobileMenuOpen(false)}>
+              <MobileNavLink href="#funcionalidades" onClose={() => setMobileMenuOpen(false)}>
                 Funcionalidades
               </MobileNavLink>
-              <MobileNavLink href="#planes" onClick={() => setMobileMenuOpen(false)}>
+              <MobileNavLink href="#planes" onClose={() => setMobileMenuOpen(false)}>
                 Planes
               </MobileNavLink>
               <Link
@@ -131,16 +131,25 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
 function MobileNavLink({
   href,
   children,
-  onClick,
+  onClose,
 }: {
   href: string;
   children: React.ReactNode;
-  onClick: () => void;
+  onClose: () => void;
 }) {
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    onClose();
+    const id = href.replace("#", "");
+    requestAnimationFrame(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    });
+  };
+
   return (
     <a
       href={href}
-      onClick={onClick}
+      onClick={handleClick}
       className="block rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground"
     >
       {children}

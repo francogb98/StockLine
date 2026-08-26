@@ -30,6 +30,10 @@ export interface StoredProduct {
   presentations?: StoredProductPresentation[];
   imageUrl?: string | null;
   cloudinaryPublicId?: string | null;
+  status?: "ACTIVE" | "MERGED";
+  mergedIntoId?: string | null;
+  mergedAt?: Date | null;
+  mergedByUserId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -249,7 +253,7 @@ class SessionDataStore {
   // ---- Products ----
   getProducts(storeId: string): StoredProduct[] {
     return [...this.products.values()]
-      .filter((p) => p.storeId === storeId)
+      .filter((p) => p.storeId === storeId && p.status !== "MERGED")
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
@@ -260,6 +264,7 @@ class SessionDataStore {
 
   getProductByBarcode(barcode: string, storeId: string): StoredProduct | null {
     for (const p of this.products.values()) {
+      if (p.status === "MERGED") continue;
       if (p.barcode?.toLowerCase() === barcode.toLowerCase() && p.storeId === storeId) {
         return p;
       }
@@ -286,6 +291,7 @@ class SessionDataStore {
     const now = new Date();
     const product: StoredProduct = {
       id: generateId(),
+      status: "ACTIVE",
       ...data,
       quantityType: data.quantityType ?? "DISCRETA",
       unit: data.unit ?? "unit",
