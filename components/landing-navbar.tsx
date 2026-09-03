@@ -141,9 +141,9 @@ function MobileNavLink({
     e.preventDefault();
     onClose();
     const id = href.replace("#", "");
-    requestAnimationFrame(() => {
+    setTimeout(() => {
       document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-    });
+    }, 300);
   };
 
   return (

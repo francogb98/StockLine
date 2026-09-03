@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Minus, Plus, Trash2, ShoppingCart, Tag, Percent, Clock, Loader2 } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingCart, Tag, Percent } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePOS } from "@/lib/store-context";
 import { formatCurrency } from "@/lib/mock-data";
 import { cn, formatQuantityForCart } from "@/lib/utils";
 import { ProductThumbnail } from "@/components/products/product-thumbnail";
 import { useCartNavigation } from "@/hooks/use-cart-navigation";
-import { toast } from "sonner";
 
 export function CartPanel() {
   const {
@@ -24,12 +23,10 @@ export function CartPanel() {
     setDiscountType,
     taxConfig,
     getAvailableStock,
-    suspendSale,
   } = usePOS();
 
   const [showDiscountInput, setShowDiscountInput] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
-  const [isSuspending, setIsSuspending] = useState(false);
   const [editingQuantityId, setEditingQuantityId] = useState<string | null>(null);
   const prevCartLength = useRef(cart.length);
   const quantityInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
@@ -69,26 +66,6 @@ export function CartPanel() {
 
   const totalQty = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const handleSuspend = useCallback(async () => {
-    if (cart.length === 0 || isSuspending) return;
-    setIsSuspending(true);
-    try {
-      const ok = await suspendSale();
-      if (ok) {
-        toast.success("Venta enviada a espera", {
-          description: `${totalQty} ${totalQty === 1 ? "producto" : "productos"} guardados`,
-        });
-      } else {
-        toast.error("No se pudo pausar la venta");
-      }
-    } catch (err) {
-      console.error("Error suspending sale", err);
-      toast.error("No se pudo pausar la venta");
-    } finally {
-      setIsSuspending(false);
-    }
-  }, [cart.length, isSuspending, suspendSale, totalQty]);
-
   const handleCardClick = useCallback((lineKey: string, e: React.MouseEvent) => {
     // Don't select if clicking on buttons
     const target = e.target as HTMLElement;
@@ -116,7 +93,7 @@ export function CartPanel() {
 
   if (cart.length === 0) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 bg-transparent p-6 text-muted-foreground">
+      <div className="flex flex-col items-center justify-center gap-3 bg-transparent p-6 py-16 text-muted-foreground">
         <ShoppingCart className="h-14 w-14 opacity-30" />
         <div className="text-center">
           <p className="text-base font-medium">Carrito vacío</p>
@@ -145,7 +122,7 @@ export function CartPanel() {
               item.product.unit !== "unit";
             const step = isContinuous ? 0.001 : 1;
             const presentationDisplay = presentation
-              ? presentation.name
+              ? `${presentation.name} (${presentation.quantity} ${presentation.unit})`
               : isContinuous
                 ? formatQuantityForCart(
                     item.quantity,
@@ -415,26 +392,7 @@ export function CartPanel() {
           </div>
         )}
 
-        <button
-          onClick={handleSuspend}
-          disabled={cart.length === 0 || isSuspending}
-          className={cn(
-            "mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed px-3 py-2 text-xs font-semibold transition-colors",
-            "text-amber-700 border-amber-300/70 bg-amber-50/60 hover:bg-amber-100/80 hover:border-amber-400",
-            "dark:text-amber-300 dark:border-amber-700/50 dark:bg-amber-950/30 dark:hover:bg-amber-950/50 dark:hover:border-amber-600",
-            "focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-1",
-            "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-amber-50/60",
-          )}
-          type="button"
-          title="Pausar venta y guardarla en espera"
-        >
-          {isSuspending ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Clock className="h-3.5 w-3.5" />
-          )}
-          {isSuspending ? "Pausando..." : "Pausar venta"}
-        </button>
+
       </div>
     </div>
   );

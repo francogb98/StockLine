@@ -150,12 +150,17 @@ export async function POST(request: Request) {
           }
 
           // Check for existing product by matchBy criteria
+          // Fallback: if matchBy="barcode" but row has no barcode, try matching by name
           let existing = null;
           if (body.options.matchBy === "barcode" && row.barcode) {
             existing = existingProducts.find(
               (p) => p.barcode && p.barcode.toLowerCase() === row.barcode!.toLowerCase(),
             );
           } else if (body.options.matchBy === "name" && row.name) {
+            existing = existingProducts.find(
+              (p) => p.name.toLowerCase().trim() === row.name!.toLowerCase().trim(),
+            );
+          } else if (body.options.matchBy === "barcode" && !row.barcode && row.name) {
             existing = existingProducts.find(
               (p) => p.name.toLowerCase().trim() === row.name!.toLowerCase().trim(),
             );
@@ -219,6 +224,24 @@ export async function POST(request: Request) {
                 results.errors.push({
                   row: globalRow,
                   message: `Código de barras duplicado en el archivo: "${row.barcode}"`,
+                });
+                continue;
+              }
+            }
+
+            // Skip duplicate names within the import
+            if (row.name) {
+              const nameLower = row.name.toLowerCase().trim();
+              const isDuplicateNameInBatch = body.products.some(
+                (p, idx) =>
+                  idx < i + j &&
+                  p.name &&
+                  p.name.toLowerCase().trim() === nameLower,
+              );
+              if (isDuplicateNameInBatch) {
+                results.errors.push({
+                  row: globalRow,
+                  message: `Nombre duplicado en el archivo: "${row.name}"`,
                 });
                 continue;
               }

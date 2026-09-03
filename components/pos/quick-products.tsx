@@ -297,7 +297,7 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
           <div
             ref={gridContainerRef}
             data-keyboard-zone="products"
-            className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3"
+            className="grid grid-cols-3 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-2 sm:gap-3"
             onKeyDown={handleGridKeyDown}
             role="grid"
             aria-label="Productos"
@@ -319,7 +319,7 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
                   data-product-name={product.name}
                   data-product-index={index}
                   className={cn(
-                    "group relative flex h-full cursor-pointer flex-col rounded-xl border border-gray-200 p-3 text-left transition-all duration-200 active:scale-95",
+                    "group relative flex h-full cursor-pointer flex-col rounded-xl border border-gray-200 p-2 sm:p-3 text-left transition-all duration-200 active:scale-95",
                     "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                     isOutOfStock
                       ? "cursor-not-allowed bg-muted/50 opacity-60"
@@ -337,19 +337,19 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
                 >
                   {/* 3-dot menu */}
                   {user?.role === "admin" && (
-                    <div className="absolute right-1 top-1 z-20">
+                    <div className="absolute right-0.5 top-0.5 sm:right-1 sm:top-1 z-20">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button
                             type="button"
                             onClick={(e) => e.stopPropagation()}
                             className={cn(
-                              "flex h-6 w-6 items-center justify-center rounded-md",
+                              "flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-md",
                               "bg-background/80 text-muted-foreground hover:bg-muted hover:text-foreground",
                             )}
                             aria-label="Opciones"
                           >
-                            <MoreVertical className="h-3.5 w-3.5" />
+                            <MoreVertical className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="min-w-[120px]">
@@ -382,21 +382,17 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
                     </div>
                   )}
 
-                  {/* Product image — only when imageUrl exists */}
-                  {product.imageUrl && (
-                    <div className="mb-2 overflow-hidden rounded-lg border bg-muted/40">
-                      <div className="h-28 w-full">
-                        <ProductThumbnail
-                          imageUrl={product.imageUrl}
-                          name={product.name}
-                          className="h-full w-full"
-                        />
-                      </div>
-                    </div>
-                  )}
+                  {/* Product image — always shown, placeholder if no image */}
+                  <div className="mb-2 overflow-hidden rounded-lg bg-muted/30 aspect-square">
+                    <ProductThumbnail
+                      imageUrl={product.imageUrl}
+                      name={product.name}
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
 
                   {/* Name — primary element */}
-                  <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">
+                  <p className="line-clamp-1 text-xs sm:text-sm font-semibold leading-snug text-foreground capitalize">
                     {product.name}
                   </p>
 
@@ -404,13 +400,13 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
                   <div className="flex-1" />
 
                   {/* Price + Stock badge */}
-                  <div className="mt-2 flex items-center justify-between gap-1.5">
-                    <span className="text-sm font-bold text-blue-600">
+                  <div className="mt-1.5 sm:mt-2 flex items-center justify-between gap-1 sm:gap-1.5">
+                    <span className="text-xs sm:text-sm font-bold text-blue-600">
                       {formatCurrency(product.price)}
                     </span>
                     <span
                       className={cn(
-                        "shrink-0 rounded-full px-2 py-0.5 text-xs",
+                        "shrink-0 rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs",
                         isOutOfStock
                           ? "bg-red-100 text-red-600 font-medium"
                           : isLowStock
@@ -420,7 +416,7 @@ export const QuickProducts = forwardRef<QuickProductsHandle>(function QuickProdu
                     >
                       {isOutOfStock
                         ? "Sin stock"
-                        : getAvailableStock(product.id)}
+                        : Math.round(getAvailableStock(product.id))}
                     </span>
                   </div>
                 </div>

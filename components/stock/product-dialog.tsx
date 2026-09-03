@@ -653,6 +653,7 @@ export function ProductDialog({
     <AnimatePresence>
       {open && (
         <div
+          key={product?.id || "new-product"}
           className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto p-4 sm:p-6"
           role="presentation"
         >

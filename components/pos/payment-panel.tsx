@@ -56,7 +56,7 @@ export function PaymentPanel({ onSaleComplete }: PaymentPanelProps) {
   const { cashControlEnabled } = useCashControl();
   const { session, loading, openCashDialog } = useCashSession();
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(
-    null,
+    "transfer",
   );
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -181,7 +181,7 @@ export function PaymentPanel({ onSaleComplete }: PaymentPanelProps) {
   }, [handleCompleteSale, handleCancel]);
 
   return (
-    <div className="space-y-2 px-3 py-2.5">
+    <div className="space-y-3 px-4 py-3">
       {/* Subscription past-due warning */}
       {isPastDue ? (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
@@ -217,14 +217,14 @@ export function PaymentPanel({ onSaleComplete }: PaymentPanelProps) {
       ) : (
         <>
           {/* Payment method buttons */}
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-3 gap-2">
             {paymentMethods.map((method) => (
               <button
                 key={method.value}
                 onClick={() => setSelectedMethod(method.value)}
                 disabled={isDisabled}
                 className={cn(
-                  "flex items-center justify-center gap-1.5 rounded-lg border-2 px-1 py-1.5 text-xs font-medium transition-all duration-150",
+                  "flex items-center justify-center gap-1.5 rounded-lg border-2 px-2 py-2.5 text-xs font-medium transition-all duration-150",
                   "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
                   "disabled:cursor-not-allowed disabled:opacity-50",
                   selectedMethod === method.value
@@ -280,13 +280,13 @@ export function PaymentPanel({ onSaleComplete }: PaymentPanelProps) {
           )}
 
           {/* Action buttons */}
-          <div className="space-y-1.5">
+          <div className="space-y-2 pt-1">
             <button
               onClick={handleCompleteSale}
               data-testid="complete-sale"
               disabled={isActionDisabled}
               className={cn(
-                "flex h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all duration-150",
+                "flex h-14 w-full items-center justify-center gap-2.5 rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all duration-150",
                 "hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                 "active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none",
               )}

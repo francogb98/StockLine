@@ -69,7 +69,7 @@ export function AppHeader() {
 
         <button
           type="button"
-          className="hidden h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 md:flex"
+          className="hidden h-9 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground md:flex"
           aria-label="Crear producto"
           onClick={() =>
             window.dispatchEvent(new CustomEvent("open-product-dialog"))

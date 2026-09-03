@@ -61,7 +61,7 @@ export function ImportSheet({ open, onClose }: ImportSheetProps) {
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [options, setOptions] = useState<ImportOptions>({
     mode: "create",
-    matchBy: "barcode",
+    matchBy: "name",
     updateFields: ["stock", "price", "cost", "minStock"],
   });
   const [importResult, setImportResult] = useState<ImportResult | null>(null);

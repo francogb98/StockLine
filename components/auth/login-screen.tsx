@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2, Eye, EyeOff, LogIn, Check, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/lib/store-context";
+import { useCashControl } from "@/lib/cash-control-context";
 import { cn } from "@/lib/utils";
 import { AuthLayout } from "./auth-layout";
 import { AuthHeroShowcase } from "./auth-hero-showcase";
@@ -30,6 +31,7 @@ function LoginForm({
 }) {
   const { login, isLoading, pendingCashSession, clearPendingCashSession } =
     useAuth();
+  const { cashControlEnabled } = useCashControl();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -47,7 +49,7 @@ function LoginForm({
 
     const result = await login(email, password);
     if (result.success) {
-      if (result.pendingCashSession) {
+      if (cashControlEnabled && result.pendingCashSession) {
         setShowPendingSession(true);
       } else {
         onLoginSuccess?.(result.user);
@@ -213,7 +215,7 @@ function LoginForm({
         </Link>
       </motion.p>
 
-      {pendingCashSession && (
+      {cashControlEnabled && pendingCashSession && (
         <PendingCashSessionDialog
           open={showPendingSession}
           session={pendingCashSession}

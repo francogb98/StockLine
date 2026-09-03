@@ -189,6 +189,12 @@ function findExistingProduct(
       (p) => p.name.toLowerCase().trim() === row.name.toLowerCase().trim(),
     );
   }
+  // Fallback: if matchBy="barcode" but row has no barcode, try matching by name
+  if (matchBy === "barcode" && !row.barcode && row.name) {
+    return existingProducts.find(
+      (p) => p.name.toLowerCase().trim() === row.name.toLowerCase().trim(),
+    );
+  }
   return undefined;
 }
 

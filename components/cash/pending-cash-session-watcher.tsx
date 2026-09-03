@@ -2,10 +2,12 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/lib/store-context";
+import { useCashControl } from "@/lib/cash-control-context";
 import { PendingCashSessionDialog } from "./pending-cash-session-dialog";
 
 export function PendingCashSessionWatcher() {
   const { pendingCashSession, clearPendingCashSession } = useAuth();
+  const { cashControlEnabled } = useCashControl();
   const [showDialog, setShowDialog] = useState(false);
   const hasShown = useRef(false);
 
@@ -26,7 +28,7 @@ export function PendingCashSessionWatcher() {
     clearPendingCashSession();
   };
 
-  if (!pendingCashSession) return null;
+  if (!cashControlEnabled || !pendingCashSession) return null;
 
   return (
     <PendingCashSessionDialog
