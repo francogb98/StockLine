@@ -3,6 +3,7 @@
 export type UserRole = "admin" | "employee";
 export type SubscriptionPlan = "monthly" | "annual";
 export type SubscriptionStatus = "trial" | "active" | "past_due" | "canceled";
+export type SubscriptionTier = "simple" | "pro";
 export type BusinessTypeCode = "retail" | "food_beverage";
 
 export interface User {
@@ -32,12 +33,15 @@ export interface SubscriptionState {
   id: string;
   storeId: string;
   status: SubscriptionStatus;
+  tier: SubscriptionTier;
   plan: SubscriptionPlan;
   currentPeriodStart: Date | string;
   currentPeriodEnd: Date | string;
   trialEndsAt: Date | string | null;
   mercadoPagoPreapprovalId: string | null;
   daysRemaining: number;
+  cancelAtPeriodEnd: boolean;
+  canceledAt: Date | string | null;
 }
 
 export type QuantityType = "DISCRETA" | "CONTINUA";

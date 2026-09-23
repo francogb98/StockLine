@@ -32,6 +32,11 @@ export default async function CouponDetailPage(props: { params: Promise<{ id: st
           )}
           <Badge variant="outline">{coupon.discountType}</Badge>
           <Badge variant="outline">{coupon.durationDays} días</Badge>
+          {coupon.applicableTiers && coupon.applicableTiers.length > 0 && (
+            <Badge variant="outline">
+              {coupon.applicableTiers.map((t) => (t === "simple" ? "Básico" : "Pro")).join(", ")}
+            </Badge>
+          )}
         </div>
       </div>
 

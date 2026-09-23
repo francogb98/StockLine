@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { recordAuditEvent } from "@/lib/audit-service";
-import { extendSubscriptionByAdmin, AdminSubscriptionError } from "@/lib/subscription-service";
-import { addDays } from "@/lib/subscription-config";
+import { invalidateSubscriptionCache } from "@/lib/subscription-service";
+import { addDays, SUBSCRIPTION_PLANS, enumToStatus } from "@/lib/subscription-config";
 
 export class CouponError extends Error {
   statusCode: number;
@@ -30,6 +30,7 @@ export interface CouponListItem {
   redeemedCount: number;
   maxRedemptions: number | null;
   applicablePlans: string[];
+  applicableTiers: string[];
   startsAt: Date;
   expiresAt: Date | null;
   isActive: boolean;
@@ -96,6 +97,7 @@ export interface CreateCouponInput {
   durationDays?: number;
   maxRedemptions?: number | null;
   applicablePlans: string[];
+  applicableTiers: string[];
   startsAt?: Date;
   expiresAt?: Date | null;
   isActive?: boolean;
@@ -130,6 +132,7 @@ export async function createCoupon(input: CreateCouponInput) {
       durationDays: input.durationDays ?? 30,
       maxRedemptions: input.discountType === "FREE_TRIAL" ? 1 : (input.maxRedemptions ?? null),
       applicablePlans: input.applicablePlans,
+      applicableTiers: input.applicableTiers ?? [],
       startsAt: input.startsAt ?? new Date(),
       expiresAt: input.expiresAt ?? null,
       isActive: input.isActive ?? true,
@@ -142,6 +145,7 @@ export interface UpdateCouponInput {
   description?: string | null;
   maxRedemptions?: number | null;
   applicablePlans?: string[];
+  applicableTiers?: string[];
   expiresAt?: Date | null;
   isActive?: boolean;
 }
@@ -161,6 +165,7 @@ export async function updateCoupon(id: string, input: UpdateCouponInput) {
       description: input.description ?? undefined,
       maxRedemptions: input.maxRedemptions ?? undefined,
       applicablePlans: input.applicablePlans ?? undefined,
+      applicableTiers: input.applicableTiers ?? undefined,
       expiresAt: input.expiresAt ?? undefined,
       isActive: input.isActive ?? undefined,
     },
@@ -195,6 +200,7 @@ export interface ValidateAndRedeemInput {
   storeId: string;
   subscriptionId: string;
   plan: "monthly" | "annual";
+  tier?: "simple" | "pro";
   redeemedByUserId?: string;
 }
 
@@ -209,6 +215,8 @@ export async function validateAndRedeemCoupon(
   input: ValidateAndRedeemInput,
 ): Promise<ValidateAndRedeemResult> {
   const code = input.code.trim().toUpperCase();
+
+  // ── Pre-validation (read-only, before transaction) ──
   const coupon = await prisma.coupon.findUnique({ where: { code } });
   if (!coupon) throw new CouponError(`Cupón ${code} no existe`, 404, "COUPON_NOT_FOUND");
   if (!coupon.isActive) throw new CouponError("Cupón inactivo", 400, "COUPON_INACTIVE");
@@ -218,26 +226,19 @@ export async function validateAndRedeemCoupon(
   if (coupon.expiresAt && coupon.expiresAt < now) {
     throw new CouponError("Cupón expirado", 400, "COUPON_EXPIRED");
   }
+  // Fast-path: avoid entering the transaction for obviously exhausted coupons.
+  // The authoritative check happens inside the transaction with FOR UPDATE.
   if (coupon.maxRedemptions !== null && coupon.redeemedCount >= coupon.maxRedemptions) {
     throw new CouponError("Cupón agotado", 400, "COUPON_EXHAUSTED");
   }
   if (coupon.applicablePlans.length > 0 && !coupon.applicablePlans.includes(input.plan)) {
     throw new CouponError("Cupón no aplicable al plan seleccionado", 400, "COUPON_PLAN_MISMATCH");
   }
-
-  // Calculate discount
-  let discountApplied: number;
-  if (coupon.discountType === "FREE_TRIAL") {
-    discountApplied = 0;
-  } else if (coupon.discountType === "PERCENTAGE") {
-    const value = Number(coupon.discountValue);
-    discountApplied = Number((15000 * (value / 100)).toFixed(2));
-    if (input.plan === "annual") discountApplied = Number((150000 * (value / 100)).toFixed(2));
-  } else {
-    discountApplied = Number(coupon.discountValue);
+  if (coupon.applicableTiers.length > 0 && input.tier && !coupon.applicableTiers.includes(input.tier)) {
+    throw new CouponError("Cupón no aplicable al tier seleccionado", 400, "COUPON_TIER_MISMATCH");
   }
 
-  // Double redemption check (unique constraint will throw too)
+  // Double redemption check (fast path — avoids entering the tx if already redeemed)
   const existing = await prisma.couponRedemption.findUnique({
     where: {
       couponId_subscriptionId: { couponId: coupon.id, subscriptionId: input.subscriptionId },
@@ -247,46 +248,107 @@ export async function validateAndRedeemCoupon(
     throw new CouponError("Este cupón ya fue aplicado a esta suscripción", 409, "COUPON_ALREADY_REDEEMED");
   }
 
-  // Atomic increment + redemption create (sequential — NOT in a tx to keep model simple;
-  // we rely on the @@unique constraint to prevent duplicates)
+  // ── Calculate discount (server-authoritative, from DB coupon config) ──
+  let discountApplied: number;
+  if (coupon.discountType === "FREE_TRIAL") {
+    discountApplied = 0;
+  } else if (coupon.discountType === "PERCENTAGE") {
+    const value = Number(coupon.discountValue);
+    const base = input.plan === "annual"
+      ? Number(SUBSCRIPTION_PLANS.annual.amountArs)
+      : Number(SUBSCRIPTION_PLANS.monthly.amountArs);
+    discountApplied = Number((base * (value / 100)).toFixed(2));
+  } else {
+    discountApplied = Number(coupon.discountValue);
+  }
+
+  // ── Atomic transaction: check-and-decrement maxRedemptions + create redemption ──
+  // This prevents race conditions where N concurrent requests all pass the
+  // redeemedCount check and exceed maxRedemptions.
+  let newPeriodEnd: Date;
+
   try {
-    await prisma.couponRedemption.create({
-      data: {
-        couponId: coupon.id,
-        storeId: input.storeId,
-        subscriptionId: input.subscriptionId,
-        redeemedByUserId: input.redeemedByUserId ?? null,
-        discountApplied,
-        notes: `Coupon ${coupon.code} applied to plan ${input.plan}`,
-      },
+    const result = await prisma.$transaction(async (tx) => {
+      // Lock the coupon row to prevent concurrent modifications
+      const lockedCoupon = await tx.$queryRaw<Array<{ id: string; redeemedCount: number; maxRedemptions: number | null; durationDays: number }>>`
+        SELECT id, redeemed_count as "redeemedCount", max_redemptions as "maxRedemptions", duration_days as "durationDays"
+        FROM coupons
+        WHERE id = ${coupon.id}
+        FOR UPDATE
+      `;
+
+      if (!lockedCoupon.length) {
+        throw new CouponError("Cupón no encontrado", 404, "COUPON_NOT_FOUND");
+      }
+
+      const c = lockedCoupon[0];
+      if (c.maxRedemptions !== null && c.redeemedCount >= c.maxRedemptions) {
+        throw new CouponError("Cupón agotado", 400, "COUPON_EXHAUSTED");
+      }
+
+      // Create redemption + atomically increment count
+      await tx.couponRedemption.create({
+        data: {
+          couponId: coupon.id,
+          storeId: input.storeId,
+          subscriptionId: input.subscriptionId,
+          redeemedByUserId: input.redeemedByUserId ?? null,
+          discountApplied,
+          notes: `Coupon ${coupon.code} applied to plan ${input.plan}`,
+        },
+      });
+
+      await tx.coupon.update({
+        where: { id: coupon.id },
+        data: { redeemedCount: { increment: 1 } },
+      });
+
+      // Extend subscription within the same transaction
+      // Use the real subscription period end, not a hardcoded fallback
+      const subscription = await tx.subscription.findUnique({
+        where: { storeId: input.storeId },
+      });
+
+      let computedPeriodEnd: Date;
+      if (subscription) {
+        const appStatus = enumToStatus[subscription.status] ?? "past_due";
+        const baseEnd =
+          appStatus === "trial" && subscription.trialEndsAt && subscription.trialEndsAt > now
+            ? subscription.trialEndsAt
+            : subscription.currentPeriodEnd;
+        computedPeriodEnd = addDays(baseEnd, coupon.durationDays);
+
+        await tx.subscription.update({
+          where: { id: subscription.id },
+          data: {
+            currentPeriodEnd: computedPeriodEnd,
+            adminNotes: [
+              subscription.adminNotes ?? null,
+              `[coupon:${coupon.code}] +${coupon.durationDays}d`,
+            ]
+              .filter(Boolean)
+              .join("\n") || null,
+          },
+        });
+      } else {
+        // No subscription yet — compute from now
+        computedPeriodEnd = addDays(now, coupon.durationDays);
+      }
+
+      return { computedPeriodEnd };
     });
+
+    newPeriodEnd = result.computedPeriodEnd;
   } catch (e: any) {
+    if (e instanceof CouponError) throw e;
     if (e?.code === "P2002") {
       throw new CouponError("Este cupón ya fue aplicado a esta suscripción", 409, "COUPON_ALREADY_REDEEMED");
     }
     throw e;
   }
 
-  const updated = await prisma.coupon.update({
-    where: { id: coupon.id },
-    data: { redeemedCount: { increment: 1 } },
-  });
-
-  // Extend the subscription using existing admin extend (with notes citing the coupon code)
-  const basePeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // fallback
-  const newPeriodEnd = addDays(basePeriodEnd, coupon.durationDays);
-
-  try {
-    await extendSubscriptionByAdmin({
-      storeId: input.storeId,
-      adminUserId: input.redeemedByUserId ?? "system",
-      extraDays: coupon.durationDays,
-      reason: `cupón ${coupon.code}`,
-    });
-  } catch (e) {
-    if (!(e instanceof AdminSubscriptionError)) throw e;
-    // extendSubscriptionByAdmin's 404 means no subscription yet; ignore
-  }
+  // Invalidate cache after transaction commits
+  invalidateSubscriptionCache(input.storeId);
 
   await recordAuditEvent({
     actorType: "STORE_USER",
@@ -298,7 +360,5 @@ export async function validateAndRedeemCoupon(
     metadata: { code: coupon.code, plan: input.plan, discountApplied, subscriptionId: input.subscriptionId },
   });
 
-  void updated;
-  void basePeriodEnd;
   return { discountApplied, durationDays: coupon.durationDays, couponCode: coupon.code, newPeriodEnd };
 }

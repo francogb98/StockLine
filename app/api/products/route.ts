@@ -11,6 +11,7 @@ import {
 } from "@/lib/data-access";
 import { createProductSchema } from "@/lib/validations";
 import { assertValidUnitForQuantityType, normalizeQuantityType, normalizeUnit } from "@/lib/decimal";
+import { enforceFeatureAccess } from "@/lib/subscription-service";
 
 export async function GET() {
   try {
@@ -39,6 +40,16 @@ export async function POST(request: Request) {
 
     if (await isDemoSession()) {
       return errorResponse("No se pueden crear productos en modo demo", 403);
+    }
+
+    // Enforce product limit based on subscription tier
+    const isSuperAdmin = auth.user.isSuperAdmin === true;
+    const limitCheck = await enforceFeatureAccess(auth.user.storeId, "products", isSuperAdmin);
+    if (!limitCheck.allowed) {
+      const msg = limitCheck.reason === "PRODUCT_LIMIT_REACHED"
+        ? `Límite de ${limitCheck.maxProducts} productos alcanzado. Actualizá a Plan Pro para agregar ilimitados.`
+        : "No tenés acceso a esta función. Verificá tu suscripción.";
+      return errorResponse(msg, 403);
     }
 
     const ctx = {

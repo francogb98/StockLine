@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
       durationDays: body?.durationDays ? Number(body.durationDays) : undefined,
       maxRedemptions: body?.maxRedemptions === null ? null : body?.maxRedemptions !== undefined ? Number(body.maxRedemptions) : undefined,
       applicablePlans: Array.isArray(body?.applicablePlans) ? (body.applicablePlans as unknown[]).map(String) : [],
+      applicableTiers: Array.isArray(body?.applicableTiers) ? (body.applicableTiers as unknown[]).map(String) : [],
       startsAt: body?.startsAt ? new Date(String(body.startsAt)) : undefined,
       expiresAt: body?.expiresAt === null ? null : body?.expiresAt ? new Date(String(body.expiresAt)) : undefined,
       isActive: body?.isActive === undefined ? true : Boolean(body.isActive),

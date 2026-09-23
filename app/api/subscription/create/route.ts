@@ -4,8 +4,12 @@ import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { requirePermission } from "@/lib/api-auth";
 import {
   SUBSCRIPTION_PLANS,
+  TIER_PRICING,
+  SUBSCRIPTION_TIER,
   isSubscriptionPlan,
+  isSubscriptionTier,
   addDays,
+  SUBSCRIPTION_STATUS,
 } from "@/lib/subscription-config";
 import { createMercadoPagoPreapproval } from "@/lib/mercadopago";
 import { recordAuditEvent, extractAuditContext } from "@/lib/audit-service";
@@ -26,16 +30,24 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const planRaw = String(body?.plan ?? "");
+    const tierRaw = String(body?.tier ?? "simple");
 
     if (!isSubscriptionPlan(planRaw)) {
       return errorResponse("Plan inválido. Debe ser monthly o annual", 400);
     }
 
+    if (!isSubscriptionTier(tierRaw)) {
+      return errorResponse("Tier inválido. Debe ser simple o pro", 400);
+    }
+
     const plan = planRaw;
+    const tier = tierRaw;
     const planConfig = SUBSCRIPTION_PLANS[plan];
+    const tierPricing = TIER_PRICING[tier][plan];
 
     const preapproval = await createMercadoPagoPreapproval({
       plan,
+      tier,
       payerEmail: currentUser.email,
       externalReference: currentUser.storeId,
     });
@@ -58,6 +70,7 @@ export async function POST(req: NextRequest) {
           storeId: currentUser.storeId,
           subscriptionId: subscriptionIdForCoupon,
           plan,
+          tier,
           redeemedByUserId: currentUser.id,
         });
         currentPeriodEnd = result.newPeriodEnd;
@@ -74,13 +87,15 @@ export async function POST(req: NextRequest) {
       where: { storeId: currentUser.storeId },
       create: {
         storeId: currentUser.storeId,
-        status: "trial",
+        status: SUBSCRIPTION_STATUS.TRIAL,
+        tier: tier === "pro" ? SUBSCRIPTION_TIER.PRO : SUBSCRIPTION_TIER.SIMPLE,
         plan,
         currentPeriodStart: now,
         currentPeriodEnd,
         mercadoPagoPreapprovalId: preapproval.id,
       },
       update: {
+        tier: tier === "pro" ? SUBSCRIPTION_TIER.PRO : SUBSCRIPTION_TIER.SIMPLE,
         plan,
         currentPeriodStart: now,
         currentPeriodEnd,
@@ -96,7 +111,7 @@ export async function POST(req: NextRequest) {
       action: "subscription.preapproval_created",
       targetType: "Subscription",
       targetId: preapproval.id,
-      metadata: { plan, preapprovalId: preapproval.id },
+      metadata: { plan, tier, preapprovalId: preapproval.id },
       ipAddress,
       userAgent,
     }).catch(() => {});
@@ -104,7 +119,8 @@ export async function POST(req: NextRequest) {
     return jsonResponse(
       {
         plan,
-        amountArs: planConfig.amountArs,
+        tier,
+        amountArs: tierPricing.amountArs,
         preapprovalId: preapproval.id,
         initPoint: preapproval.initPoint,
         sandboxInitPoint: preapproval.sandboxInitPoint,

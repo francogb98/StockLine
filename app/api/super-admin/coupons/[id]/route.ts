@@ -40,6 +40,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       maxRedemptions:
         body.maxRedemptions === null ? null : body.maxRedemptions !== undefined ? Number(body.maxRedemptions) : undefined,
       applicablePlans: Array.isArray(body.applicablePlans) ? (body.applicablePlans as unknown[]).map(String) : undefined,
+      applicableTiers: Array.isArray(body.applicableTiers) ? (body.applicableTiers as unknown[]).map(String) : undefined,
       expiresAt:
         body.expiresAt === null ? null : body.expiresAt ? new Date(String(body.expiresAt)) : undefined,
       isActive: body.isActive !== undefined ? Boolean(body.isActive) : undefined,

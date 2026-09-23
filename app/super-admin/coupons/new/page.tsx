@@ -10,6 +10,7 @@ export default function NewCouponPage() {
   const [codeMode, setCodeMode] = useState<"auto" | "manual">("auto");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedTiers, setSelectedTiers] = useState<string[]>([]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -40,6 +41,8 @@ export default function NewCouponPage() {
 
     const applicablePlans = formData.get("applicablePlans");
     body.applicablePlans = applicablePlans ? String(applicablePlans).split(",").map((s) => s.trim()).filter(Boolean) : [];
+
+    body.applicableTiers = selectedTiers;
 
     const expiresAt = formData.get("expiresAt");
     if (expiresAt) body.expiresAt = String(expiresAt);
@@ -205,6 +208,36 @@ export default function NewCouponPage() {
             />
           </div>
         )}
+
+        <div>
+          <label className="text-sm font-medium">Tiers aplicables (vacío = todos)</label>
+          <div className="mt-1 flex gap-3">
+            <button
+              type="button"
+              onClick={() => setSelectedTiers([])}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium border ${selectedTiers.length === 0 ? "bg-primary text-primary-foreground" : "bg-background"}`}
+            >
+              Todos
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTiers(["simple"])}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium border ${selectedTiers.length === 1 && selectedTiers[0] === "simple" ? "bg-primary text-primary-foreground" : "bg-background"}`}
+            >
+              Básico
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTiers(["pro"])}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium border ${selectedTiers.length === 1 && selectedTiers[0] === "pro" ? "bg-primary text-primary-foreground" : "bg-background"}`}
+            >
+              Pro
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Selecciona a qué plan de suscripción aplica el cupón
+          </p>
+        </div>
 
         <div>
           <label className="text-sm font-medium">Vencimiento del código (opcional)</label>

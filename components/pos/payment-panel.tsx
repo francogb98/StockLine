@@ -52,7 +52,7 @@ export function PaymentPanel({ onSaleComplete }: PaymentPanelProps) {
     setReceivedAmount,
     change,
   } = usePOS();
-  const { subscription } = useAuth();
+  const { subscription, user } = useAuth();
   const { cashControlEnabled } = useCashControl();
   const { session, loading, openCashDialog } = useCashSession();
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(
@@ -83,7 +83,8 @@ export function PaymentPanel({ onSaleComplete }: PaymentPanelProps) {
   }, [isProcessing]);
 
   const isPastDue =
-    subscription?.status === "past_due" || subscription?.status === "canceled";
+    !user?.isSuperAdmin &&
+    (subscription?.status === "past_due" || subscription?.status === "canceled");
   const cashBlocked =
     cashControlEnabled && !session && !loading && cart.length > 0;
   const isDisabled =

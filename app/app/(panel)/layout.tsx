@@ -31,14 +31,10 @@ export default function PanelLayout({
   const currentPath = pathname.replace("/app", "") || "/pos";
 
   useEffect(() => {
-    if (user?.isSuperAdmin) {
-      router.replace("/super-admin");
-      return;
-    }
     if (!cashControlEnabled && pathname === "/app/cash-sessions") {
       router.replace("/app/pos");
     }
-  }, [user?.isSuperAdmin, cashControlEnabled, pathname, router]);
+  }, [cashControlEnabled, pathname, router]);
 
   useEffect(() => {
     if (isMobile) return;
@@ -56,7 +52,7 @@ export default function PanelLayout({
     <>
       <div className="relative flex h-screen flex-col overflow-hidden bg-background">
         <div className="flex flex-1 overflow-hidden">
-          <SidebarNav items={navItems} currentPath={currentPath} />
+          <SidebarNav items={navItems} currentPath={currentPath} isSuperAdmin={user?.isSuperAdmin} />
 
           <main className="flex flex-1 flex-col overflow-hidden">
             <AppHeader />

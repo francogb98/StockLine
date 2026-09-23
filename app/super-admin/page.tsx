@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { getDashboardBundle } from "@/lib/super-admin/dashboard-service";
 import { requireSuperAdmin } from "@/lib/api-auth";
 import { MetricCard } from "@/components/super-admin/metric-card";
@@ -12,7 +11,6 @@ import {
   Users,
   ShoppingCart,
   Package,
-  ScrollText,
 } from "lucide-react";
 
 export default async function SuperAdminPage() {
@@ -29,43 +27,11 @@ export default async function SuperAdminPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Bienvenido, {auth.auth.user.name}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Plataforma Super Admin — métricas globales de los últimos {bundle.days} días.
-          </p>
-        </div>
-        <Link
-          href="/super-admin/audit"
-          className="rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
-        >
-          Ver Audit Log
-        </Link>
-        <Link
-          href="/super-admin/companies"
-          className="rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
-        >
-          Gestión de Empresas
-        </Link>
-        <Link
-          href="/super-admin/subscriptions"
-          className="rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
-        >
-          Suscripciones
-        </Link>
-        <Link
-          href="/super-admin/coupons"
-          className="rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
-        >
-          Cupones
-        </Link>
-        <Link
-          href="/super-admin/errors"
-          className="rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
-        >
-          Errores
-        </Link>
+      <div>
+        <h1 className="text-2xl font-bold">Bienvenido, {auth.auth.user.name}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Plataforma Super Admin — métricas globales de los últimos {bundle.days} días.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -136,19 +102,6 @@ export default async function SuperAdminPage() {
             churn={bundle.churnTimeseries}
           />
         </div>
-      </div>
-
-      <div className="rounded-lg border bg-card p-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Próximamente</h2>
-          <ScrollText className="h-4 w-4 text-muted-foreground" />
-        </div>
-        <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-          <li>FASE 5: Gestión de empresas — listado, suspensión, detalle</li>
-          <li>FASE 6: Suscripciones administrativas (cancelar / reactivar / extender)</li>
-          <li>FASE 7: Cupones y promociones</li>
-          <li>FASE 8: Monitoreo de errores</li>
-        </ul>
       </div>
     </div>
   );

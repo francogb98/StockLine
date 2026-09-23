@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getAuthenticatedSession } from "@/lib/auth-session";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SuperAdminLogoutButton } from "@/components/super-admin/logout-button";
+import { SuperAdminSidebar } from "@/components/super-admin/sidebar";
 
 export default async function SuperAdminLayout({
   children,
@@ -22,16 +23,7 @@ export default async function SuperAdminLayout({
           <SuperAdminLogoutButton />
         </header>
         <div className="flex flex-1">
-          <aside className="w-[235px] border-r p-4">
-            <nav>
-              <a
-                href="/super-admin"
-                className="block rounded px-3 py-2 hover:bg-muted"
-              >
-                Dashboard
-              </a>
-            </nav>
-          </aside>
+          <SuperAdminSidebar />
           <main className="flex-1 overflow-auto p-6">{children}</main>
         </div>
       </div>

@@ -62,35 +62,36 @@ export function SubscriptionManagement() {
   const isTestUser = user ? isTestUserEmail(user.email) : false;
   const canSubscribe = user?.role === "admin" && !isTestUser;
 
-  // Precios base
+  // [M3 FIX] Prices are server-authoritative; these are display-only fallbacks
+  // matching SUBSCRIPTION_PLANS in lib/subscription-config.ts
   const prices = {
-    simple: { monthly: 10000, yearly: 100000 },
-    pro: { monthly: 15000, yearly: 150000 },
+    monthly: 15000,
+    annual: 150000,
   };
 
-  // Calcular precio con promo (solo aplica a mensual)
+  const basePrice = isYearly ? prices.annual : prices.monthly;
+
+  // Promo display only — actual discount is server-calculated
   const hasPromo = !!pendingPromo && !isYearly;
   const getDiscountedPrice = (base: number) => Math.round(base * 0.5);
-  const getDisplayPrice = (plan: "simple" | "pro") => {
-    const base = isYearly ? prices[plan].yearly : prices[plan].monthly;
-    return hasPromo ? getDiscountedPrice(base) : base;
-  };
+  const displayPrice = hasPromo ? getDiscountedPrice(basePrice) : basePrice;
 
   // Lógica para enviar el plan seleccionado a tu API
-  const handleSubscribe = async (planKey: string) => {
+  const handleSubscribe = async (tierKey: "simple" | "pro") => {
     if (!canSubscribe) return;
 
-    setSubmittingPlan(planKey);
+    setSubmittingPlan(tierKey);
     setMessage(null);
 
-    // Formato de ID que espera tu backend (ej: "simple_monthly", "pro_annual", etc.)
-    const fullPlanId = `${planKey}_${isYearly ? "annual" : "monthly"}`;
+    // Send server-recognized values
+    const plan = isYearly ? "annual" : "monthly";
+    const tier = tierKey;
 
     // Auto-aplicar promo pendiente si existe
     const storedPromo = localStorage.getItem("pendingPromo");
 
     try {
-      const body: Record<string, string> = { plan: fullPlanId };
+      const body: Record<string, string> = { plan, tier };
       if (storedPromo) {
         body.couponCode = storedPromo;
       }
@@ -398,7 +399,7 @@ export function SubscriptionManagement() {
                     transition={{ duration: 0.18 }}
                     className="text-4xl font-extrabold text-foreground inline-block"
                   >
-                    {formatArs(getDisplayPrice("simple"))}
+                    {formatArs(displayPrice)}
                   </motion.span>
                 </AnimatePresence>
                 <span className="text-muted-foreground text-sm font-medium">
@@ -406,14 +407,14 @@ export function SubscriptionManagement() {
                 </span>
                 {hasPromo && (
                   <span className="ml-2 text-lg text-muted-foreground line-through">
-                    {formatArs(prices.simple.monthly)}
+                    {formatArs(prices.monthly)}
                   </span>
                 )}
               </div>
 
               {hasPromo && (
                 <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-1">
-                  50% OFF por 3 meses — después {formatArs(prices.simple.monthly)}/mes
+                  50% OFF por 3 meses — después {formatArs(prices.monthly)}/mes
                 </p>
               )}
 
@@ -426,7 +427,7 @@ export function SubscriptionManagement() {
                     transition={{ duration: 0.2 }}
                     className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-1 overflow-hidden"
                   >
-                    Equivale a {formatArs(8333)} / mes
+                    Equivale a {formatArs(12500)} / mes
                   </motion.p>
                 )}
               </AnimatePresence>
@@ -502,7 +503,7 @@ export function SubscriptionManagement() {
                     transition={{ duration: 0.18 }}
                     className="text-4xl font-extrabold text-foreground inline-block"
                   >
-                    {formatArs(getDisplayPrice("pro"))}
+                    {formatArs(displayPrice)}
                   </motion.span>
                 </AnimatePresence>
                 <span className="text-muted-foreground text-sm font-medium">
@@ -510,14 +511,14 @@ export function SubscriptionManagement() {
                 </span>
                 {hasPromo && (
                   <span className="ml-2 text-lg text-muted-foreground line-through">
-                    {formatArs(prices.pro.monthly)}
+                    {formatArs(prices.monthly)}
                   </span>
                 )}
               </div>
 
               {hasPromo && (
                 <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-1">
-                  50% OFF por 3 meses — después {formatArs(prices.pro.monthly)}/mes
+                  50% OFF por 3 meses — después {formatArs(prices.monthly)}/mes
                 </p>
               )}
 

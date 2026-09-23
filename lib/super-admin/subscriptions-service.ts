@@ -7,6 +7,7 @@ import {
   AdminSubscriptionError,
 } from "@/lib/subscription-service";
 import { recordAuditEvent } from "@/lib/audit-service";
+import { statusToEnum } from "@/lib/subscription-config";
 
 export interface SubscriptionsFilters {
   plan?: "monthly" | "annual";
@@ -27,6 +28,8 @@ export interface SubscriptionListItem {
   cancelledByAdmin: boolean;
   trialEndsAt: Date | null;
   mercadoPagoPreapprovalId: string | null;
+  cancelAtPeriodEnd: boolean;
+  canceledAt: Date | null;
 }
 
 export interface SubscriptionsListResult {
@@ -44,7 +47,7 @@ export async function listSubscriptions(filters: SubscriptionsFilters): Promise<
 
   const where: Record<string, unknown> = {};
   if (filters.plan) where.plan = filters.plan;
-  if (filters.status) where.status = filters.status;
+  if (filters.status) where.status = statusToEnum[filters.status] ?? filters.status;
   if (filters.storeId) where.storeId = filters.storeId;
   if (typeof filters.cancelledByAdmin === "boolean") {
     where.cancelledByAdmin = filters.cancelledByAdmin;
@@ -71,6 +74,8 @@ export async function listSubscriptions(filters: SubscriptionsFilters): Promise<
     cancelledByAdmin: r.cancelledByAdmin,
     trialEndsAt: r.trialEndsAt,
     mercadoPagoPreapprovalId: r.mercadoPagoPreapprovalId,
+    cancelAtPeriodEnd: r.cancelAtPeriodEnd ?? false,
+    canceledAt: r.canceledAt ?? null,
   }));
 
   return { items, total, page, limit };
@@ -90,6 +95,8 @@ export interface SubscriptionDetail {
   cancelledByAdminUserId: string | null;
   previousStatus: string | null;
   adminNotes: string | null;
+  cancelAtPeriodEnd: boolean;
+  canceledAt: Date | null;
 }
 
 export async function getSubscriptionDetail(id: string): Promise<SubscriptionDetail | null> {
@@ -113,6 +120,8 @@ export async function getSubscriptionDetail(id: string): Promise<SubscriptionDet
     cancelledByAdminUserId: sub.cancelledByAdminUserId,
     previousStatus: sub.previousStatus,
     adminNotes: sub.adminNotes,
+    cancelAtPeriodEnd: sub.cancelAtPeriodEnd ?? false,
+    canceledAt: sub.canceledAt ?? null,
   };
 }
 

@@ -150,7 +150,7 @@ export function SubscriptionStatusBadge({
             presentation.dotClasses,
           )}
         />
-        {presentation.label}
+        {subscription.tier === "pro" ? "Pro" : "Simple"} &middot; {presentation.label}
       </span>
     );
   }
@@ -164,7 +164,9 @@ export function SubscriptionStatusBadge({
           presentation.dotClasses,
         )}
       />
-      <span className="truncate font-semibold">{presentation.label}</span>
+      <span className="truncate font-semibold">
+        {subscription.tier === "pro" ? "Pro" : "Simple"} &middot; {presentation.label}
+      </span>
       {dateLabel ? (
         <>
           <span aria-hidden="true" className="opacity-70">

@@ -12,13 +12,11 @@ function LoginContent() {
 
   const resetSuccess = searchParams.get("reset") === "success";
 
-  const destination = user?.isSuperAdmin ? "/super-admin" : "/app";
-
   useEffect(() => {
     if (!isSessionLoading && user) {
-      router.push(destination);
+      router.push("/app");
     }
-  }, [user, isSessionLoading, router, destination]);
+  }, [user, isSessionLoading, router]);
 
   if (isSessionLoading) {
     return null;
@@ -30,9 +28,8 @@ function LoginContent() {
 
   return (
     <LoginScreen
-      onLoginSuccess={(loggedInUser) => {
-        const dest = loggedInUser?.isSuperAdmin ? "/super-admin" : "/app";
-        router.push(dest);
+      onLoginSuccess={() => {
+        router.push("/app");
       }}
       onDemoLogin={async () => {
         await loginAsDemo();

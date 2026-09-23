@@ -1,6 +1,8 @@
 import {
   SUBSCRIPTION_PLANS,
+  TIER_PRICING,
   type SubscriptionPlan,
+  type SubscriptionTier,
 } from "@/lib/subscription-config";
 
 const MERCADO_PAGO_API_BASE = "https://api.mercadopago.com";
@@ -15,6 +17,7 @@ function getMercadoPagoAccessToken() {
 
 export interface CreatePreapprovalInput {
   plan: SubscriptionPlan;
+  tier: SubscriptionTier;
   payerEmail: string;
   externalReference: string;
 }
@@ -30,6 +33,8 @@ export async function createMercadoPagoPreapproval(
 ): Promise<CreatePreapprovalResult> {
   const token = getMercadoPagoAccessToken();
   const planConfig = SUBSCRIPTION_PLANS[input.plan];
+  const tierPricing = TIER_PRICING[input.tier][input.plan];
+  const tierLabel = input.tier === "pro" ? "Pro" : "Simple";
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
   const response = await fetch(`${MERCADO_PAGO_API_BASE}/preapproval`, {
@@ -39,7 +44,7 @@ export async function createMercadoPagoPreapproval(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      reason: `VendePro ${planConfig.label}`,
+      reason: `VendePro ${tierLabel} ${planConfig.label}`,
       external_reference: input.externalReference,
       payer_email: input.payerEmail,
       back_url: `${appUrl}/app`,
@@ -47,7 +52,7 @@ export async function createMercadoPagoPreapproval(
       auto_recurring: {
         frequency: planConfig.frequency,
         frequency_type: planConfig.frequencyType,
-        transaction_amount: planConfig.amountArs,
+        transaction_amount: tierPricing.amountArs,
         currency_id: "ARS",
         start_date: new Date().toISOString(),
       },

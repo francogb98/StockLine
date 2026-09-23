@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
       storeId: currentUser.storeId,
       subscriptionId: subscription.id,
       plan: subscription.plan as "monthly" | "annual",
+      tier: subscription.tier as "simple" | "pro" | undefined,
       redeemedByUserId: currentUser.id,
     });
 

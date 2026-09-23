@@ -35,6 +35,11 @@ function formatType(discountType: string) {
   return "Monto fijo";
 }
 
+function formatTiers(tiers: string[]) {
+  if (tiers.length === 0) return "Todos";
+  return tiers.map((t) => (t === "simple" ? "Básico" : "Pro")).join(", ");
+}
+
 export default async function CouponsPage(props: PageProps) {
   const auth = await requireSuperAdmin();
   if ("response" in auth) {
@@ -100,6 +105,7 @@ export default async function CouponsPage(props: PageProps) {
               <th className="px-3 py-2 font-medium">Código</th>
               <th className="px-3 py-2 font-medium">Tipo</th>
               <th className="px-3 py-2 font-medium">Beneficio</th>
+              <th className="px-3 py-2 font-medium">Tier</th>
               <th className="px-3 py-2 font-medium">Vencimiento</th>
               <th className="px-3 py-2 font-medium">Estado</th>
               <th className="px-3 py-2 font-medium">Empresa</th>
@@ -129,6 +135,7 @@ export default async function CouponsPage(props: PageProps) {
                   </td>
                   <td className="px-3 py-2 text-xs">{formatType(c.discountType)}</td>
                   <td className="px-3 py-2 text-xs">{formatDiscount(c)}</td>
+                  <td className="px-3 py-2 text-xs">{formatTiers(c.applicableTiers)}</td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">
                     {c.expiresAt ? c.expiresAt.toISOString().slice(0, 10) : "Sin vencimiento"}
                   </td>

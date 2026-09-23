@@ -19,6 +19,7 @@ import {
   Boxes,
   HelpCircle,
   Copy,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useData } from "@/lib/store-context";
@@ -188,6 +189,56 @@ export function ProductDialog({
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
+  // Duplicate detection state
+  const [duplicateWarnings, setDuplicateWarnings] = useState<
+    Array<{
+      id: string;
+      name: string;
+      barcode: string | null;
+      stock: number;
+      price: number;
+      score: number;
+    }>
+  >([]);
+  const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
+
+  // Debounced duplicate check on name change
+  useEffect(() => {
+    if (!open) return;
+    const name = formData.name.trim();
+    if (name.length < 2) {
+      setDuplicateWarnings([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsCheckingDuplicates(true);
+      try {
+        const res = await fetch("/api/products/check-duplicates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            categoryId: formData.categoryId || undefined,
+            excludeId: product?.id || undefined,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setDuplicateWarnings(data.warnings ?? []);
+        } else {
+          setDuplicateWarnings([]);
+        }
+      } catch {
+        setDuplicateWarnings([]);
+      } finally {
+        setIsCheckingDuplicates(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [formData.name, formData.categoryId, product?.id, open]);
+
   const resetForm = useCallback(() => {
     setFormData({
       barcode: "",
@@ -204,6 +255,7 @@ export function ProductDialog({
     });
     setPresentations([]);
     setErrors({});
+    setDuplicateWarnings([]);
     setImageSelection({ file: null, removed: false });
   }, [categories]);
 
@@ -653,7 +705,7 @@ export function ProductDialog({
     <AnimatePresence>
       {open && (
         <div
-          key={product?.id || "new-product"}
+          key={product?.id && product.id.trim() !== "" ? `product-${product.id}` : "product-dialog-modal"}
           className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto p-4 sm:p-6"
           role="presentation"
         >
@@ -773,6 +825,39 @@ export function ProductDialog({
                 {errors.name && (
                   <p className="mt-1 text-xs text-destructive">{errors.name}</p>
                 )}
+                {/* Duplicate detection warnings */}
+                {isCheckingDuplicates && (
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    Verificando duplicados...
+                  </p>
+                )}
+                {!isCheckingDuplicates && duplicateWarnings.length > 0 && (
+                  <div className="mt-1.5 rounded-md border border-amber-300 bg-amber-50 p-2.5 dark:border-amber-700 dark:bg-amber-950/30">
+                    <p className="flex items-center gap-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                      {duplicateWarnings.length === 1
+                        ? "Existe un producto similar:"
+                        : `Existen ${duplicateWarnings.length} productos similares:`}
+                    </p>
+                    <ul className="mt-1.5 space-y-1">
+                      {duplicateWarnings.map((w) => (
+                        <li
+                          key={w.id}
+                          className="flex items-center justify-between text-xs text-amber-700 dark:text-amber-400"
+                        >
+                          <span className="font-medium">{w.name}</span>
+                          <span className="ml-2 shrink-0 text-muted-foreground">
+                            {Math.round(w.score * 100)}% similitud
+                            {w.stock > 0 ? ` · Stock: ${w.stock}` : " · Sin stock"}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-400">
+                      ¿Deseas sumar stock a uno existente en lugar de crear uno nuevo?
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Description */}
@@ -858,9 +943,9 @@ export function ProductDialog({
                         />
                         <CommandList>
                           <CommandEmpty>No se encontró la categoría.</CommandEmpty>
-                          {filteredCategories.map((category) => (
+                          {filteredCategories.map((category, catIdx) => (
                             <CommandItem
-                              key={category.id}
+                              key={category.id || `category-${catIdx}`}
                               value={category.name}
                               onSelect={() => handleCategorySelect(category.id)}
                             >
@@ -970,8 +1055,8 @@ export function ProductDialog({
                     )}
                     data-testid="unit-select"
                   >
-                    {unitOptions.map((u) => (
-                      <option key={u} value={u}>
+                    {unitOptions.map((u, uIdx) => (
+                      <option key={u || `unit-${uIdx}`} value={u}>
                         {formatUnitLabel(u)}
                       </option>
                     ))}
@@ -1453,6 +1538,7 @@ export function ProductDialog({
 
       {/* Image Search Dialog */}
       <ImageSearchDialog
+        key="image-search-dialog"
         open={imageSearchOpen}
         onClose={() => setImageSearchOpen(false)}
         onSelect={(imageUrl) => {
@@ -1466,7 +1552,7 @@ export function ProductDialog({
       />
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      <AlertDialog key="delete-confirm-dialog" open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>

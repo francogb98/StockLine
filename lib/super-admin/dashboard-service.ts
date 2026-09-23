@@ -96,12 +96,12 @@ export async function getGlobalMetrics(days = 30): Promise<GlobalMetrics> {
     prisma.store.count(),
     prisma.store.count({ where: { suspendedAt: { not: null } } }),
     prisma.store.count({ where: { createdAt: { gte: since30ForActivity } } }),
-    prisma.subscription.count({ where: { status: "active" } }),
-    prisma.subscription.count({ where: { status: "trial" } }),
-    prisma.subscription.count({ where: { status: "past_due" } }),
-    prisma.subscription.count({ where: { status: "canceled" } }),
+    prisma.subscription.count({ where: { status: "ACTIVE" } }),
+    prisma.subscription.count({ where: { status: "TRIAL" } }),
+    prisma.subscription.count({ where: { status: "PAST_DUE" } }),
+    prisma.subscription.count({ where: { status: "CANCELED" } }),
     prisma.subscription.findMany({
-      where: { status: "active" },
+      where: { status: "ACTIVE" },
       select: { plan: true },
     }),
     prisma.sale.aggregate({
@@ -178,8 +178,8 @@ export async function getChurnTimeseries(days = 30): Promise<MetricPoint[]> {
   const subs = await prisma.subscription.findMany({
     where: {
       OR: [
-        { status: "canceled", updatedAt: { gte: since } },
-        { status: "past_due", updatedAt: { gte: since } },
+        { status: "CANCELED", updatedAt: { gte: since } },
+        { status: "PAST_DUE", updatedAt: { gte: since } },
       ],
     },
     select: { updatedAt: true, previousStatus: true },

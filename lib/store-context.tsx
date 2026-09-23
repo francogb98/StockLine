@@ -148,6 +148,7 @@ interface DataContextType {
   getTodaySales: () => Sale[];
   getSalesByDateRange: (start: Date, end: Date) => Sale[];
   refreshData: () => Promise<void>;
+  refreshProductsSilently: () => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -518,6 +519,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setIsDataError(true);
     } finally {
       setIsDataLoading(false);
+    }
+  }, [user]);
+
+  const refreshProductsSilently = useCallback(async () => {
+    if (useMockData || !user) return;
+    try {
+      const res = await fetch("/api/products");
+      if (!res.ok) return;
+      const data = await res.json();
+      const normalized = (data ?? []).map((p: any) => ({
+        ...p,
+        price: Number(p.price),
+        cost: Number(p.cost),
+        quantityType: p.quantityType ?? "DISCRETA",
+        unit: p.unit ?? "unit",
+        presentations: p.presentations ?? [],
+      }));
+      setProducts(normalized);
+    } catch {
+      // Silent — don't disrupt the UI
     }
   }, [user]);
 
@@ -1406,6 +1427,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           getTodaySales,
           getSalesByDateRange,
           refreshData,
+          refreshProductsSilently,
         }}
       >
         <POSContext.Provider

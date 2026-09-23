@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { jsonResponse, errorResponse } from "@/lib/api-helpers";
 import { requireSuperAdmin } from "@/lib/api-auth";
 import { listSubscriptions, type SubscriptionsFilters } from "@/lib/super-admin/subscriptions-service";
+import { statusToEnum } from "@/lib/subscription-config";
 
 const VALID_PLANS = new Set(["monthly", "annual"]);
 const VALID_STATUSES = new Set(["trial", "active", "past_due", "canceled"]);

@@ -71,11 +71,12 @@ export async function POST(request: Request) {
 
     const data = parseResult.data;
 
-    // Test users bypass subscription enforcement
+    // Test users and super admin bypass subscription enforcement
     const isTestUser = isTestUserEmail(auth.user.email);
+    const isSuperAdmin = auth.user.isSuperAdmin === true;
 
     const [salesAccess, openSession] = await Promise.all([
-      isTestUser
+      (isTestUser || isSuperAdmin)
         ? Promise.resolve({ allowed: true, reason: undefined, snapshot: undefined } as const)
         : enforceSubscriptionAccess(auth.user.storeId, "sales"),
       data.cashSessionId

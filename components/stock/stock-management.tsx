@@ -13,6 +13,8 @@ import {
   History,
   Upload,
   HandCoins,
+  ScanSearch,
+  Download,
 } from "lucide-react";
 import { useAuth, useData } from "@/lib/store-context";
 import { formatCurrency } from "@/lib/mock-data";
@@ -44,6 +46,7 @@ import { StockAdjustmentDialog } from "./stock-adjustment-dialog";
 import { OwnerWithdrawalDialog } from "./owner-withdrawal-dialog";
 import { ImportSheet } from "./import/import-sheet";
 import { ProductThumbnail } from "@/components/products/product-thumbnail";
+import { DuplicateAuditModal } from "./duplicate-audit-modal";
 import type { Product, Category } from "@/lib/types";
 
 type SortField = "name" | "stock" | "price" | "category";
@@ -53,7 +56,7 @@ type StockFilter = "all" | "low" | "out";
 const ITEMS_PER_PAGE = 20;
 
 export function StockManagement() {
-  const { user, isDemo } = useAuth();
+  const { user, isDemo, subscription } = useAuth();
   const {
     products,
     categories: contextCategories,
@@ -62,6 +65,7 @@ export function StockManagement() {
     isDataLoading,
     isDataError,
     refreshData,
+    refreshProductsSilently,
   } = useData();
   const [categories, setCategories] = useState<Category[]>(contextCategories);
   const [search, setSearch] = useState("");
@@ -76,8 +80,44 @@ export function StockManagement() {
   const [adjustProduct, setAdjustProduct] = useState<Product | null>(null);
   const [withdrawalProduct, setWithdrawalProduct] = useState<Product | null>(null);
   const [importSheetOpen, setImportSheetOpen] = useState(false);
+  const [showImportUpgradeAlert, setShowImportUpgradeAlert] = useState(false);
+  const [auditModalOpen, setAuditModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteConfirmProduct, setDeleteConfirmProduct] = useState<Product | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  // Plan tier logic — super admin bypasses all tier restrictions
+  const isSuperAdmin = user?.isSuperAdmin === true;
+  const isPro = isSuperAdmin || subscription?.tier === "pro";
+  const isSimple = !isSuperAdmin && (subscription?.tier === "simple" || !subscription?.tier);
+  const productCount = products.length;
+  const SIMPLE_PRODUCT_LIMIT = 200;
+  const atProductLimit = !isSuperAdmin && isSimple && productCount >= SIMPLE_PRODUCT_LIMIT;
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/products/export");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "Error al exportar productos");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `productos_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("Error de conexión al exportar");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   useEffect(() => {
     setCategories(contextCategories);
@@ -226,7 +266,7 @@ export function StockManagement() {
             {user?.role === "admin" && !isDemo && (
               <>
                 <button
-                  onClick={() => setImportSheetOpen(true)}
+                  onClick={() => isPro ? setImportSheetOpen(true) : setShowImportUpgradeAlert(true)}
                   data-testid="open-import-sheet-btn"
                   className={cn(
                     "flex items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors",
@@ -236,6 +276,34 @@ export function StockManagement() {
                 >
                   <Upload className="h-4 w-4" />
                   Importar
+                </button>
+                {isPro && (
+                  <button
+                    onClick={handleExport}
+                    disabled={exporting}
+                    data-testid="export-products-btn"
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors",
+                      "hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                      "disabled:opacity-50 disabled:cursor-not-allowed",
+                    )}
+                    type="button"
+                  >
+                    <Download className="h-4 w-4" />
+                    {exporting ? "Exportando..." : "Exportar Excel"}
+                  </button>
+                )}
+                <button
+                  onClick={() => setAuditModalOpen(true)}
+                  data-testid="open-duplicate-audit-btn"
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors",
+                    "hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                  )}
+                  type="button"
+                >
+                  <ScanSearch className="h-4 w-4" />
+                  Detectar Duplicados
                 </button>
                 <button
                   onClick={() => setCategoryDialogOpen(true)}
@@ -253,10 +321,13 @@ export function StockManagement() {
             {!isDemo && (
               <button
                 onClick={() => setDialogOpen(true)}
+                disabled={atProductLimit}
                 data-testid="open-product-dialog-btn"
+                title={atProductLimit ? `Límite de ${SIMPLE_PRODUCT_LIMIT} productos alcanzado. Actualizá a Plan Pro.` : ""}
                 className={cn(
                   "flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors",
                   "hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                  "disabled:opacity-50 disabled:cursor-not-allowed",
                 )}
                 type="button"
               >
@@ -266,6 +337,26 @@ export function StockManagement() {
             )}
           </div>
         </div>
+
+        {/* Product limit warning for Simple plan */}
+        {isSimple && productCount >= SIMPLE_PRODUCT_LIMIT * 0.9 && (
+          <div className={cn(
+            "mx-4 mb-3 flex items-center gap-2 rounded-lg border px-3 py-2 text-sm",
+            atProductLimit
+              ? "border-destructive/50 bg-destructive/10 text-destructive"
+              : "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+          )}>
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>
+              {atProductLimit
+                ? `Límite de ${SIMPLE_PRODUCT_LIMIT} productos alcanzado. `
+                : `${productCount} de ${SIMPLE_PRODUCT_LIMIT} productos. `}
+              <a href="/app/suscripcion" className="underline font-medium">
+                {atProductLimit ? "Actualizá a Plan Pro" : "Conocé el Plan Pro"} para productos ilimitados.
+              </a>
+            </span>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3 px-4 pb-3">
@@ -711,6 +802,16 @@ export function StockManagement() {
         }}
       />
 
+      <DuplicateAuditModal
+        open={auditModalOpen}
+        onClose={() => {
+          setAuditModalOpen(false);
+          refreshData();
+        }}
+        categories={categories}
+        onMergeSuccess={refreshProductsSilently}
+      />
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog
         open={deleteConfirmProduct !== null}
@@ -732,6 +833,31 @@ export function StockManagement() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Import Upgrade Alert */}
+      <AlertDialog
+        open={showImportUpgradeAlert}
+        onOpenChange={setShowImportUpgradeAlert}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Función disponible en Plan Pro</AlertDialogTitle>
+            <AlertDialogDescription>
+              La importación de productos desde Excel es una función exclusiva del Plan Pro. Actualizá tu plan para acceder a esta y otras funciones avanzadas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                window.location.href = "/app/subscription";
+              }}
+            >
+              Ver Planes
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -4,12 +4,21 @@ import { getMercadoPagoPreapproval } from "@/lib/mercadopago";
 import {
   SUBSCRIPTION_PLANS,
   SUBSCRIPTION_TRIAL_DAYS,
+  SUBSCRIPTION_STATUS,
+  SUBSCRIPTION_TIER,
   addDays,
+  statusToEnum,
+  enumToStatus,
+  tierToEnum,
+  enumToTier,
+  TIER_LIMITS,
   type SubscriptionPlan,
   type SubscriptionStatus,
+  type SubscriptionTier,
 } from "@/lib/subscription-config";
 
-const SUBSCRIPTION_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+// [M2 FIX] Reduced from 5 min to 15 sec — stale data window is minimal
+const SUBSCRIPTION_CACHE_TTL_MS = 15 * 1000; // 15 seconds
 
 interface CacheEntry {
   snapshot: SubscriptionSnapshot;
@@ -43,12 +52,15 @@ export interface SubscriptionSnapshot {
   id: string;
   storeId: string;
   status: SubscriptionStatus;
+  tier: SubscriptionTier;
   plan: SubscriptionPlan;
   currentPeriodStart: Date;
   currentPeriodEnd: Date;
   trialEndsAt: Date | null;
   mercadoPagoPreapprovalId: string | null;
   daysRemaining: number;
+  cancelAtPeriodEnd: boolean;
+  canceledAt: Date | null;
 }
 
 type SubscriptionSyncSource = "webhook" | "runtime";
@@ -60,16 +72,50 @@ const KNOWN_SUBSCRIPTION_STATUSES = [
   "canceled",
 ] as const;
 
+/** Convert DB enum value to app-level status string */
+function dbStatusToApp(raw: string): SubscriptionStatus {
+  return enumToStatus[raw] ?? "past_due";
+}
+
+/** Convert app-level status string to DB enum value */
+function appStatusToDb(status: SubscriptionStatus): string {
+  return statusToEnum[status] ?? SUBSCRIPTION_STATUS.PAST_DUE;
+}
+
 function normalizeStatus(raw: string): SubscriptionStatus {
+  // Accept both enum values ("ACTIVE") and legacy strings ("active")
+  const lower = raw.toLowerCase();
   if (
-    raw === "trial" ||
-    raw === "active" ||
-    raw === "past_due" ||
-    raw === "canceled"
+    lower === "trial" ||
+    lower === "active" ||
+    lower === "past_due" ||
+    lower === "canceled"
   ) {
-    return raw;
+    return lower;
   }
-  return "past_due";
+  // Try enum mapping
+  return dbStatusToApp(raw);
+}
+
+/** Convert DB enum value to app-level tier string */
+function dbTierToApp(raw: string): SubscriptionTier {
+  return enumToTier[raw] ?? "simple";
+}
+
+/** Convert app-level tier string to DB enum value */
+function appTierToDb(tier: SubscriptionTier): string {
+  return tierToEnum[tier] ?? SUBSCRIPTION_TIER.SIMPLE;
+}
+
+function normalizeTier(raw: string | null | undefined): SubscriptionTier {
+  if (!raw) return "simple";
+  // Accept both enum values ("PRO") and legacy strings ("pro")
+  const lower = raw.toLowerCase();
+  if (lower === "simple" || lower === "pro") {
+    return lower;
+  }
+  // Try enum mapping
+  return dbTierToApp(raw);
 }
 
 /**
@@ -78,9 +124,8 @@ function normalizeStatus(raw: string): SubscriptionStatus {
  *   authorized  -> preapproval con método de pago válido (pagado, activo, recurrente)
  *   paused      -> preapproval pausado por el usuario
  *   canceled    -> preapproval terminado (irreversible)
- *
- * También aceptamos `approved`/`rejected` por compatibilidad con payloads viejos
- * o si en algún momento se reusa código con payments puntuales.
+ *   rejected    -> pago rechazado (falla en el cobro recurrente)
+ *   charged_back -> contracargo/disputa (cobro revertido por el banco)
  */
 export function mapMercadoPagoStatusToSubscriptionStatus(
   raw: string,
@@ -92,6 +137,10 @@ export function mapMercadoPagoStatusToSubscriptionStatus(
   }
 
   if (value === "canceled" || value === "cancelled") {
+    return "canceled";
+  }
+
+  if (value === "charged_back") {
     return "canceled";
   }
 
@@ -146,12 +195,12 @@ function isSubscriptionInconsistent(subscription: {
   currentPeriodEnd: Date;
 }) {
   const hasKnownStatus = KNOWN_SUBSCRIPTION_STATUSES.includes(
-    subscription.status as (typeof KNOWN_SUBSCRIPTION_STATUSES)[number],
+    normalizeStatus(subscription.status) as (typeof KNOWN_SUBSCRIPTION_STATUSES)[number],
   );
   const hasKnownPlan =
     subscription.plan === "monthly" || subscription.plan === "annual";
   const hasInvalidTrialShape =
-    subscription.status === "trial" && !subscription.trialEndsAt;
+    normalizeStatus(subscription.status) === "trial" && !subscription.trialEndsAt;
   const hasInvalidPeriod =
     subscription.currentPeriodEnd < subscription.currentPeriodStart;
 
@@ -195,7 +244,7 @@ export async function createTrialSubscription(
   return prisma.subscription.create({
     data: {
       storeId,
-      status: "trial",
+      status: SUBSCRIPTION_STATUS.TRIAL,
       plan: "monthly",
       currentPeriodStart: now,
       currentPeriodEnd: trialEndsAt,
@@ -236,8 +285,9 @@ export async function resolveSubscriptionSnapshot(
   storeId: string,
   now = new Date(),
 ): Promise<SubscriptionSnapshot> {
-  if (getCachedSnapshot(storeId)) {
-    return getCachedSnapshot(storeId)!;
+  const cached = getCachedSnapshot(storeId);
+  if (cached) {
+    return cached;
   }
 
   let subscription = await getOrCreateSubscription(storeId, now);
@@ -253,7 +303,7 @@ export async function resolveSubscriptionSnapshot(
     subscription = await prisma.subscription.update({
       where: { id: subscription.id },
       data: {
-        status: "past_due",
+        status: appStatusToDb("past_due"),
         currentPeriodEnd: subscription.trialEndsAt,
       },
     });
@@ -274,7 +324,7 @@ export async function resolveSubscriptionSnapshot(
     subscription = await prisma.subscription.update({
       where: { id: subscription.id },
       data: {
-        status: "past_due",
+        status: appStatusToDb("past_due"),
       },
     });
 
@@ -338,6 +388,7 @@ export async function resolveSubscriptionSnapshot(
   }
 
   const status = normalizeStatus(subscription.status);
+  const tier = normalizeTier(subscription.tier);
   const plan = normalizePlan(subscription.plan);
   const targetDate =
     status === "trial"
@@ -348,12 +399,15 @@ export async function resolveSubscriptionSnapshot(
     id: subscription.id,
     storeId: subscription.storeId,
     status,
+    tier,
     plan,
     currentPeriodStart: subscription.currentPeriodStart,
     currentPeriodEnd: subscription.currentPeriodEnd,
     trialEndsAt: subscription.trialEndsAt,
     mercadoPagoPreapprovalId: subscription.mercadoPagoPreapprovalId,
     daysRemaining: getRemainingDays(targetDate, now),
+    cancelAtPeriodEnd: subscription.cancelAtPeriodEnd ?? false,
+    canceledAt: subscription.canceledAt ?? null,
   };
 
   setCachedSnapshot(storeId, snapshot);
@@ -361,8 +415,8 @@ export async function resolveSubscriptionSnapshot(
   return snapshot;
 }
 
-export async function enforceSalesAccess(storeId: string) {
-  return enforceSubscriptionAccess(storeId, "sales");
+export async function enforceSalesAccess(storeId: string, isSuperAdmin?: boolean) {
+  return enforceSubscriptionAccess(storeId, "sales", isSuperAdmin);
 }
 
 export interface EnforceSubscriptionResult {
@@ -371,10 +425,25 @@ export interface EnforceSubscriptionResult {
   snapshot: SubscriptionSnapshot;
 }
 
+/**
+ * Enforce feature access based on subscription status.
+ *
+ * Grace period logic:
+ * - If cancelAtPeriodEnd == true AND currentPeriodEnd > now(), allow access.
+ *   The user paid for the current period — they keep access until it expires.
+ * - Once currentPeriodEnd passes, access is revoked (status becomes past_due).
+ */
 export async function enforceSubscriptionAccess(
   storeId: string,
   _feature?: string,
+  isSuperAdmin?: boolean,
 ): Promise<EnforceSubscriptionResult> {
+  // Super admin bypasses all subscription restrictions
+  if (isSuperAdmin) {
+    const snapshot = await resolveSubscriptionSnapshot(storeId);
+    return { allowed: true, snapshot };
+  }
+
   const store = await prisma.store.findUnique({
     where: { id: storeId },
     select: { suspendedAt: true },
@@ -390,6 +459,23 @@ export async function enforceSubscriptionAccess(
   }
 
   const snapshot = await resolveSubscriptionSnapshot(storeId);
+  const now = new Date();
+
+  // Active or trial — always allowed
+  if (snapshot.status === "active" || snapshot.status === "trial") {
+    return { allowed: true, snapshot };
+  }
+
+  // Grace period: canceled but user set cancelAtPeriodEnd and period hasn't expired
+  if (
+    snapshot.cancelAtPeriodEnd &&
+    snapshot.currentPeriodEnd > now &&
+    snapshot.status !== "past_due"
+  ) {
+    return { allowed: true, snapshot };
+  }
+
+  // past_due or canceled without grace — block
   if (snapshot.status === "past_due" || snapshot.status === "canceled") {
     return {
       allowed: false,
@@ -402,6 +488,75 @@ export async function enforceSubscriptionAccess(
     allowed: true,
     snapshot,
   };
+}
+
+export interface EnforceFeatureResult {
+  allowed: boolean;
+  reason?: "STORE_SUSPENDED" | "INACTIVE" | "PRODUCT_LIMIT_REACHED" | "EXPORT_REQUIRES_PRO" | "IMPORT_REQUIRES_PLAN";
+  snapshot: SubscriptionSnapshot;
+  currentCount?: number;
+  maxProducts?: number;
+}
+
+/**
+ * Enforce feature access based on subscription tier and limits.
+ *
+ * Features:
+ * - "products": checks product count against tier limit
+ * - "export": requires pro tier
+ * - "import": allowed for all tiers (but gated by subscription status)
+ */
+export async function enforceFeatureAccess(
+  storeId: string,
+  feature: "products" | "export" | "import",
+  isSuperAdmin?: boolean,
+): Promise<EnforceFeatureResult> {
+  // Super admin bypasses all feature restrictions
+  if (isSuperAdmin) {
+    const snapshot = await resolveSubscriptionSnapshot(storeId);
+    return { allowed: true, snapshot };
+  }
+
+  // First check subscription status
+  const access = await enforceSubscriptionAccess(storeId, undefined, isSuperAdmin);
+  if (!access.allowed) {
+    return {
+      allowed: false,
+      reason: access.reason === "STORE_SUSPENDED" ? "STORE_SUSPENDED" : "INACTIVE",
+      snapshot: access.snapshot,
+    };
+  }
+
+  const tier = access.snapshot.tier;
+  const limits = TIER_LIMITS[tier];
+
+  switch (feature) {
+    case "products": {
+      const count = await prisma.product.count({ where: { storeId } });
+      const maxProducts = limits.maxProducts;
+      return {
+        allowed: count < maxProducts,
+        reason: count >= maxProducts ? "PRODUCT_LIMIT_REACHED" : undefined,
+        snapshot: access.snapshot,
+        currentCount: count,
+        maxProducts: maxProducts === Infinity ? undefined : maxProducts,
+      };
+    }
+    case "export":
+      return {
+        allowed: limits.canExport,
+        reason: !limits.canExport ? "EXPORT_REQUIRES_PRO" : undefined,
+        snapshot: access.snapshot,
+      };
+    case "import":
+      return {
+        allowed: limits.canImport,
+        reason: !limits.canImport ? "IMPORT_REQUIRES_PLAN" : undefined,
+        snapshot: access.snapshot,
+      };
+    default:
+      return { allowed: true, snapshot: access.snapshot };
+  }
 }
 
 export class AdminSubscriptionError extends Error {
@@ -420,8 +575,8 @@ export interface CancelSubscriptionByAdminInput {
 }
 
 /**
- * IMPORTANT: does NOT cancel the preapproval in Mercado Pago.
- * The flag cancelledByAdmin is set so UI can warn users.
+ * Admin cancellation: sets cancelAtPeriodEnd = true so the user retains
+ * access until their current period expires. Does NOT cancel the MP preapproval.
  */
 export async function cancelSubscriptionByAdmin(
   input: CancelSubscriptionByAdminInput,
@@ -438,11 +593,13 @@ export async function cancelSubscriptionByAdmin(
   const updated = await prisma.subscription.update({
     where: { id: sub.id },
     data: {
-      status: "canceled",
+      status: appStatusToDb("canceled"),
       previousStatus: sub.status,
       cancelledByAdmin: true,
       cancelledByAdminUserId: input.adminUserId,
       adminNotes: input.notes ?? null,
+      cancelAtPeriodEnd: true,
+      canceledAt: new Date(),
     },
   });
 
@@ -475,7 +632,7 @@ export async function reactivateSubscriptionByAdmin(
   const updated = await prisma.subscription.update({
     where: { id: sub.id },
     data: {
-      status: "active",
+      status: appStatusToDb("active"),
       cancelledByAdmin: false,
       cancelledByAdminUserId: null,
       adminNotes: input.notes ?? null,
@@ -483,6 +640,8 @@ export async function reactivateSubscriptionByAdmin(
       currentPeriodStart: now,
       currentPeriodEnd: newPeriodEnd,
       trialEndsAt: null,
+      cancelAtPeriodEnd: false,
+      canceledAt: null,
     },
   });
 
@@ -511,7 +670,7 @@ export async function extendSubscriptionByAdmin(
   }
 
   const baseEnd =
-    sub.status === "trial" && sub.trialEndsAt && sub.trialEndsAt > new Date()
+    normalizeStatus(sub.status) === "trial" && sub.trialEndsAt && sub.trialEndsAt > new Date()
       ? sub.trialEndsAt
       : sub.currentPeriodEnd;
 
@@ -596,11 +755,14 @@ export async function markSubscriptionFromWebhook(input: {
   const updated = await prisma.subscription.update({
     where: { id: existing.id },
     data: {
-      status: mappedStatus,
+      status: appStatusToDb(mappedStatus),
       plan,
       currentPeriodStart: periodStart,
       currentPeriodEnd: periodEnd,
       trialEndsAt: mappedStatus === "active" ? null : existing.trialEndsAt,
+      // Clear cancelAtPeriodEnd if reactivated
+      cancelAtPeriodEnd: mappedStatus === "active" ? false : existing.cancelAtPeriodEnd,
+      canceledAt: mappedStatus === "canceled" ? new Date() : existing.canceledAt,
     },
   });
 

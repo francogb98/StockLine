@@ -10,6 +10,7 @@ import {
   updateProduct,
 } from "@/lib/data-access";
 import type { DataContext } from "@/lib/data-access";
+import { enforceFeatureAccess } from "@/lib/subscription-service";
 
 interface ImportRequest {
   products: MappedRow[];
@@ -34,6 +35,16 @@ export async function POST(request: Request) {
 
     if (await isDemoSession()) {
       return errorResponse("No se pueden importar productos en modo demo", 403);
+    }
+
+    // Enforce import permission based on subscription tier
+    const isSuperAdmin = auth.user.isSuperAdmin === true;
+    const limitCheck = await enforceFeatureAccess(auth.user.storeId, "import", isSuperAdmin);
+    if (!limitCheck.allowed) {
+      const msg = limitCheck.reason === "IMPORT_REQUIRES_PLAN"
+        ? "La importación de productos requiere el Plan Pro. Actualizá tu plan para acceder a esta función."
+        : "No tenés acceso a esta función. Verificá tu suscripción.";
+      return errorResponse(msg, 403);
     }
 
     const body: ImportRequest = await request.json();

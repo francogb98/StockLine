@@ -1,5 +1,6 @@
 import { findProducts, type DataContext } from "@/lib/data-access";
 import type { StoredProduct } from "@/lib/session-store";
+import { calculateSimilarity } from "@/lib/utils/string-similarity";
 
 /**
  * Normalizes a product name for duplicate comparison:
@@ -160,6 +161,201 @@ export async function findDuplicateGroups(
     seenPairSets.add(setKey);
     groups.push({ key: `name:${normalized}`, reason: "name", products: list });
   }
+
+  return groups;
+}
+
+// ---- Fuzzy duplicate detection for audit module ----
+
+export interface FuzzyDuplicatePair {
+  productA: StoredProduct;
+  productB: StoredProduct;
+  similarity: number;
+  reason: "barcode" | "name_exact" | "name_fuzzy";
+}
+
+export interface FuzzyDuplicateGroup {
+  key: string;
+  pairs: FuzzyDuplicatePair[];
+  products: StoredProduct[];
+}
+
+const AUDIT_DEFAULT_THRESHOLD = 0.75;
+
+/**
+ * Finds groups of similar products using fuzzy string matching.
+ * Compares all product pairs and groups those above the similarity threshold.
+ * Also groups by exact barcode and exact normalized name.
+ *
+ * @param ctx - Data context (storeId, etc.)
+ * @param threshold - Minimum similarity score to consider a match (default 0.75)
+ */
+export async function findFuzzyDuplicateGroups(
+  ctx: DataContext,
+  threshold: number = AUDIT_DEFAULT_THRESHOLD,
+): Promise<FuzzyDuplicateGroup[]> {
+  const products = await findProducts(ctx);
+  if (products.length < 2) return [];
+
+  // Phase 1: group by exact barcode
+  const barcodeMap = new Map<string, StoredProduct[]>();
+  for (const p of products) {
+    const bc = p.barcode?.trim().toLowerCase();
+    if (bc) {
+      const list = barcodeMap.get(bc) ?? [];
+      list.push(p);
+      barcodeMap.set(bc, list);
+    }
+  }
+
+  // Phase 2: find fuzzy name pairs
+  const pairs: FuzzyDuplicatePair[] = [];
+  const productIdsInPair = new Set<string>();
+
+  // Exact barcode pairs
+  for (const [, list] of barcodeMap) {
+    if (list.length < 2) continue;
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        pairs.push({
+          productA: list[i],
+          productB: list[j],
+          similarity: 1,
+          reason: "barcode",
+        });
+        productIdsInPair.add(list[i].id);
+        productIdsInPair.add(list[j].id);
+      }
+    }
+  }
+
+  // Exact normalized name pairs (not already captured by barcode)
+  const normalizedNameMap = new Map<string, StoredProduct[]>();
+  for (const p of products) {
+    const norm = normalizeProductName(p.name);
+    if (norm) {
+      const list = normalizedNameMap.get(norm) ?? [];
+      list.push(p);
+      normalizedNameMap.set(norm, list);
+    }
+  }
+
+  for (const [, list] of normalizedNameMap) {
+    if (list.length < 2) continue;
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        // Skip if already paired by barcode
+        const alreadyPaired = pairs.some(
+          (p) =>
+            (p.productA.id === list[i].id && p.productB.id === list[j].id) ||
+            (p.productA.id === list[j].id && p.productB.id === list[i].id),
+        );
+        if (alreadyPaired) continue;
+
+        pairs.push({
+          productA: list[i],
+          productB: list[j],
+          similarity: 1,
+          reason: "name_exact",
+        });
+        productIdsInPair.add(list[i].id);
+        productIdsInPair.add(list[j].id);
+      }
+    }
+  }
+
+  // Fuzzy name comparison — O(n²) but fine for typical product catalogs (<10k items)
+  for (let i = 0; i < products.length; i++) {
+    for (let j = i + 1; j < products.length; j++) {
+      const a = products[i];
+      const b = products[j];
+
+      // Skip if already paired
+      const alreadyPaired = pairs.some(
+        (p) =>
+          (p.productA.id === a.id && p.productB.id === b.id) ||
+          (p.productA.id === b.id && p.productB.id === a.id),
+      );
+      if (alreadyPaired) continue;
+
+      const sim = calculateSimilarity(a.name, b.name);
+      if (sim >= threshold) {
+        pairs.push({
+          productA: a,
+          productB: b,
+          similarity: Math.round(sim * 100) / 100,
+          reason: "name_fuzzy",
+        });
+        productIdsInPair.add(a.id);
+        productIdsInPair.add(b.id);
+      }
+    }
+  }
+
+  if (pairs.length === 0) return [];
+
+  // Phase 3: union-find to group connected pairs into clusters
+  const parent = new Map<string, string>();
+  const find = (x: string): string => {
+    if (!parent.has(x)) parent.set(x, x);
+    let root = x;
+    while (parent.get(root) !== root) root = parent.get(root)!;
+    // Path compression
+    let curr = x;
+    while (curr !== root) {
+      const next = parent.get(curr)!;
+      parent.set(curr, root);
+      curr = next;
+    }
+    return root;
+  };
+  const union = (a: string, b: string) => {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent.set(ra, rb);
+  };
+
+  for (const pair of pairs) {
+    union(pair.productA.id, pair.productB.id);
+  }
+
+  // Group products by cluster root
+  const clusterMap = new Map<string, Set<string>>();
+  for (const id of productIdsInPair) {
+    const root = find(id);
+    if (!clusterMap.has(root)) clusterMap.set(root, new Set());
+    clusterMap.get(root)!.add(id);
+  }
+
+  // Build output groups
+  const productById = new Map(products.map((p) => [p.id, p]));
+  const groups: FuzzyDuplicateGroup[] = [];
+  let groupIdx = 0;
+
+  for (const [, idSet] of clusterMap) {
+    const groupProducts = [...idSet]
+      .map((id) => productById.get(id)!)
+      .filter(Boolean);
+
+    if (groupProducts.length < 2) continue;
+
+    const groupPairs = pairs.filter(
+      (p) => idSet.has(p.productA.id) && idSet.has(p.productB.id),
+    );
+
+    groups.push({
+      key: `fuzzy-${groupIdx++}`,
+      pairs: groupPairs,
+      products: groupProducts,
+    });
+  }
+
+  // Sort groups by highest similarity first
+  groups.sort((a, b) => {
+    const maxA = Math.max(...a.pairs.map((p) => p.similarity));
+    const maxB = Math.max(...b.pairs.map((p) => p.similarity));
+    return maxB - maxA;
+  });
 
   return groups;
 }

@@ -6,7 +6,7 @@ import {
   setSessionCookie,
   invalidateCurrentSession,
 } from "@/lib/auth-session";
-import { SUBSCRIPTION_TRIAL_DAYS, addDays } from "@/lib/subscription-config";
+import { SUBSCRIPTION_TRIAL_DAYS, SUBSCRIPTION_STATUS, addDays } from "@/lib/subscription-config";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 const GOOGLE_RATE_LIMIT = { windowMs: 15 * 60 * 1000, maxRequests: 10 };
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
       await tx.subscription.create({
         data: {
           storeId: store.id,
-          status: "trial",
+          status: SUBSCRIPTION_STATUS.TRIAL,
           plan: "monthly",
           currentPeriodStart: now,
           currentPeriodEnd: trialEndsAt,

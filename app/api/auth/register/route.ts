@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { hashPassword, validatePassword } from "@/lib/password-utils.server";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
-import { SUBSCRIPTION_TRIAL_DAYS, addDays } from "@/lib/subscription-config";
+import { SUBSCRIPTION_TRIAL_DAYS, SUBSCRIPTION_STATUS, addDays } from "@/lib/subscription-config";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { recordAuditEvent, extractAuditContext } from "@/lib/audit-service";
 
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
       await tx.subscription.create({
         data: {
           storeId: store.id,
-          status: "trial",
+          status: SUBSCRIPTION_STATUS.TRIAL,
           plan: "monthly",
           currentPeriodStart: now,
           currentPeriodEnd: trialEndsAt,
