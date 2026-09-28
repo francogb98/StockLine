@@ -2,6 +2,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, cleanup, fireEvent, screen } from "@testing-library/react";
 
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+globalThis.ResizeObserver = ResizeObserverMock as any;
+
+if (!HTMLElement.prototype.scrollIntoView) {
+  HTMLElement.prototype.scrollIntoView = () => {};
+}
+
 vi.mock("@/lib/store-context", () => ({
   useData: () => ({
     categories: [
@@ -49,8 +60,8 @@ describe("ProductDialog - catégorie popover", () => {
     fireEvent.click(trigger);
 
     const popover = screen.getByTestId("category-popover-content");
-    expect(popover).toBeInTheDocument();
-    expect(popover).toHaveAttribute("data-state", "open");
+    expect(popover).toBeTruthy();
+    expect(popover.getAttribute("data-state")).toBe("open");
   });
 
   it("lista las categorías dentro del popover", () => {
@@ -63,7 +74,7 @@ describe("ProductDialog - catégorie popover", () => {
 
     fireEvent.click(screen.getByRole("combobox", { name: /categoría/i }));
 
-    expect(screen.getByText("Bebidas")).toBeInTheDocument();
-    expect(screen.getByText("Lácteos")).toBeInTheDocument();
+    expect(screen.getAllByText("Bebidas").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Lácteos").length).toBeGreaterThan(0);
   });
 });

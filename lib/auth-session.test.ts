@@ -13,6 +13,7 @@ afterEach(() => {
 
 describe("lib/auth-session", () => {
   it("retorna null sin autenticación", async () => {
+    vi.spyOn(prisma.session, "findMany").mockResolvedValue([]);
     vi.mocked(cookies).mockResolvedValue({
       get: vi.fn().mockReturnValue(undefined),
       delete: vi.fn(),
@@ -25,8 +26,12 @@ describe("lib/auth-session", () => {
   });
 
   it("retorna null con sesión manipulada", async () => {
+    vi.spyOn(prisma.session, "findMany").mockResolvedValue([]);
     vi.mocked(cookies).mockResolvedValue({
-      get: vi.fn().mockReturnValue({ value: "token-manipulado" }),
+      get: vi.fn().mockImplementation((name: string) => {
+        if (name === "session-token") return { value: "token-manipulado" };
+        return undefined;
+      }),
       delete: vi.fn(),
       set: vi.fn(),
     } as any);
@@ -39,9 +44,13 @@ describe("lib/auth-session", () => {
   });
 
   it("retorna null con sesión inválida (revocada)", async () => {
+    vi.spyOn(prisma.session, "findMany").mockResolvedValue([]);
     const deleteCookie = vi.fn();
     vi.mocked(cookies).mockResolvedValue({
-      get: vi.fn().mockReturnValue({ value: "token-revocado" }),
+      get: vi.fn().mockImplementation((name: string) => {
+        if (name === "session-token") return { value: "token-revocado" };
+        return undefined;
+      }),
       delete: deleteCookie,
       set: vi.fn(),
     } as any);

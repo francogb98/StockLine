@@ -2,10 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET, PUT, DELETE } from "@/app/api/products/[id]/route";
 import * as apiAuth from "@/lib/api-auth";
 import * as testUsers from "@/lib/test-users";
+import { isDemoSession } from "@/lib/auth-session";
 
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 vi.mock("@/lib/auth-session", () => ({
   getAuthenticatedSession: vi.fn(),
+  isDemoSession: vi.fn(),
 }));
 vi.mock("@/lib/api-auth", () => ({
   requireSessionUser: vi.fn(),
@@ -30,6 +32,7 @@ beforeEach(() => {
   vi.mocked(apiAuth.requireAuthenticatedSession).mockResolvedValue({ auth: defaultAuthUser } as any);
   vi.mocked(apiAuth.requirePermission).mockResolvedValue({ auth: defaultAuthUser } as any);
   vi.mocked(testUsers.isTestUserEmail).mockReturnValue(true);
+  vi.mocked(isDemoSession).mockResolvedValue(false);
 });
 
 describe("GET /api/products/[id]", () => {
@@ -39,7 +42,7 @@ describe("GET /api/products/[id]", () => {
     } as any);
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data.name).toContain("Mouse");
+    expect(data.name).toContain("Coca Cola");
   });
 
   it("return 404 for non-existent", async () => {

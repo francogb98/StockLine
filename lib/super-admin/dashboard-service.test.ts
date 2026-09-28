@@ -97,8 +97,8 @@ describe("getGlobalMetrics", () => {
 
 describe("getNewSignupsTimeseries", () => {
   it("returns one bucket per day within the window with counts aggregated", async () => {
-    const now = new Date("2026-08-12T20:00:00Z").getTime();
-    const spy = vi.spyOn(Date, "now").mockReturnValue(now);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T20:00:00Z"));
 
     vi.mocked(prisma.store.findMany).mockReset();
     vi.mocked(prisma.store.findMany).mockResolvedValueOnce([
@@ -109,7 +109,7 @@ describe("getNewSignupsTimeseries", () => {
 
     const series = await getNewSignupsTimeseries(7);
 
-    spy.mockRestore();
+    vi.useRealTimers();
 
     const counts = Object.fromEntries(series.map((p) => [p.date, p.count]));
     expect(series.length).toBe(8);
@@ -121,8 +121,8 @@ describe("getNewSignupsTimeseries", () => {
 
 describe("getChurnTimeseries", () => {
   it("aggregates canceled/past_due transitions per day", async () => {
-    const now = new Date("2026-08-12T20:00:00Z").getTime();
-    const spy = vi.spyOn(Date, "now").mockReturnValue(now);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T20:00:00Z"));
 
     vi.mocked(prisma.subscription.findMany).mockResolvedValueOnce([
       { updatedAt: new Date("2026-08-09T05:00:00Z"), previousStatus: "active" },
@@ -131,7 +131,7 @@ describe("getChurnTimeseries", () => {
 
     const series = await getChurnTimeseries(7);
 
-    spy.mockRestore();
+    vi.useRealTimers();
 
     const counts = Object.fromEntries(series.map((p) => [p.date, p.count]));
     expect(counts["2026-08-09"]).toBe(1);

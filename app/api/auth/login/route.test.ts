@@ -18,6 +18,11 @@ vi.mock("@/lib/auth-session", () => ({
   setSessionCookie: vi.fn(),
 }));
 
+vi.mock("@/lib/audit-service", () => ({
+  recordAuditEvent: vi.fn().mockResolvedValue({}),
+  extractAuditContext: vi.fn().mockReturnValue({ ipAddress: "127.0.0.1", userAgent: "test" }),
+}));
+
 afterEach(() => {
   vi.clearAllMocks();
   vi.restoreAllMocks();

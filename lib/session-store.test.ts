@@ -30,11 +30,11 @@ describe("Products", () => {
   it("get product by id", () => {
     const product = store.getProduct("prod-1", STORE_ID);
     expect(product).not.toBeNull();
-    expect(product!.name).toBe("Mouse Inalámbrico Logitech M170");
+    expect(product!.name).toBe("Coca Cola 500ml");
   });
 
   it("get product by barcode case insensitive", () => {
-    const product = store.getProductByBarcode("7790001000011", STORE_ID);
+    const product = store.getProductByBarcode("7790360001017", STORE_ID);
     expect(product).not.toBeNull();
     expect(product!.id).toBe("prod-1");
   });
@@ -84,13 +84,13 @@ describe("Categories", () => {
   });
 
   it("find category by name", () => {
-    const cat = store.getCategoryByName("Electrónica", STORE_ID);
+    const cat = store.getCategoryByName("Bebidas", STORE_ID);
     expect(cat).not.toBeNull();
     expect(cat!.id).toBe("cat-1");
   });
 
   it("exclude id when searching by name", () => {
-    const cat = store.getCategoryByName("Electrónica", STORE_ID, "cat-1");
+    const cat = store.getCategoryByName("Bebidas", STORE_ID, "cat-1");
     expect(cat).toBeNull();
   });
 

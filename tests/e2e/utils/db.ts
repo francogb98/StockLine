@@ -71,7 +71,7 @@ export async function resetTestDatabase() {
   await prisma.subscription.create({
     data: {
       storeId: E2E_SEED.store.id,
-      status: "trial",
+      status: "TRIAL",
       plan: "monthly",
       currentPeriodStart: trialStart,
       currentPeriodEnd: trialEnd,

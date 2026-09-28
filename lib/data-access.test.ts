@@ -58,7 +58,7 @@ describe("Products (test mode)", () => {
   it("findProduct return product by id", async () => {
     const product = await findProduct(ctx, "prod-1");
     expect(product).not.toBeNull();
-    expect(product!.name).toContain("Mouse");
+    expect(product!.name).toContain("Coca Cola");
   });
 
   it("findProduct return null for non-existent", async () => {
@@ -67,7 +67,7 @@ describe("Products (test mode)", () => {
   });
 
   it("findProductByBarcode return matching product", async () => {
-    const product = await findProductByBarcode(ctx, "7790001000011");
+    const product = await findProductByBarcode(ctx, "7790360001017");
     expect(product).not.toBeNull();
     expect(product!.id).toBe("prod-1");
   });
@@ -245,7 +245,7 @@ describe("Categories (test mode)", () => {
   });
 
   it("findCategoryByName find existing", async () => {
-    const cat = await findCategoryByName(ctx, "Electrónica");
+    const cat = await findCategoryByName(ctx, "Bebidas");
     expect(cat).not.toBeNull();
     expect(cat!.id).toBe("cat-1");
   });

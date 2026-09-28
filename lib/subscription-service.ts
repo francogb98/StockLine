@@ -78,8 +78,8 @@ function dbStatusToApp(raw: string): SubscriptionStatus {
 }
 
 /** Convert app-level status string to DB enum value */
-function appStatusToDb(status: SubscriptionStatus): string {
-  return statusToEnum[status] ?? SUBSCRIPTION_STATUS.PAST_DUE;
+function appStatusToDb(status: SubscriptionStatus): "TRIAL" | "ACTIVE" | "PAST_DUE" | "CANCELED" {
+  return (statusToEnum[status] ?? SUBSCRIPTION_STATUS.PAST_DUE) as "TRIAL" | "ACTIVE" | "PAST_DUE" | "CANCELED";
 }
 
 function normalizeStatus(raw: string): SubscriptionStatus {
@@ -103,8 +103,8 @@ function dbTierToApp(raw: string): SubscriptionTier {
 }
 
 /** Convert app-level tier string to DB enum value */
-function appTierToDb(tier: SubscriptionTier): string {
-  return tierToEnum[tier] ?? SUBSCRIPTION_TIER.SIMPLE;
+function appTierToDb(tier: SubscriptionTier): "SIMPLE" | "PRO" {
+  return (tierToEnum[tier] ?? SUBSCRIPTION_TIER.SIMPLE) as "SIMPLE" | "PRO";
 }
 
 function normalizeTier(raw: string | null | undefined): SubscriptionTier {

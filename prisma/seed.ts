@@ -54,7 +54,7 @@ async function main() {
   await prisma.subscription.create({
     data: {
       storeId: demoStore.id,
-      status: "trial",
+      status: "TRIAL",
       plan: "monthly",
       currentPeriodStart: trialStart,
       currentPeriodEnd: trialEnd,

@@ -105,6 +105,7 @@ describe("subscription-service", () => {
   });
 
   it("blocks sales access when status is past_due", async () => {
+    vi.spyOn(prisma.store, "findUnique").mockResolvedValue(null as any);
     vi.spyOn(prisma.subscription, "findUnique").mockResolvedValue({
       id: "sub-2",
       storeId: "store-2",

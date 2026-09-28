@@ -39,6 +39,9 @@ vi.mock("@/lib/store-context", () => ({
   })),
   usePOS: vi.fn(() => ({
     cart: [],
+    total: 0,
+    clearCart: vi.fn(),
+    suspendedSales: [],
   })),
 }));
 

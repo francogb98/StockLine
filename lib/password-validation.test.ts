@@ -14,14 +14,14 @@ describe("validatePassword", () => {
     expect(result.error).toBe("La contraseña es requerida");
   });
 
-  it("reject password shorter than 6 characters", () => {
-    const result = validatePassword("Ab1!");
+  it("reject password shorter than 8 characters", () => {
+    const result = validatePassword("Ab1!xyz");
     expect(result.isValid).toBe(false);
-    expect(result.error).toBe("La contraseña debe tener al menos 6 caracteres");
+    expect(result.error).toBe("La contraseña debe tener al menos 8 caracteres");
   });
 
-  it("accept valid password of 6 characters", () => {
-    expect(validatePassword("abcdef").isValid).toBe(true);
+  it("accept valid password of 8 characters", () => {
+    expect(validatePassword("abcdefgh").isValid).toBe(true);
   });
 
   it("accept valid password with mixed characters", () => {
