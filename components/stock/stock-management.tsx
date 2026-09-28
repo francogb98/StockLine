@@ -15,10 +15,12 @@ import {
   HandCoins,
   ScanSearch,
   Download,
+  MoreVertical,
 } from "lucide-react";
 import { useAuth, useData } from "@/lib/store-context";
 import { formatCurrency } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { SkeletonStockPage } from "@/components/ui/skeletons";
 import { ErrorState } from "@/components/ui/error-state";
 import {
@@ -47,6 +49,12 @@ import { OwnerWithdrawalDialog } from "./owner-withdrawal-dialog";
 import { ImportSheet } from "./import/import-sheet";
 import { ProductThumbnail } from "@/components/products/product-thumbnail";
 import { DuplicateAuditModal } from "./duplicate-audit-modal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { Product, Category } from "@/lib/types";
 
 type SortField = "name" | "stock" | "price" | "category";
@@ -57,6 +65,7 @@ const ITEMS_PER_PAGE = 20;
 
 export function StockManagement() {
   const { user, isDemo, subscription } = useAuth();
+  const isMobile = useIsMobile();
   const {
     products,
     categories: contextCategories,
@@ -253,12 +262,12 @@ export function StockManagement() {
     <div className="flex h-full flex-col bg-background">
       {/* Header */}
       <div className="shrink-0 border-b bg-card">
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center justify-between px-3 py-2 md:px-4 md:py-3">
           <div>
-            <h1 className="text-xl font-bold text-foreground">
+            <h1 className="text-base font-bold text-foreground md:text-xl">
               Gestión de Stock
             </h1>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[10px] text-muted-foreground md:text-xs">
               {products.length} productos en total
             </p>
           </div>
@@ -269,7 +278,7 @@ export function StockManagement() {
                   onClick={() => isPro ? setImportSheetOpen(true) : setShowImportUpgradeAlert(true)}
                   data-testid="open-import-sheet-btn"
                   className={cn(
-                    "flex items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors",
+                    "hidden items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors md:flex",
                     "hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                   )}
                   type="button"
@@ -283,7 +292,7 @@ export function StockManagement() {
                     disabled={exporting}
                     data-testid="export-products-btn"
                     className={cn(
-                      "flex items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors",
+                      "hidden items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors md:flex",
                       "hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                       "disabled:opacity-50 disabled:cursor-not-allowed",
                     )}
@@ -297,7 +306,7 @@ export function StockManagement() {
                   onClick={() => setAuditModalOpen(true)}
                   data-testid="open-duplicate-audit-btn"
                   className={cn(
-                    "flex items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors",
+                    "hidden items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors md:flex",
                     "hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                   )}
                   type="button"
@@ -309,7 +318,7 @@ export function StockManagement() {
                   onClick={() => setCategoryDialogOpen(true)}
                   data-testid="open-category-dialog-btn"
                   className={cn(
-                    "flex items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors",
+                    "hidden items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors md:flex",
                     "hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                   )}
                   type="button"
@@ -318,7 +327,7 @@ export function StockManagement() {
                 </button>
               </>
             )}
-            {!isDemo && (
+            {!isDemo && !isMobile && (
               <button
                 onClick={() => setDialogOpen(true)}
                 disabled={atProductLimit}
@@ -359,10 +368,10 @@ export function StockManagement() {
         )}
 
         {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3 px-4 pb-3">
+        <div className="flex flex-wrap items-center gap-2 px-3 pb-2 md:gap-3 md:px-4 md:pb-3">
           {/* Search */}
-          <div className="relative flex-1 min-w-[250px]">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <div className="relative flex-1 min-w-[200px] md:min-w-[250px]">
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground md:left-3 md:h-4 md:w-4" />
             <input
               type="text"
               value={search}
@@ -370,9 +379,9 @@ export function StockManagement() {
                 setSearch(e.target.value);
                 setCurrentPage(1);
               }}
-              placeholder="Buscar por nombre o código..."
+              placeholder="Buscar..."
               className={cn(
-                "h-10 w-full rounded-md border bg-background pl-9 pr-4 text-sm",
+                "h-8 w-full rounded-md border bg-background pl-8 pr-3 text-xs md:h-10 md:pl-9 md:pr-4 md:text-sm",
                 "placeholder:text-muted-foreground",
                 "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
               )}
@@ -380,8 +389,8 @@ export function StockManagement() {
           </div>
 
           {/* Stock filter */}
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <Filter className="h-3.5 w-3.5 text-muted-foreground md:h-4 md:w-4" />
             <div className="flex rounded-md border">
               <button
                 onClick={() => {
@@ -389,7 +398,7 @@ export function StockManagement() {
                   setCurrentPage(1);
                 }}
                 className={cn(
-                  "px-3 py-1.5 text-sm font-medium transition-colors",
+                  "px-2 py-1 text-[11px] font-medium transition-colors md:px-3 md:py-1.5 md:text-sm",
                   stockFilter === "all"
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted",
@@ -404,7 +413,7 @@ export function StockManagement() {
                   setCurrentPage(1);
                 }}
                 className={cn(
-                  "flex items-center gap-1 border-x px-3 py-1.5 text-sm font-medium transition-colors",
+                  "flex items-center gap-0.5 border-x px-2 py-1 text-[11px] font-medium transition-colors md:gap-1 md:px-3 md:py-1.5 md:text-sm",
                   stockFilter === "low"
                     ? "bg-[hsl(var(--warning))] text-[hsl(var(--warning-foreground))]"
                     : "text-muted-foreground hover:bg-muted",
@@ -419,7 +428,7 @@ export function StockManagement() {
                   setCurrentPage(1);
                 }}
                 className={cn(
-                  "flex items-center gap-1 px-3 py-1.5 text-sm font-medium transition-colors",
+                  "flex items-center gap-0.5 px-2 py-1 text-[11px] font-medium transition-colors md:gap-1 md:px-3 md:py-1.5 md:text-sm",
                   stockFilter === "out"
                     ? "bg-destructive text-destructive-foreground"
                     : "text-muted-foreground hover:bg-muted",
@@ -439,11 +448,11 @@ export function StockManagement() {
               setCurrentPage(1);
             }}
             className={cn(
-              "h-10 rounded-md border bg-background px-3 text-sm",
+              "h-8 rounded-md border bg-background px-2 text-xs md:h-10 md:px-3 md:text-sm",
               "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20",
             )}
           >
-            <option value="">Todas las categorías</option>
+            <option value="">Categorías</option>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.name}
@@ -455,8 +464,8 @@ export function StockManagement() {
 
       {/* Showing X of Y indicator */}
       {filteredProducts.length > 0 && (
-          <div className="shrink-0 border-b bg-muted/30 px-4 py-1.5">
-            <p className="text-xs text-muted-foreground">
+          <div className="shrink-0 border-b bg-muted/30 px-3 py-1 md:px-4 md:py-1.5">
+            <p className="text-[10px] text-muted-foreground md:text-xs">
             Mostrando{" "}
             {(currentPage - 1) * ITEMS_PER_PAGE + 1}-
             {Math.min(currentPage * ITEMS_PER_PAGE, filteredProducts.length)}{" "}
@@ -467,24 +476,24 @@ export function StockManagement() {
 
       {/* Table */}
         <div className="flex-1 overflow-auto">
-          <div className="p-4">
+          <div className="p-2 md:p-4">
           <table className="w-full">
           <thead className="sticky top-0 bg-muted/80 backdrop-blur">
             <tr className="border-b">
-              <th className="p-3 text-left">
+              <th className="p-1.5 text-left md:p-3">
                 <button
                   onClick={() => handleSort("name")}
-                  className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+                  className="flex items-center gap-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground md:gap-1 md:text-sm"
                   type="button"
                 >
                   Producto
-                  <ArrowUpDown className="h-4 w-4" />
+                  <ArrowUpDown className="h-3 w-3 md:h-4 md:w-4" />
                 </button>
               </th>
-              <th className="p-3 text-left text-sm font-medium text-muted-foreground">
+              <th className="hidden md:table-cell md:p-3 md:text-left md:text-sm md:font-medium md:text-muted-foreground">
                 Código
               </th>
-              <th className="p-3 text-left">
+              <th className="hidden md:table-cell md:p-3 md:text-left">
                 <button
                   onClick={() => handleSort("category")}
                   className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
@@ -494,30 +503,30 @@ export function StockManagement() {
                   <ArrowUpDown className="h-4 w-4" />
                 </button>
               </th>
-              <th className="p-3 text-right">
+              <th className="p-1.5 text-right md:p-3">
                 <button
                   onClick={() => handleSort("price")}
-                  className="flex items-center justify-end gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+                  className="flex items-center justify-end gap-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground md:gap-1 md:text-sm"
                   type="button"
                 >
                   Precio
-                  <ArrowUpDown className="h-4 w-4" />
+                  <ArrowUpDown className="h-3 w-3 md:h-4 md:w-4" />
                 </button>
               </th>
-              <th className="p-3 text-right">
+              <th className="p-1.5 text-right md:p-3">
                 <button
                   onClick={() => handleSort("stock")}
-                  className="flex items-center justify-end gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+                  className="flex items-center justify-end gap-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground md:gap-1 md:text-sm"
                   type="button"
                 >
                   Stock
-                  <ArrowUpDown className="h-4 w-4" />
+                  <ArrowUpDown className="h-3 w-3 md:h-4 md:w-4" />
                 </button>
               </th>
-              <th className="p-3 text-right text-sm font-medium text-muted-foreground">
+              <th className="hidden md:table-cell md:p-3 md:text-right md:text-sm md:font-medium md:text-muted-foreground">
                 Min. Stock
               </th>
-              <th className="p-3 text-center text-sm font-medium text-muted-foreground" style={{minWidth: 130}}>
+              <th className="p-1.5 text-center md:p-3 md:text-sm md:font-medium md:text-muted-foreground" style={{minWidth: isMobile ? 70 : 130}}>
                 Acciones
               </th>
             </tr>
@@ -525,9 +534,9 @@ export function StockManagement() {
           <tbody>
             {filteredProducts.length === 0 ? (
               <tr>
-                <td colSpan={7} className="p-12 text-center">
-                  <Package className="mx-auto h-12 w-12 text-muted-foreground/30" />
-                  <p className="mt-2 text-muted-foreground">
+                <td colSpan={7} className="p-8 text-center md:p-12">
+                  <Package className="mx-auto h-10 w-10 text-muted-foreground/30 md:h-12 md:w-12" />
+                  <p className="mt-2 text-sm text-muted-foreground md:text-base">
                     No se encontraron productos
                   </p>
                 </td>
@@ -548,41 +557,46 @@ export function StockManagement() {
                       isLowStock && "bg-[hsl(var(--warning))]/5",
                     )}
                   >
-                    <td className="p-3">
-                      <div className="flex items-center gap-2">
+                    <td className="p-1.5 md:p-3">
+                      <div className="flex items-center gap-1.5 md:gap-2">
                         <ProductThumbnail
                           imageUrl={product.imageUrl}
                           name={product.name}
-                          className="h-9 w-9 shrink-0 rounded-md"
+                          className="h-7 w-7 shrink-0 rounded md:h-9 md:w-9 md:rounded-md"
                         />
                         {(isLowStock || isOutOfStock) && (
                           <AlertTriangle
                             className={cn(
-                              "h-4 w-4 shrink-0",
+                              "h-3 w-3 shrink-0 md:h-4 md:w-4",
                               isOutOfStock
                                 ? "text-destructive"
                                 : "text-[hsl(var(--warning))]",
                             )}
                           />
                         )}
-                        <span className="font-medium text-foreground">
-                          {product.name}
-                        </span>
+                        <div className="min-w-0 flex-1">
+                          <span className="block truncate text-xs font-medium text-foreground md:text-sm">
+                            {product.name}
+                          </span>
+                          <span className="block truncate font-mono text-[10px] text-muted-foreground md:hidden">
+                            {product.barcode}
+                          </span>
+                        </div>
                       </div>
                     </td>
-                    <td className="p-3 font-mono text-sm text-muted-foreground">
+                    <td className="hidden font-mono text-sm text-muted-foreground md:table-cell md:p-3">
                       {product.barcode}
                     </td>
-                    <td className="p-3 text-sm text-muted-foreground">
+                    <td className="hidden text-sm text-muted-foreground md:table-cell md:p-3">
                       {getCategoryName(product.categoryId)}
                     </td>
-                    <td className="p-3 text-right font-medium tabular-nums text-foreground">
+                    <td className="p-1.5 text-right text-xs font-medium tabular-nums text-foreground md:p-3 md:text-sm">
                       {formatCurrency(product.price)}
                     </td>
                     <td
                       data-testid={`stock-value-${product.barcode}`}
                       className={cn(
-                        "p-3 text-right font-bold tabular-nums",
+                        "p-1.5 text-right text-xs font-bold tabular-nums md:p-3 md:text-sm",
                         isOutOfStock
                           ? "text-destructive"
                           : isLowStock
@@ -592,11 +606,62 @@ export function StockManagement() {
                     >
                       {product.stock}
                     </td>
-                    <td className="p-3 text-right tabular-nums text-muted-foreground">
+                    <td className="hidden tabular-nums text-muted-foreground md:table-cell md:p-3 md:text-right">
                       {product.minStock}
                     </td>
-                    <td className="p-3">
-                      <div className="flex items-center justify-center gap-1">
+                    <td className="p-1.5 md:p-3">
+                      {/* Mobile: Dropdown con 3 puntos */}
+                      <div className="flex items-center justify-center md:hidden">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                              type="button"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            <DropdownMenuItem onClick={() => setHistoryProduct(product)}>
+                              <History className="mr-2 h-4 w-4" />
+                              Historial
+                            </DropdownMenuItem>
+                            {user?.role === "admin" && (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => setWithdrawalProduct(product)}
+                                  disabled={product.stock <= 0}
+                                >
+                                  <HandCoins className="mr-2 h-4 w-4" />
+                                  Retiro de dueño
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setAdjustProduct(product)}>
+                                  <ArrowUpDown className="mr-2 h-4 w-4" />
+                                  Ajustar stock
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {!isDemo && (
+                              <>
+                                <DropdownMenuItem onClick={() => handleEdit(product)}>
+                                  <Edit2 className="mr-2 h-4 w-4" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleDelete(product)}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Eliminar
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+
+                      {/* Desktop: Iconos individuales */}
+                      <div className="hidden items-center justify-center gap-1 md:flex">
                         <button
                           onClick={() => setHistoryProduct(product)}
                           className={cn(
@@ -676,12 +741,11 @@ export function StockManagement() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="shrink-0 border-t bg-card">
-          <div className="flex items-center justify-between px-4 py-3">
-            <p className="text-xs text-muted-foreground">
-              Mostrando{" "}
+          <div className="flex items-center justify-between px-3 py-2 md:px-4 md:py-3">
+            <p className="text-[10px] text-muted-foreground md:text-xs">
               {(currentPage - 1) * ITEMS_PER_PAGE + 1}-
               {Math.min(currentPage * ITEMS_PER_PAGE, filteredProducts.length)}{" "}
-              de {filteredProducts.length} productos
+              de {filteredProducts.length}
             </p>
             <Pagination>
               <PaginationContent>
@@ -690,7 +754,7 @@ export function StockManagement() {
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     aria-disabled={currentPage === 1}
                     className={cn(
-                      "cursor-pointer",
+                      "cursor-pointer h-7 px-2 text-xs md:h-9 md:px-3 md:text-sm",
                       currentPage === 1 && "pointer-events-none opacity-50",
                     )}
                   />
@@ -712,14 +776,14 @@ export function StockManagement() {
                   .map((item, idx) =>
                     item === "ellipsis" ? (
                       <PaginationItem key={`ellipsis-${idx}`}>
-                        <span className="px-2 text-muted-foreground">...</span>
+                        <span className="px-1 text-xs text-muted-foreground md:px-2">...</span>
                       </PaginationItem>
                     ) : (
                       <PaginationItem key={item}>
                         <PaginationLink
                           isActive={currentPage === item}
                           onClick={() => setCurrentPage(item)}
-                          className="cursor-pointer"
+                          className="cursor-pointer h-7 w-7 text-xs md:h-9 md:w-9 md:text-sm"
                         >
                           {item}
                         </PaginationLink>
@@ -733,7 +797,7 @@ export function StockManagement() {
                     }
                     aria-disabled={currentPage === totalPages}
                     className={cn(
-                      "cursor-pointer",
+                      "cursor-pointer h-7 px-2 text-xs md:h-9 md:px-3 md:text-sm",
                       currentPage === totalPages &&
                         "pointer-events-none opacity-50",
                     )}

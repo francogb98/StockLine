@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { Plus } from "lucide-react";
 import { useAuth } from "@/lib/store-context";
 import { useCashControl } from "@/lib/cash-control-context";
-import { useAssistant } from "@/components/mobile-assistant/context";
 import { MobileCashIndicator } from "@/components/cash/mobile-cash-indicator";
 import { DailySalesBanner } from "@/components/daily-sales-banner";
 
@@ -15,7 +14,6 @@ interface MobileHeaderProps {
 export function MobileHeader({ onHeightChange }: MobileHeaderProps) {
   const { store } = useAuth();
   const { cashControlEnabled } = useCashControl();
-  const { open, navigateTo } = useAssistant();
   const headerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -47,11 +45,12 @@ export function MobileHeader({ onHeightChange }: MobileHeaderProps) {
 
         <button
           type="button"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
-          aria-label="Agregar producto"
-          onClick={() => { open(); navigateTo('add-product'); }}
+          className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/20 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/30"
+          aria-label="Nuevo Producto"
+          onClick={() => window.dispatchEvent(new CustomEvent("open-product-dialog"))}
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-3.5 w-3.5" />
+          <span>Nuevo Producto</span>
         </button>
       </div>
 

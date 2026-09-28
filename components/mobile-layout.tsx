@@ -4,6 +4,7 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import { MobileHeader } from "./mobile-header";
 import { MobileBottomNavigation } from "./mobile-bottom-navigation";
 import { AssistantPanel } from "@/components/mobile-assistant/panel";
+import { GlobalProductDialog } from "./global-product-dialog";
 
 export function MobileLayout({ children }: { children: ReactNode }) {
   const [bottomNavHeight, setBottomNavHeight] = useState(72);
@@ -31,6 +32,7 @@ export function MobileLayout({ children }: { children: ReactNode }) {
       </main>
       <MobileBottomNavigation onHeightChange={setBottomNavHeight} />
       <AssistantPanel />
+      <GlobalProductDialog />
     </div>
   );
 }
